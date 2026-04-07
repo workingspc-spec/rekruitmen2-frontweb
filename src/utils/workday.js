@@ -7,9 +7,9 @@ const HOLIDAYS_2026 = new Set([
 ])
 
 function fmt(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth()+1).padStart(2,'0')
-  const day = String(d.getDate()).padStart(2,'0')
+  const y   = d.getFullYear()
+  const m   = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
@@ -27,13 +27,17 @@ export function addWorkdays(startDate, days) {
   return d
 }
 
+/**
+ * Hitung tanggal minimum tgl_butuh berdasarkan rule jabatan + jumlah orang.
+ * @returns {Date|null} — null jika jabatan fleksibel / tidak ada rule
+ */
 export function getMinAllowedDate(jabKode, jabatanRules, jumlah = 1) {
-  const rule = jabatanRules.find(r => r.jab_kode === jabKode)
-  if (!rule) return null
-  if (rule.is_flexible) return null  // no restriction
+  const rule = jabatanRules?.find(r => r.jab_kode === jabKode)
+  if (!rule || rule.is_flexible) return null
 
-  let minDays = rule.min_days
-  // Bulk buffer
+  let minDays = rule.min_days ?? 7
+
+  // Bulk buffer (sama persis dengan backend & Android)
   if (jumlah > 1) {
     if (jumlah <= 3)      minDays += 3
     else if (jumlah <= 5) minDays += 6
@@ -41,37 +45,47 @@ export function getMinAllowedDate(jabKode, jabatanRules, jumlah = 1) {
   }
 
   const today = new Date()
-  today.setHours(0,0,0,0)
+  today.setHours(0, 0, 0, 0)
   const tomorrow = new Date(today)
   tomorrow.setDate(tomorrow.getDate() + 1)
 
   return addWorkdays(tomorrow, minDays - 1)
 }
 
+/**
+ * Validasi tgl_butuh terhadap rule jabatan.
+ * @returns {{ valid: boolean, message?: string, minDate?: Date }}
+ */
 export function validateTglButuh(tglButuh, jabKode, jabatanRules, jumlah = 1, isReSchedule = false) {
-  const rule = jabatanRules.find(r => r.jab_kode === jabKode)
-  const [y,m,d] = tglButuh.split('-').map(Number)
-  const requested = new Date(y, m-1, d)
-  const today = new Date(); today.setHours(0,0,0,0)
+  if (!tglButuh) return { valid: false, message: 'Pilih tanggal terlebih dahulu.' }
+
+  const [y, m, d] = tglButuh.split('-').map(Number)
+  const requested = new Date(y, m - 1, d)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
   if (isReSchedule) {
     return requested >= today
       ? { valid: true }
-      : { valid: false, message: 'Untuk re-schedule, tanggal minimal hari ini.' }
+      : { valid: false, message: 'Untuk re-schedule, tanggal minimal adalah hari ini.' }
   }
 
+  const rule = jabatanRules?.find(r => r.jab_kode === jabKode)
   if (!rule || rule.is_flexible) return { valid: true }
 
   const minDate = getMinAllowedDate(jabKode, jabatanRules, jumlah)
   if (!minDate) return { valid: true }
 
   if (requested < minDate) {
-    const fmt2 = d => `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`
-    return {
-      valid: false,
-      message: `Tanggal minimal ${rule.min_days} hari kerja. Saran: ${fmt2(minDate)}`,
-      minDate,
+    const pad  = (n) => String(n).padStart(2, '0')
+    const fmtD = (dt) => `${pad(dt.getDate())}/${pad(dt.getMonth() + 1)}/${dt.getFullYear()}`
+    let msg = `Tanggal butuh minimal ${rule.min_days} hari kerja dari besok.`
+    if (jumlah > 1) {
+      const extra = jumlah <= 3 ? 3 : jumlah <= 5 ? 6 : 6 + (jumlah - 5)
+      msg = `Tanggal butuh minimal ${rule.min_days} hari kerja (+${extra} hari buffer massal).`
     }
+    return { valid: false, message: `${msg} Saran: ${fmtD(minDate)}`, minDate }
   }
+
   return { valid: true }
 }
