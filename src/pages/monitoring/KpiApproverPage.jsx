@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
-import { Speed, Calendar, ChevronDown, Clock, ArrowRight, Trophy, ChevronRight } from 'lucide-react'
+import { Gauge, Calendar, ChevronDown, Clock, ArrowRight, Trophy, ChevronRight } from 'lucide-react'
 
 const PERIOD_OPTS = [
   { value: '',        label: 'Semua Waktu' },
