@@ -1,17 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Eye, EyeOff, LogIn, Briefcase, BarChart3, Activity } from 'lucide-react'
 
 export default function LoginPage() {
-  const { login } = useAuth()
-  const navigate  = useNavigate()
+  const { login }  = useAuth()
+  const navigate   = useNavigate()
 
-  const [form, setForm]     = useState({ username: '', password: '', expiredDays: null })
-  const [showPwd, setShowPwd] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [form,     setForm]     = useState({ username: '', password: '', expiredDays: null })
+  const [showPwd,  setShowPwd]  = useState(false)
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -36,10 +35,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left decorative panel */}
+      {/* Left panel */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-navy via-sapphire to-blue-500 items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 30% 40%, white 1px, transparent 1px), radial-gradient(circle at 70% 70%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }}
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 30% 40%, white 1px, transparent 1px), radial-gradient(circle at 70% 70%, white 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
         />
         <div className="relative text-white text-center">
           <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm">
@@ -51,11 +55,16 @@ export default function LoginPage() {
           <p className="text-blue-200 text-lg leading-relaxed max-w-sm">
             Pantau proses rekruitmen, SLA, approval, dan KPI dalam satu platform terpadu.
           </p>
-          <div className="mt-12 grid grid-cols-3 gap-4 text-center">
-            {[['SLA', 'Monitoring'], ['KPI', 'Dashboard'], ['Approval', 'Flow']].map(([a,b]) => (
-              <div key={a} className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
-                <p className="font-display font-bold text-xl">{a}</p>
-                <p className="text-blue-200 text-xs mt-0.5">{b}</p>
+          <div className="mt-12 grid grid-cols-3 gap-4">
+            {[
+              { Icon: Activity,   label: 'SLA',      sub: 'Monitoring' },
+              { Icon: BarChart3,  label: 'KPI',      sub: 'Dashboard'  },
+              { Icon: Briefcase,  label: 'Approval', sub: 'Flow'       },
+            ].map(({ Icon, label, sub }) => (
+              <div key={label} className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
+                <Icon size={24} className="mx-auto mb-2 text-blue-200" />
+                <p className="font-display font-bold text-lg">{label}</p>
+                <p className="text-blue-200 text-xs mt-0.5">{sub}</p>
               </div>
             ))}
           </div>
@@ -65,7 +74,6 @@ export default function LoginPage() {
       {/* Right login form */}
       <div className="flex-1 flex items-center justify-center p-8 bg-white">
         <div className="w-full max-w-sm">
-          {/* Mobile logo */}
           <div className="lg:hidden mb-8 text-center">
             <div className="w-14 h-14 bg-sapphire rounded-2xl flex items-center justify-center mx-auto mb-3">
               <span className="text-white font-display font-black text-2xl">P</span>
@@ -77,11 +85,11 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Username</label>
+              <label className="label">Username / NIK</label>
               <input
                 className="input"
                 type="text"
-                placeholder="Masukkan NIK / username"
+                placeholder="Masukkan username"
                 value={form.username}
                 onChange={e => set('username', e.target.value)}
                 autoComplete="username"
@@ -102,7 +110,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
                   onClick={() => setShowPwd(p => !p)}
                 >
                   {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
@@ -112,14 +120,11 @@ export default function LoginPage() {
 
             {/* Remember me */}
             <div className="flex gap-4">
-              {[
-                { days: 3,  label: 'Ingat 3 hari' },
-                { days: 30, label: 'Ingat 30 hari' },
-              ].map(({ days, label }) => (
-                <label key={days} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600">
+              {[{ days: 3, label: 'Ingat 3 hari' }, { days: 30, label: 'Ingat 30 hari' }].map(({ days, label }) => (
+                <label key={days} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 select-none">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 accent-sapphire"
+                    className="w-4 h-4 accent-sapphire rounded"
                     checked={form.expiredDays === days}
                     onChange={e => set('expiredDays', e.target.checked ? days : null)}
                   />
@@ -129,7 +134,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
+              <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
                 {error}
               </div>
             )}
@@ -139,10 +144,14 @@ export default function LoginPage() {
               className="btn-primary w-full justify-center h-11 text-base mt-2"
               disabled={loading}
             >
-              {loading
-                ? <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />Masuk...</span>
-                : <><LogIn size={18} /> Masuk</>
-              }
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  Masuk...
+                </span>
+              ) : (
+                <><LogIn size={18} /> Masuk</>
+              )}
             </button>
           </form>
 

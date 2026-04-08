@@ -4,8 +4,8 @@ import api from '../api/axios'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  const [user, setUser]     = useState(null)
-  const [token, setToken]   = useState(() => localStorage.getItem('token'))
+  const [user,    setUser]    = useState(null)
+  const [token,   setToken]   = useState(() => localStorage.getItem('token'))
   const [loading, setLoading] = useState(true)
 
   const logout = useCallback(() => {
@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [token, logout])
 
-  // Intercept 401 globally
+  // Global 401 interceptor
   useEffect(() => {
     const id = api.interceptors.response.use(
       res => res,

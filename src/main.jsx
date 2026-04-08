@@ -29,8 +29,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             borderRadius: '12px',
             boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
           },
-          success: { style: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' } },
-          error:   { style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' } },
+          success: {
+            style: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' },
+          },
+          error: {
+            style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' },
+          },
         }}
       />
     </QueryClientProvider>

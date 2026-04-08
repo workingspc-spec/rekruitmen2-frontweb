@@ -1,13 +1,13 @@
 import { format, parseISO, isValid } from 'date-fns'
 import { id } from 'date-fns/locale'
 
-// ── DATE FORMATTING ──────────────────────────────────────────────────────────
+// ── DATE ─────────────────────────────────────────────────────────────────────
 export function formatDate(dateStr, fmt = 'dd MMM yyyy') {
   if (!dateStr) return '–'
   try {
     const d = typeof dateStr === 'string' && dateStr.includes('T')
       ? parseISO(dateStr)
-      : new Date(dateStr)
+      : new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00' : ''))
     return isValid(d) ? format(d, fmt, { locale: id }) : dateStr
   } catch {
     return dateStr
@@ -20,31 +20,31 @@ export function formatDateTime(dateStr) {
 
 export function toApiDate(millis) {
   if (!millis) return ''
-  const d = new Date(millis)
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const d   = new Date(millis)
+  const y   = d.getUTCFullYear()
+  const m   = String(d.getUTCMonth() + 1).padStart(2, '0')
   const day = String(d.getUTCDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
-// ── STATUS HELPERS ────────────────────────────────────────────────────────────
+// ── STATUS ────────────────────────────────────────────────────────────────────
 export function getApprovalStatus(atasan, hrd) {
-  if (atasan === 2 || hrd === 2) return { label: 'Ditolak', color: 'badge-red' }
+  if (atasan === 2 || hrd === 2) return { label: 'Ditolak',       color: 'badge-red'    }
   if (atasan === 0)              return { label: 'Pending Atasan', color: 'badge-yellow' }
-  if (hrd === 0)                 return { label: 'Pending HRD', color: 'badge-orange' }
-  return { label: 'Disetujui', color: 'badge-green' }
+  if (hrd === 0)                 return { label: 'Pending HRD',   color: 'badge-orange' }
+  return                                { label: 'Disetujui',     color: 'badge-green'  }
 }
 
 export function getSlaStatusMeta(tag) {
   const map = {
-    COMPLETED:        { label: 'Selesai',        color: 'badge-green',  bg: '#f0fdf4', text: '#166534' },
-    NEED_USER_UPDATE: { label: 'Perlu Update',   color: 'badge-orange', bg: '#fff7ed', text: '#c2410c' },
-    OVERDUE:          { label: 'Terlambat',      color: 'badge-red',    bg: '#fef2f2', text: '#991b1b' },
-    CRITICAL:         { label: 'Kritis',         color: 'badge-red',    bg: '#fef2f2', text: '#b91c1c' },
-    WARNING:          { label: 'Perhatian',      color: 'badge-yellow', bg: '#fffbeb', text: '#92400e' },
-    ON_PROGRESS:      { label: 'Berjalan',       color: 'badge-blue',   bg: '#eff6ff', text: '#1e40af' },
+    COMPLETED:        { label: 'Selesai',      bg: '#f0fdf4', text: '#166534' },
+    NEED_USER_UPDATE: { label: 'Perlu Update', bg: '#fff7ed', text: '#c2410c' },
+    OVERDUE:          { label: 'Terlambat',    bg: '#fef2f2', text: '#991b1b' },
+    CRITICAL:         { label: 'Kritis',       bg: '#fef2f2', text: '#b91c1c' },
+    WARNING:          { label: 'Perhatian',    bg: '#fffbeb', text: '#92400e' },
+    ON_PROGRESS:      { label: 'Berjalan',     bg: '#eff6ff', text: '#1e40af' },
   }
-  return map[tag] ?? { label: tag ?? '–', color: 'badge-gray', bg: '#f8fafc', text: '#475569' }
+  return map[tag] ?? { label: tag ?? '–', bg: '#f8fafc', text: '#475569' }
 }
 
 export function getPerformanceMeta(perf) {
@@ -61,13 +61,12 @@ export function getPerformanceMeta(perf) {
 }
 
 export function getDaysColor(days) {
-  if (days < 0)   return '#d32f2f'
-  if (days <= 3)  return '#ff4444'
-  if (days <= 7)  return '#f57c00'
+  if (days < 0)  return '#d32f2f'
+  if (days <= 3) return '#ff4444'
+  if (days <= 7) return '#f57c00'
   return '#2e7d32'
 }
 
-// ── NUMBER HELPERS ────────────────────────────────────────────────────────────
 export function clamp(val, min, max) {
   return Math.min(Math.max(val, min), max)
 }

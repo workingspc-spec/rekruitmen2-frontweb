@@ -27,24 +27,24 @@ export const recruitmentApi = {
   save:            (body)  => api.post('/recruitment/save', body),
   complete:        (body)  => api.post('/recruitment/complete', body),
   batchDelete:     (body)  => api.delete('/recruitment/batch-delete', { data: body }),
-  log:             (nomor) => api.get(`/recruitment/log/${nomor}`),
-  hiredCandidates: (nomor) => api.get(`/recruitment/${nomor}/hired-candidates`),
-  cancelCandidate: (nomor, body) => api.post(`/recruitment/${nomor}/cancel-candidate`, body),
-  setEditable:     (nomor, body) => api.patch(`/recruitment/${nomor}/editable`, body),
+  log:             (nomor) => api.get(`/recruitment/log/${encodeURIComponent(nomor)}`),
+  hiredCandidates: (nomor) => api.get(`/recruitment/${encodeURIComponent(nomor)}/hired-candidates`),
+  cancelCandidate: (nomor, body) => api.post(`/recruitment/${encodeURIComponent(nomor)}/cancel-candidate`, body),
+  setEditable:     (nomor, body) => api.patch(`/recruitment/${encodeURIComponent(nomor)}/editable`, body),
 }
 
 // ── APPROVAL ──────────────────────────────────────────────────────────────────
 export const approvalApi = {
-  listAtasan:    (status) => api.get('/recruitment/approval/atasan', { params: { status } }),
-  actionAtasan:  (body)   => api.post('/recruitment/approval/atasan/action', body),
-  listHrd:       (status) => api.get('/recruitment/approval/hrd', { params: { status } }),
-  actionHrd:     (body)   => api.post('/recruitment/approval/hrd/action', body),
+  listAtasan:   (status) => api.get('/recruitment/approval/atasan', { params: { status } }),
+  actionAtasan: (body)   => api.post('/recruitment/approval/atasan/action', body),
+  listHrd:      (status) => api.get('/recruitment/approval/hrd', { params: { status } }),
+  actionHrd:    (body)   => api.post('/recruitment/approval/hrd/action', body),
 }
 
 // ── MONITORING ────────────────────────────────────────────────────────────────
 export const monitoringApi = {
-  slaStatus:   ()      => api.get('/monitoring/sla-status'),
-  slaDetail:   (nomor) => api.get(`/monitoring/sla-detail/${nomor}`),
-  kpiHrd:      (period)=> api.get('/monitoring/kpi-hrd',      { params: { period } }),
-  kpiApprover: (period)=> api.get('/monitoring/kpi-approver', { params: { period } }),
+  slaStatus:   ()       => api.get('/monitoring/sla-status'),
+  slaDetail:   (nomor)  => api.get(`/monitoring/sla-detail/${encodeURIComponent(nomor)}`),
+  kpiHrd:      (period) => api.get('/monitoring/kpi-hrd',      { params: { period } }),
+  kpiApprover: (period) => api.get('/monitoring/kpi-approver', { params: { period } }),
 }

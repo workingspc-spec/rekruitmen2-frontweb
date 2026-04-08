@@ -1,15 +1,15 @@
 import { clsx } from 'clsx'
-import { Loader2, AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, AlertTriangle, Info, CheckCircle2, XCircle, Search, X } from 'lucide-react'
 
 // ── SPINNER ───────────────────────────────────────────────────────────────────
 export function Spinner({ size = 20, className = '' }) {
   return <Loader2 size={size} className={`animate-spin text-sapphire ${className}`} />
 }
 
-// ── FULL PAGE LOADER ──────────────────────────────────────────────────────────
+// ── PAGE LOADER ───────────────────────────────────────────────────────────────
 export function PageLoader({ message = 'Memuat...' }) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-500">
+    <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
       <Spinner size={32} />
       <span className="text-sm">{message}</span>
     </div>
@@ -53,7 +53,7 @@ export function EmptyState({ message = 'Tidak ada data', icon: Icon = Info, acti
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
       <Icon size={48} strokeWidth={1.3} />
-      <p className="text-sm text-center max-w-xs">{message}</p>
+      <p className="text-sm text-center max-w-xs leading-relaxed">{message}</p>
       {action && (
         <button className="btn-primary mt-2" onClick={action}>{actionLabel}</button>
       )}
@@ -66,54 +66,78 @@ export function ErrorBox({ message, onRetry }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3 text-red-500">
       <AlertTriangle size={40} strokeWidth={1.5} />
-      <p className="text-sm text-center max-w-xs text-slate-600">{message}</p>
-      {onRetry && <button className="btn-secondary" onClick={onRetry}>Coba Lagi</button>}
+      <p className="text-sm text-center max-w-xs text-slate-600 leading-relaxed">{message}</p>
+      {onRetry && (
+        <button className="btn-secondary" onClick={onRetry}>
+          Coba Lagi
+        </button>
+      )}
     </div>
   )
 }
 
 // ── MODAL ─────────────────────────────────────────────────────────────────────
-export function Modal({ open, onClose, title, children, footer }) {
+export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   if (!open) return null
+  const maxW = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }[size]
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose?.()}
+    >
+      <div className={`bg-white rounded-2xl shadow-2xl w-full ${maxW} max-h-[90vh] overflow-y-auto modal-content`}>
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
           <h3 className="font-display font-bold text-navy text-lg">{title}</h3>
-          <button onClick={onClose} className="btn-ghost p-1 rounded-lg text-slate-400 hover:text-slate-700">
+          <button onClick={onClose} className="btn-icon text-slate-400 hover:text-slate-700">
             <XCircle size={20} />
           </button>
         </div>
         <div className="p-5">{children}</div>
-        {footer && <div className="px-5 pb-5 flex justify-end gap-3 border-t border-slate-50 pt-4">{footer}</div>}
+        {footer && (
+          <div className="px-5 pb-5 flex justify-end gap-3 border-t border-slate-50 pt-4">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 // ── CONFIRM DIALOG ────────────────────────────────────────────────────────────
-export function ConfirmDialog({ open, onClose, onConfirm, title, message, confirmText = 'Ya', danger = false, loading = false }) {
+export function ConfirmDialog({
+  open, onClose, onConfirm,
+  title, message, confirmText = 'Ya',
+  danger = false, loading = false,
+}) {
   return (
-    <Modal open={open} onClose={onClose} title={title} footer={
-      <>
-        <button className="btn-ghost" onClick={onClose} disabled={loading}>Batal</button>
-        <button
-          className={danger ? 'btn-danger' : 'btn-primary'}
-          onClick={onConfirm}
-          disabled={loading}
-        >
-          {loading ? <Spinner size={16} /> : confirmText}
-        </button>
-      </>
-    }>
-      <p className="text-sm text-slate-600">{message}</p>
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      footer={
+        <>
+          <button className="btn-ghost" onClick={onClose} disabled={loading}>
+            Batal
+          </button>
+          <button
+            className={danger ? 'btn-danger' : 'btn-primary'}
+            onClick={onConfirm}
+            disabled={loading}
+          >
+            {loading ? <Spinner size={16} /> : null}
+            {loading ? 'Memproses...' : confirmText}
+          </button>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600 leading-relaxed">{message}</p>
     </Modal>
   )
 }
 
 // ── PROGRESS BAR ──────────────────────────────────────────────────────────────
 export function ProgressBar({ value, color = '#0F52BA', className = '' }) {
-  const pct = Math.min(Math.max(value, 0), 100)
+  const pct = Math.min(Math.max(value ?? 0, 0), 100)
   return (
     <div className={`h-2 bg-slate-100 rounded-full overflow-hidden ${className}`}>
       <div
@@ -127,12 +151,16 @@ export function ProgressBar({ value, color = '#0F52BA', className = '' }) {
 // ── SELECT ────────────────────────────────────────────────────────────────────
 export function Select({ label, value, onChange, options, placeholder = 'Pilih...', required, disabled }) {
   return (
-    <div>
-      {label && <label className="label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
+    <div className="form-group">
+      {label && (
+        <label className="label">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="input appearance-none"
+        className="input"
         disabled={disabled}
         required={required}
       >
@@ -148,9 +176,17 @@ export function Select({ label, value, onChange, options, placeholder = 'Pilih..
 // ── INPUT FIELD ───────────────────────────────────────────────────────────────
 export function InputField({ label, required, error, hint, ...props }) {
   return (
-    <div>
-      {label && <label className="label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
-      <input className={clsx('input', error && 'border-red-400 focus:ring-red-300')} required={required} {...props} />
+    <div className="form-group">
+      {label && (
+        <label className="label">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
+      <input
+        className={clsx('input', error && 'border-red-400 focus:ring-red-300 focus:border-red-400')}
+        required={required}
+        {...props}
+      />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       {hint  && <p className="text-xs text-slate-400 mt-1">{hint}</p>}
     </div>
@@ -158,14 +194,18 @@ export function InputField({ label, required, error, hint, ...props }) {
 }
 
 // ── TEXTAREA ──────────────────────────────────────────────────────────────────
-export function TextArea({ label, required, error, ...props }) {
+export function TextArea({ label, required, error, rows = 3, ...props }) {
   return (
-    <div>
-      {label && <label className="label">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>}
+    <div className="form-group">
+      {label && (
+        <label className="label">
+          {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+        </label>
+      )}
       <textarea
         className={clsx('input resize-none', error && 'border-red-400')}
         required={required}
-        rows={3}
+        rows={rows}
         {...props}
       />
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
@@ -174,22 +214,26 @@ export function TextArea({ label, required, error, ...props }) {
 }
 
 // ── STAT CARD ─────────────────────────────────────────────────────────────────
-export function StatCard({ label, value, icon: Icon, color = '#0F52BA', onClick, alert }) {
+export function StatCard({ label, value, icon: Icon, color = '#0F52BA', onClick, alert, subtitle }) {
   return (
     <button
       onClick={onClick}
       className="card text-left w-full hover:shadow-card-hover transition-shadow duration-200 relative overflow-hidden"
     >
       {alert && (
-        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white" />
+        <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse" />
       )}
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: color + '18' }}>
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ background: color + '18' }}
+        >
           {Icon && <Icon size={20} style={{ color }} />}
         </div>
         <div>
-          <p className="text-xs text-slate-500 font-medium">{label}</p>
+          <p className="text-xs text-slate-500 font-medium leading-tight">{label}</p>
           <p className="text-2xl font-display font-bold mt-0.5" style={{ color }}>{value}</p>
+          {subtitle && <p className="text-xs text-red-500 font-medium mt-0.5 leading-tight">{subtitle}</p>}
         </div>
       </div>
     </button>
@@ -212,6 +256,14 @@ export function Tabs({ tabs, active, onChange }) {
           )}
         >
           {t.label}
+          {t.count !== undefined && (
+            <span className={clsx(
+              'ml-1.5 px-1.5 py-0.5 rounded-full text-xs',
+              active === t.value ? 'bg-sapphire/10 text-sapphire' : 'bg-slate-200 text-slate-500'
+            )}>
+              {t.count}
+            </span>
+          )}
         </button>
       ))}
     </div>
@@ -221,17 +273,64 @@ export function Tabs({ tabs, active, onChange }) {
 // ── ALERT BANNER ─────────────────────────────────────────────────────────────
 export function AlertBanner({ type = 'info', message, onAction, actionLabel }) {
   const styles = {
-    info:    { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', Icon: Info },
-    warning: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', Icon: AlertTriangle },
-    success: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', Icon: CheckCircle2 },
-    error:   { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', Icon: XCircle },
+    info:    { bg: '#eff6ff', border: '#bfdbfe', text: '#1e40af', Icon: Info           },
+    warning: { bg: '#fffbeb', border: '#fde68a', text: '#92400e', Icon: AlertTriangle  },
+    success: { bg: '#f0fdf4', border: '#bbf7d0', text: '#166534', Icon: CheckCircle2   },
+    error:   { bg: '#fef2f2', border: '#fecaca', text: '#991b1b', Icon: XCircle        },
   }
-  const { bg, border, text, Icon } = styles[type]
+  const { bg, border, text, Icon } = styles[type] ?? styles.info
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm border" style={{ background: bg, borderColor: border, color: text }}>
+    <div
+      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm border"
+      style={{ background: bg, borderColor: border, color: text }}
+    >
       <Icon size={18} className="shrink-0" />
       <span className="flex-1 font-medium">{message}</span>
-      {onAction && <button className="text-xs underline font-semibold" onClick={onAction}>{actionLabel}</button>}
+      {onAction && (
+        <button className="text-xs underline font-semibold" onClick={onAction}>
+          {actionLabel}
+        </button>
+      )}
     </div>
   )
+}
+
+// ── SEARCH INPUT ──────────────────────────────────────────────────────────────
+export function SearchInput({ value, onChange, placeholder = 'Cari...', className = '' }) {
+  return (
+    <div className={`relative ${className}`}>
+      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+      <input
+        className="input pl-9 pr-9"
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+      />
+      {value && (
+        <button
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          onClick={() => onChange('')}
+        >
+          <X size={14} />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// ── STATUS PILL ───────────────────────────────────────────────────────────────
+export function StatusPill({ label, bg, text }) {
+  return (
+    <span
+      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold"
+      style={{ background: bg, color: text }}
+    >
+      {label}
+    </span>
+  )
+}
+
+// ── DIVIDER ───────────────────────────────────────────────────────────────────
+export function Divider({ className = '' }) {
+  return <div className={`border-t border-slate-100 ${className}`} />
 }
