@@ -53,13 +53,15 @@ export function getMinAllowedDate(jabKode, jabatanRules, jumlah = 1) {
 /**
  * Validate tgl_butuh against job rules
  */
+// src/utils/workday.js — Perbaikan validateTglButuh
 export function validateTglButuh(tglButuh, jabKode, jabatanRules, jumlah = 1, isReSchedule = false) {
   if (!tglButuh) return { valid: false, message: 'Pilih tanggal terlebih dahulu.' }
 
   const [y, m, d] = tglButuh.split('-').map(Number)
-  const requested  = new Date(y, m - 1, d)
-  const today      = new Date(); today.setHours(0, 0, 0, 0)
+  const requested = new Date(y, m - 1, d)
+  const today     = new Date(); today.setHours(0, 0, 0, 0)
 
+  // RE-SCHEDULE MODE: cukup >= hari ini
   if (isReSchedule) {
     return requested >= today
       ? { valid: true }
@@ -76,6 +78,7 @@ export function validateTglButuh(tglButuh, jabKode, jabatanRules, jumlah = 1, is
     const fmtD = (dt) =>
       `${String(dt.getDate()).padStart(2,'0')}/${String(dt.getMonth()+1).padStart(2,'0')}/${dt.getFullYear()}`
 
+    // Pesan yang identik dengan Mobile
     let msg = `Tanggal butuh minimal ${rule.min_days} hari kerja dari besok.`
     if (jumlah > 1) {
       const extra = jumlah <= 3 ? 3 : jumlah <= 5 ? 6 : 6 + (jumlah - 5)

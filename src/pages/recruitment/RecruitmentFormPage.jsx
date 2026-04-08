@@ -109,7 +109,7 @@ export default function RecruitmentFormPage() {
   const [jabatan,    setJabatan]   = useState(null)
   const [bagian,     setBagian]    = useState('')
   const [tglButuh,   setTglButuh]  = useState('')
-  const [jumlah,     setJumlah]    = useState(1)
+  const [jumlah,     setJumlah]    = useState(1)  // number, bukan string
   const [alasan,     setAlasan]    = useState('')
   const [ketList,    setKetList]   = useState(Array(10).fill(''))
   const [specList,   setSpecList]  = useState(Array(10).fill(''))
@@ -132,7 +132,7 @@ export default function RecruitmentFormPage() {
     setJabatan(found ?? { jab_kode: detail.tpk_jab_kode || detail.jab_kode, jab_nama: detail.jab_nama })
     setBagian(detail.tpk_bagian || '')
     setTglButuh(detail.tpk_tgl_butuh || '')
-    setJumlah(detail.tpk_jumlah || 1)
+    setJumlah(Number(detail.tpk_jumlah) || 1)  // pastikan selalu number
     setAlasan(detail.tpk_alasan || '')
 
     const kets = Array(10).fill('')
@@ -170,6 +170,11 @@ export default function RecruitmentFormPage() {
   // Min date for date picker
   const minDate = jabatan ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah) ?? null) : null
 
+  // ── Fix 5: handler jumlah yang aman (selalu number, minimal 1) ──────────────
+  const handleJumlahChange = (delta) => {
+    setJumlah(prev => Math.max(1, prev + delta))
+  }
+
   const saveMut = useMutation({
     mutationFn: (body) => recruitmentApi.save(body),
     onSuccess: () => {
@@ -187,6 +192,7 @@ export default function RecruitmentFormPage() {
     if (!jabatan) { toast.error('Pilih jabatan terlebih dahulu.'); return }
     if (!bagian)  { toast.error('Pilih bagian terlebih dahulu.'); return }
     if (!tglButuh) { toast.error('Tentukan tanggal butuh.'); return }
+    if (jumlah < 1 || isNaN(jumlah)) { toast.error('Jumlah tidak valid.'); return }  // ← Fix 5
     if (!alasan && !isEdit) { toast.error('Pilih alasan permintaan.'); return }
     if (vlResult && !vlResult.valid) { toast.error(vlResult.message); return }
 
@@ -290,7 +296,7 @@ export default function RecruitmentFormPage() {
             <div className="flex items-center gap-3">
               <button
                 className="btn-ghost p-2 rounded-xl border border-slate-200"
-                onClick={() => !isReSchedule && !isLocked && setJumlah(j => Math.max(1, j - 1))}
+                onClick={() => handleJumlahChange(-1)}
                 disabled={isReSchedule || isLocked || jumlah <= 1}
               >
                 <Minus size={16} />
@@ -298,7 +304,7 @@ export default function RecruitmentFormPage() {
               <span className="text-2xl font-display font-bold text-navy w-12 text-center">{jumlah}</span>
               <button
                 className="btn-ghost p-2 rounded-xl border border-slate-200"
-                onClick={() => !isReSchedule && !isLocked && setJumlah(j => j + 1)}
+                onClick={() => handleJumlahChange(1)}
                 disabled={isReSchedule || isLocked}
               >
                 <Plus size={16} />

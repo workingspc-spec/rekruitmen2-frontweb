@@ -1,3 +1,5 @@
+// src/pages/DashboardPage.jsx
+import React, { useState } from 'react'  // ← PINDAHKAN KE ATAS
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
@@ -164,5 +166,3 @@ export default function DashboardPage() {
   )
 }
 
-// Need React import for useState
-import React from 'react'

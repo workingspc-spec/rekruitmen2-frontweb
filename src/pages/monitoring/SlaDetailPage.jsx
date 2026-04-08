@@ -75,9 +75,12 @@ export default function SlaDetailPage() {
   const history  = data.edit_history ?? []
   const approval = data.approval_info
 
+  // ── Fix 6: gunakan Number() agar selalu number, bukan string dari API ───────
+  // API sudah menghitung days_remaining berbasis sla_max_target_date di backend.
+  // Jangan ada kalkulasi ulang (new Date() - sla_final_target_date) di frontend.
+  const daysRem     = Number(sla?.days_remaining ?? 0)
   const isCompleted = sla?.sla_status === 'COMPLETED'
   const isEditable  = sla?.sla_is_editable === 1
-  const daysRem     = sla?.days_remaining ?? 0
   const daysColor   = getDaysColor(daysRem)
   const meta        = getSlaStatusMeta(isCompleted ? 'COMPLETED' : isEditable ? 'NEED_USER_UPDATE' : daysRem < 0 ? 'OVERDUE' : daysRem <= 3 ? 'CRITICAL' : daysRem <= 7 ? 'WARNING' : 'ON_PROGRESS')
 
