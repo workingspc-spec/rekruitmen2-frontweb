@@ -156,13 +156,21 @@
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
 /* ── PAGE TRANSITIONS ──────────────────────────────────── */
+/*
+  PENTING: keyframe 'to' tidak boleh menyertakan transform.
+  Jika 'to' punya transform (termasuk translateY(0)), browser membuat
+  stacking context baru pada elemen tersebut. Akibatnya semua child dengan
+  position:fixed menjadi relatif terhadap elemen ini, bukan viewport —
+  itulah yang menyebabkan modal/dialog muncul di posisi salah.
+  Solusi: biarkan 'to' hanya set opacity, tidak ada transform.
+*/
 .page-enter {
   animation: slideUp 0.2s ease both;
 }
 
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; }  /* ← tidak ada transform: browser tidak buat stacking context */
 }
 
 @keyframes fadeIn {

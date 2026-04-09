@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -12,8 +13,8 @@ const getNavItems = (isHrd) => [
   { to: '/approval',    label: 'Approval',       Icon: CheckSquare     },
   { to: '/monitoring',  label: 'SLA Monitoring', Icon: Activity        },
   isHrd
-    ? { to: '/kpi-hrd',      label: 'KPI HRD',   Icon: BarChart3  }
-    : { to: '/kpi-approver', label: 'KPI Saya',  Icon: TrendingUp },
+    ? { to: '/kpi-hrd',      label: 'KPI HRD',  Icon: BarChart3  }
+    : { to: '/kpi-approver', label: 'KPI Saya', Icon: TrendingUp },
 ]
 
 export default function Sidebar() {
@@ -27,9 +28,11 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-60 min-h-screen bg-white border-r border-slate-100 flex flex-col shrink-0">
+    // h-screen: sidebar selalu tepat setinggi viewport, tidak ikut memanjang
+    // flex flex-col: agar nav (flex-1) mengisi ruang dan profil selalu di bawah
+    <aside className="w-60 h-screen bg-white border-r border-slate-100 flex flex-col shrink-0">
       {/* Logo */}
-      <div className="px-5 py-6 border-b border-slate-100">
+      <div className="px-5 py-6 border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sapphire to-blue-700 flex items-center justify-center shadow-sm">
             <span className="text-white font-display font-bold text-sm">P</span>
@@ -41,7 +44,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation — flex-1 + overflow-y-auto: scroll jika nav items terlalu banyak */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {getNavItems(isHrd).map(({ to, label, Icon }) => (
           <NavLink
@@ -58,8 +61,8 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User Profile */}
-      <div className="px-3 py-4 border-t border-slate-100">
+      {/* User Profile — shrink-0: tidak pernah tercompress, selalu terlihat di bawah */}
+      <div className="px-3 py-4 border-t border-slate-100 shrink-0">
         <div className="flex items-center gap-3 px-3 py-2 mb-1 rounded-xl">
           <div className="w-8 h-8 rounded-full bg-ice-blue flex items-center justify-center shrink-0">
             <span className="text-sapphire font-bold text-sm">{initial}</span>

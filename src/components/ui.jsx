@@ -1,4 +1,5 @@
 import { clsx } from 'clsx'
+import { createPortal } from 'react-dom'
 import { Loader2, AlertTriangle, Info, CheckCircle2, XCircle, Search, X } from 'lucide-react'
 
 // ── SPINNER ───────────────────────────────────────────────────────────────────
@@ -80,7 +81,9 @@ export function ErrorBox({ message, onRetry }) {
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   if (!open) return null
   const maxW = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }[size]
-  return (
+  // createPortal: render ke document.body agar position:fixed selalu
+  // relatif ke viewport — tidak terpengaruh transform/opacity ancestor manapun
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
       onClick={(e) => e.target === e.currentTarget && onClose?.()}
@@ -99,7 +102,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 

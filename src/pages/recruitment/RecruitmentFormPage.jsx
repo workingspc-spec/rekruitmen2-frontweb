@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, recruitmentApi } from '../../api/services'
@@ -12,7 +13,9 @@ function DatePickerModal({ value, onChange, onClose, min }) {
   const [input, setInput] = useState(value || '')
   const minStr = min ? toApiDate(min.getTime()) : ''
 
-  return (
+  // createPortal: render langsung ke document.body agar position:fixed
+  // selalu relatif ke viewport, tidak terpengaruh transform/opacity ancestor
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
         <h3 className="font-display font-bold text-navy text-lg mb-4">Pilih Tanggal</h3>
@@ -36,7 +39,8 @@ function DatePickerModal({ value, onChange, onClose, min }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -45,8 +49,9 @@ function DropdownModal({ title, items, itemKey, itemLabel, selected, onSelect, o
   const [q, setQ] = useState('')
   const filtered = q ? items.filter(i => itemLabel(i).toLowerCase().includes(q.toLowerCase())) : items
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+  return createPortal(
+    // items-center: selalu muncul di tengah layar (bukan items-end yang jatuh ke bawah)
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
           <h3 className="font-display font-bold text-navy">{title}</h3>
@@ -73,7 +78,8 @@ function DropdownModal({ title, items, itemKey, itemLabel, selected, onSelect, o
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
@@ -84,7 +90,6 @@ export default function RecruitmentFormPage() {
   const qc        = useQueryClient()
   const isEdit    = Boolean(nomor)
 
-  // Master data
   const { data: jabatanList = [] } = useQuery({
     queryKey: ['jabatan'],
     queryFn: () => masterApi.jabatan().then(r => r.data.data ?? []),
@@ -98,41 +103,37 @@ export default function RecruitmentFormPage() {
     queryFn: () => masterApi.jabatanRules().then(r => r.data.data ?? []),
   })
 
-  // Existing detail (edit mode)
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['recruitment-detail', nomor],
     queryFn: () => recruitmentApi.detail(nomor).then(r => r.data.data),
     enabled: isEdit,
   })
 
-  // Form state
-  const [jabatan,    setJabatan]   = useState(null)
-  const [bagian,     setBagian]    = useState('')
-  const [tglButuh,   setTglButuh]  = useState('')
-  const [jumlah,     setJumlah]    = useState(1)  // number, bukan string
-  const [alasan,     setAlasan]    = useState('')
-  const [ketList,    setKetList]   = useState(Array(10).fill(''))
-  const [specList,   setSpecList]  = useState(Array(10).fill(''))
-  const [visKet,     setVisKet]    = useState(3)
-  const [visSpec,    setVisSpec]   = useState(3)
-  const [isLocked,   setIsLocked]  = useState(false)
+  const [jabatan,      setJabatan]      = useState(null)
+  const [bagian,       setBagian]       = useState('')
+  const [tglButuh,     setTglButuh]     = useState('')
+  const [jumlah,       setJumlah]       = useState(1)
+  const [alasan,       setAlasan]       = useState('')
+  const [ketList,      setKetList]      = useState(Array(10).fill(''))
+  const [specList,     setSpecList]     = useState(Array(10).fill(''))
+  const [visKet,       setVisKet]       = useState(3)
+  const [visSpec,      setVisSpec]      = useState(3)
+  const [isLocked,     setIsLocked]     = useState(false)
   const [isReSchedule, setIsReSchedule] = useState(false)
-  const [slaInfo,    setSlaInfo]   = useState(null)
+  const [slaInfo,      setSlaInfo]      = useState(null)
 
-  // Modals
-  const [showJabatan,   setShowJabatan]   = useState(false)
-  const [showBagian,    setShowBagian]    = useState(false)
-  const [showAlasan,    setShowAlasan]    = useState(false)
+  const [showJabatan,    setShowJabatan]    = useState(false)
+  const [showBagian,     setShowBagian]     = useState(false)
+  const [showAlasan,     setShowAlasan]     = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
 
-  // Populate form on edit
   useEffect(() => {
     if (!detail) return
     const found = jabatanList.find(j => j.jab_kode === detail.jab_kode || j.jab_kode === detail.tpk_jab_kode)
     setJabatan(found ?? { jab_kode: detail.tpk_jab_kode || detail.jab_kode, jab_nama: detail.jab_nama })
     setBagian(detail.tpk_bagian || '')
     setTglButuh(detail.tpk_tgl_butuh || '')
-    setJumlah(Number(detail.tpk_jumlah) || 1)  // pastikan selalu number
+    setJumlah(Number(detail.tpk_jumlah) || 1)
     setAlasan(detail.tpk_alasan || '')
 
     const kets = Array(10).fill('')
@@ -159,18 +160,14 @@ export default function RecruitmentFormPage() {
     } : null)
   }, [detail, jabatanList])
 
-  // SLA validation feedback
   const validation = useCallback(() => {
     if (!jabatan || !tglButuh) return null
     return validateTglButuh(tglButuh, jabatan.jab_kode, jabatanRules, jumlah, isReSchedule)
   }, [jabatan, tglButuh, jabatanRules, jumlah, isReSchedule])
 
   const vlResult = validation()
+  const minDate  = jabatan ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah) ?? null) : null
 
-  // Min date for date picker
-  const minDate = jabatan ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah) ?? null) : null
-
-  // ── Fix 5: handler jumlah yang aman (selalu number, minimal 1) ──────────────
   const handleJumlahChange = (delta) => {
     setJumlah(prev => Math.max(1, prev + delta))
   }
@@ -182,17 +179,14 @@ export default function RecruitmentFormPage() {
       qc.invalidateQueries({ queryKey: ['my-requests'] })
       navigate('/recruitment')
     },
-    onError: (e) => {
-      const msg = e.response?.data?.message ?? 'Gagal menyimpan.'
-      toast.error(msg)
-    },
+    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menyimpan.'),
   })
 
   const handleSave = () => {
-    if (!jabatan) { toast.error('Pilih jabatan terlebih dahulu.'); return }
-    if (!bagian)  { toast.error('Pilih bagian terlebih dahulu.'); return }
+    if (!jabatan)  { toast.error('Pilih jabatan terlebih dahulu.'); return }
+    if (!bagian)   { toast.error('Pilih bagian terlebih dahulu.'); return }
     if (!tglButuh) { toast.error('Tentukan tanggal butuh.'); return }
-    if (jumlah < 1 || isNaN(jumlah)) { toast.error('Jumlah tidak valid.'); return }  // ← Fix 5
+    if (jumlah < 1 || isNaN(jumlah)) { toast.error('Jumlah tidak valid.'); return }
     if (!alasan && !isEdit) { toast.error('Pilih alasan permintaan.'); return }
     if (vlResult && !vlResult.valid) { toast.error(vlResult.message); return }
 
@@ -202,47 +196,40 @@ export default function RecruitmentFormPage() {
     saveMut.mutate({
       tpk_nomor: nomor || undefined,
       jab_kode: jabatan.jab_kode,
-      bagian,
-      tgl_butuh: tglButuh,
-      jumlah,
-      alasan: alasan || null,
-      alasan_lain: null,
-      tpk_keterangan: k1||null, tpk_keterangan2: k2||null, tpk_keterangan3: k3||null,
-      tpk_keterangan4: k4||null, tpk_keterangan5: k5||null, tpk_keterangan6: k6||null,
-      tpk_keterangan7: k7||null, tpk_keterangan8: k8||null, tpk_keterangan9: k9||null,
+      bagian, tgl_butuh: tglButuh, jumlah,
+      alasan: alasan || null, alasan_lain: null,
+      tpk_keterangan:   k1||null, tpk_keterangan2:  k2||null,  tpk_keterangan3:  k3||null,
+      tpk_keterangan4:  k4||null, tpk_keterangan5:  k5||null,  tpk_keterangan6:  k6||null,
+      tpk_keterangan7:  k7||null, tpk_keterangan8:  k8||null,  tpk_keterangan9:  k9||null,
       tpk_keterangan10: k10||null,
-      tpk_spesifikasi: s1||null, tpk_spesifikasi2: s2||null, tpk_spesifikasi3: s3||null,
-      tpk_spesifikasi4: s4||null, tpk_spesifikasi5: s5||null, tpk_spesifikasi6: s6||null,
-      tpk_spesifikasi7: s7||null, tpk_spesifikasi8: s8||null, tpk_spesifikasi9: s9||null,
+      tpk_spesifikasi:   s1||null, tpk_spesifikasi2:  s2||null,  tpk_spesifikasi3:  s3||null,
+      tpk_spesifikasi4:  s4||null, tpk_spesifikasi5:  s5||null,  tpk_spesifikasi6:  s6||null,
+      tpk_spesifikasi7:  s7||null, tpk_spesifikasi8:  s8||null,  tpk_spesifikasi9:  s9||null,
       tpk_spesifikasi10: s10||null,
     })
   }
 
   if (isEdit && detailLoading) return (
-    <div className="flex items-center justify-center h-64"><Loader2 size={32} className="animate-spin text-sapphire" /></div>
+    <div className="flex items-center justify-center h-64">
+      <Loader2 size={32} className="animate-spin text-sapphire" />
+    </div>
   )
 
   const ALASAN_OPTS = ['Penambahan Karyawan', 'Penggantian Karyawan Keluar', 'Resign', 'Ekspansi', 'Lainnya']
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
-      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">{isEdit ? 'Edit Permintaan' : 'Buat Permintaan'}</h1>
           {isEdit && <p className="text-xs text-slate-400 font-mono mt-0.5">{nomor}</p>}
         </div>
-        <button
-          onClick={handleSave}
-          disabled={saveMut.isPending || isLocked}
-          className="btn-primary"
-        >
+        <button onClick={handleSave} disabled={saveMut.isPending || isLocked} className="btn-primary">
           {saveMut.isPending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {saveMut.isPending ? 'Menyimpan...' : 'Simpan'}
         </button>
       </div>
 
-      {/* Locked warning */}
       {isLocked && (
         <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl p-4">
           <Lock size={18} className="text-red-500 shrink-0 mt-0.5" />
@@ -253,7 +240,6 @@ export default function RecruitmentFormPage() {
         </div>
       )}
 
-      {/* Re-schedule info */}
       {slaInfo?.isEditable && (
         <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
           <Info size={18} className="text-sapphire shrink-0 mt-0.5" />
@@ -267,46 +253,27 @@ export default function RecruitmentFormPage() {
         </div>
       )}
 
-      {/* Section: Jabatan & Bagian */}
       <Section title="Informasi Jabatan">
         <div className="space-y-3">
-          <FieldButton
-            label="Jabatan"
-            value={jabatan?.jab_nama}
-            placeholder="Pilih Jabatan"
-            locked={isReSchedule || isLocked}
-            onClick={() => !isReSchedule && !isLocked && setShowJabatan(true)}
-          />
-          <FieldButton
-            label="Bagian / Departemen"
-            value={bagian}
-            placeholder="Pilih Bagian"
-            locked={isReSchedule || isLocked}
-            onClick={() => !isReSchedule && !isLocked && setShowBagian(true)}
-          />
+          <FieldButton label="Jabatan" value={jabatan?.jab_nama} placeholder="Pilih Jabatan"
+            locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowJabatan(true)} />
+          <FieldButton label="Bagian / Departemen" value={bagian} placeholder="Pilih Bagian"
+            locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowBagian(true)} />
         </div>
       </Section>
 
-      {/* Section: Kebutuhan */}
       <Section title="Kebutuhan">
         <div className="space-y-3">
-          {/* Jumlah */}
           <div>
             <label className="label">Jumlah Karyawan</label>
             <div className="flex items-center gap-3">
-              <button
-                className="btn-ghost p-2 rounded-xl border border-slate-200"
-                onClick={() => handleJumlahChange(-1)}
-                disabled={isReSchedule || isLocked || jumlah <= 1}
-              >
+              <button className="btn-ghost p-2 rounded-xl border border-slate-200"
+                onClick={() => handleJumlahChange(-1)} disabled={isReSchedule || isLocked || jumlah <= 1}>
                 <Minus size={16} />
               </button>
               <span className="text-2xl font-display font-bold text-navy w-12 text-center">{jumlah}</span>
-              <button
-                className="btn-ghost p-2 rounded-xl border border-slate-200"
-                onClick={() => handleJumlahChange(1)}
-                disabled={isReSchedule || isLocked}
-              >
+              <button className="btn-ghost p-2 rounded-xl border border-slate-200"
+                onClick={() => handleJumlahChange(1)} disabled={isReSchedule || isLocked}>
                 <Plus size={16} />
               </button>
               <span className="text-sm text-slate-400">orang</span>
@@ -321,7 +288,6 @@ export default function RecruitmentFormPage() {
             )}
           </div>
 
-          {/* Tanggal Butuh */}
           <div>
             <label className="label">Tanggal Dibutuhkan</label>
             <button
@@ -338,8 +304,6 @@ export default function RecruitmentFormPage() {
               </div>
               {isLocked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
-
-            {/* SLA validation feedback */}
             {jabatan && tglButuh && vlResult && (
               <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
                 {vlResult.valid
@@ -352,31 +316,17 @@ export default function RecruitmentFormPage() {
         </div>
       </Section>
 
-      {/* Section: Alasan */}
       <Section title="Alasan Permintaan">
-        <FieldButton
-          label="Alasan"
-          value={alasan}
-          placeholder="Pilih Alasan"
-          locked={isReSchedule || isLocked}
-          onClick={() => !isReSchedule && !isLocked && setShowAlasan(true)}
-        />
+        <FieldButton label="Alasan" value={alasan} placeholder="Pilih Alasan"
+          locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowAlasan(true)} />
       </Section>
 
-      {/* Section: Keterangan */}
       <Section title="Keterangan Pekerjaan (Opsional)">
         <div className="space-y-2">
           {ketList.slice(0, visKet).map((v, i) => (
-            <input
-              key={i}
-              className="input"
-              placeholder={`Keterangan ${i + 1}`}
-              value={v}
+            <input key={i} className="input" placeholder={`Keterangan ${i + 1}`} value={v}
               disabled={isReSchedule || isLocked}
-              onChange={e => {
-                const n = [...ketList]; n[i] = e.target.value; setKetList(n)
-              }}
-            />
+              onChange={e => { const n = [...ketList]; n[i] = e.target.value; setKetList(n) }} />
           ))}
           {visKet < 10 && !isLocked && !isReSchedule && (
             <button className="btn-ghost text-xs" onClick={() => setVisKet(v => v + 1)}>
@@ -386,20 +336,12 @@ export default function RecruitmentFormPage() {
         </div>
       </Section>
 
-      {/* Section: Spesifikasi */}
       <Section title="Spesifikasi yang Dibutuhkan (Opsional)">
         <div className="space-y-2">
           {specList.slice(0, visSpec).map((v, i) => (
-            <input
-              key={i}
-              className="input"
-              placeholder={`Spesifikasi ${i + 1}`}
-              value={v}
+            <input key={i} className="input" placeholder={`Spesifikasi ${i + 1}`} value={v}
               disabled={isReSchedule || isLocked}
-              onChange={e => {
-                const n = [...specList]; n[i] = e.target.value; setSpecList(n)
-              }}
-            />
+              onChange={e => { const n = [...specList]; n[i] = e.target.value; setSpecList(n) }} />
           ))}
           {visSpec < 10 && !isLocked && !isReSchedule && (
             <button className="btn-ghost text-xs" onClick={() => setVisSpec(v => v + 1)}>
@@ -409,60 +351,37 @@ export default function RecruitmentFormPage() {
         </div>
       </Section>
 
-      {/* Save button bottom */}
       <div className="pt-2 pb-6">
-        <button
-          onClick={handleSave}
-          disabled={saveMut.isPending || isLocked}
-          className="btn-primary w-full justify-center h-11 text-base"
-        >
-          {saveMut.isPending ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</> : <><Save size={18} /> Simpan Permintaan</>}
+        <button onClick={handleSave} disabled={saveMut.isPending || isLocked}
+          className="btn-primary w-full justify-center h-11 text-base">
+          {saveMut.isPending
+            ? <><Loader2 size={18} className="animate-spin" /> Menyimpan...</>
+            : <><Save size={18} /> Simpan Permintaan</>}
         </button>
       </div>
 
-      {/* Modals */}
+      {/* Modals — via createPortal, selalu muncul di tengah viewport */}
       {showJabatan && (
-        <DropdownModal
-          title="Pilih Jabatan"
-          items={jabatanList}
-          itemKey={j => j.jab_kode}
-          itemLabel={j => j.jab_nama}
-          selected={jabatan}
-          onSelect={j => { setJabatan(j); setTglButuh('') }}
-          onClose={() => setShowJabatan(false)}
-          searchable
-        />
+        <DropdownModal title="Pilih Jabatan" items={jabatanList}
+          itemKey={j => j.jab_kode} itemLabel={j => j.jab_nama}
+          selected={jabatan} onSelect={j => { setJabatan(j); setTglButuh('') }}
+          onClose={() => setShowJabatan(false)} searchable />
       )}
       {showBagian && (
-        <DropdownModal
-          title="Pilih Bagian"
-          items={bagianList.map(b => ({ val: b.kar_bagian }))}
-          itemKey={b => b.val}
-          itemLabel={b => b.val}
-          selected={bagian ? { val: bagian } : null}
-          onSelect={b => setBagian(b.val)}
-          onClose={() => setShowBagian(false)}
-          searchable
-        />
+        <DropdownModal title="Pilih Bagian" items={bagianList.map(b => ({ val: b.kar_bagian }))}
+          itemKey={b => b.val} itemLabel={b => b.val}
+          selected={bagian ? { val: bagian } : null} onSelect={b => setBagian(b.val)}
+          onClose={() => setShowBagian(false)} searchable />
       )}
       {showAlasan && (
-        <DropdownModal
-          title="Pilih Alasan"
-          items={ALASAN_OPTS.map(a => ({ val: a }))}
-          itemKey={a => a.val}
-          itemLabel={a => a.val}
-          selected={alasan ? { val: alasan } : null}
-          onSelect={a => setAlasan(a.val)}
-          onClose={() => setShowAlasan(false)}
-        />
+        <DropdownModal title="Pilih Alasan" items={ALASAN_OPTS.map(a => ({ val: a }))}
+          itemKey={a => a.val} itemLabel={a => a.val}
+          selected={alasan ? { val: alasan } : null} onSelect={a => setAlasan(a.val)}
+          onClose={() => setShowAlasan(false)} />
       )}
       {showDatePicker && (
-        <DatePickerModal
-          value={tglButuh}
-          onChange={setTglButuh}
-          onClose={() => setShowDatePicker(false)}
-          min={minDate}
-        />
+        <DatePickerModal value={tglButuh} onChange={setTglButuh}
+          onClose={() => setShowDatePicker(false)} min={minDate} />
       )}
     </div>
   )
@@ -481,12 +400,10 @@ function FieldButton({ label, value, placeholder, locked, onClick }) {
   return (
     <div>
       <label className="label">{label}</label>
-      <button
-        onClick={onClick}
+      <button onClick={onClick}
         className={`w-full flex items-center justify-between px-4 py-2.5 border rounded-xl text-sm transition-all
           ${locked ? 'bg-slate-50 cursor-not-allowed opacity-60' : 'hover:border-sapphire cursor-pointer'}
-          border-slate-200`}
-      >
+          border-slate-200`}>
         <span className={value ? 'text-navy' : 'text-slate-400'}>{value || placeholder}</span>
         {locked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
       </button>
