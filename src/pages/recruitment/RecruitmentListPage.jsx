@@ -6,7 +6,8 @@ import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi } from '../../api/services'
 import { formatDate, getApprovalStatus } from '../../utils/helpers'
 import { Badge, EmptyState, PageLoader, ErrorBox, ConfirmDialog, Spinner } from '../../components/ui'
-import { Plus, Search, Filter, Trash2, Calendar, Edit2, Eye, Layers, X, DateRange } from 'lucide-react'
+import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ─── Period Options (identik Android PeriodPickerSheet) ────────────────────────
@@ -117,8 +118,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   // Period filter — inisialisasi dari prop (diteruskan dari Dashboard via URL)
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
   const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
-  const [customStart, setCustomStart] = useState('')
-  const [customEnd,   setCustomEnd]   = useState('')
 
   const { data: raw, isLoading, isError, refetch } = useQuery({
     queryKey: ['my-requests'],
@@ -167,13 +166,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const isPending = r => r.tpk_approveatasan === 0 && r.tpk_approveHRD === 0
   const isOwner   = r => r.tpk_peminta?.trim() === user?.kode
 
-  const applyCustomPeriod = () => {
-    if (customStart && customEnd) {
-      setActivePeriodFilter(`Custom: ${customStart} - ${customEnd}`)
-      setShowPeriodPicker(false)
-    }
-  }
-
   const hasPendingItems = raw?.some(r => isPending(r) && isOwner(r))
 
   return (
@@ -189,7 +181,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         </button>
       </div>
 
-      {/* ── Filter Bar — identik Android (StatusChips + DateButton) ── */}
+      {/* ── Filter Bar ── */}
       <div className="flex flex-wrap gap-3 items-center">
         {/* Search */}
         <div className="relative flex-1 min-w-48">
@@ -209,7 +201,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
           ))}
         </div>
 
-        {/* Period filter button — identik Android OutlinedButton tanggal */}
+        {/* Period filter button */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-colors ${
@@ -225,7 +217,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
           )}
         </button>
 
-        {/* Hint: tekan & tahan — identik Android AnimatedVisibility hint */}
+        {/* Hint */}
         {hasPendingItems && (
           <p className="w-full text-xs text-slate-400 flex items-center gap-1">
             <span>☝️</span> Centang permintaan Pending Atasan untuk menghapus
@@ -349,48 +341,13 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       )}
 
       {/* ── Period Picker Modal ── */}
+      {/* ── Period Picker Modal ── */}
       {showPeriodPicker && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={(e) => e.target === e.currentTarget && setShowPeriodPicker(false)}>
-          <div className="bg-white rounded-t-2xl w-full max-w-lg shadow-2xl">
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
-              <h3 className="font-display font-bold text-navy">Pilih Periode</h3>
-              <button onClick={() => setShowPeriodPicker(false)} className="btn-icon text-slate-400"><X size={18} /></button>
-            </div>
-            <div className="flex gap-0 p-5">
-              {/* Preset */}
-              <div className="flex-1 pr-4 border-r border-slate-100 space-y-0.5">
-                {PERIOD_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value ?? 'all'}
-                    onClick={() => { setActivePeriodFilter(opt.value); setShowPeriodPicker(false) }}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors ${
-                      activePeriodFilter === opt.value
-                        ? 'bg-red-50 text-red-500 font-bold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-              {/* Custom range */}
-              <div className="flex-1 pl-4 flex flex-col gap-3">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Rentang Kustom</p>
-                <div>
-                  <label className="label">Dari</label>
-                  <input type="date" className="input" value={customStart} onChange={e => setCustomStart(e.target.value)} />
-                </div>
-                <div>
-                  <label className="label">Sampai</label>
-                  <input type="date" className="input" value={customEnd} min={customStart} onChange={e => setCustomEnd(e.target.value)} />
-                </div>
-                <button onClick={applyCustomPeriod} disabled={!customStart || !customEnd} className="btn-primary justify-center disabled:opacity-40">
-                  Terapkan
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PeriodPickerModal
+          current={activePeriodFilter}
+          onSelect={(val) => { setActivePeriodFilter(val); setShowPeriodPicker(false) }}
+          onClose={() => setShowPeriodPicker(false)}
+        />
       )}
 
       <ConfirmDialog

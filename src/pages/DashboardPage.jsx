@@ -1,18 +1,17 @@
 // src/pages/DashboardPage.jsx
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { dashboardApi } from '../api/services'
 import { formatDate } from '../utils/helpers'
 import { StatCard, AlertBanner, PageLoader, ErrorBox } from '../components/ui'
+import { PeriodPickerModal } from '../components/PeriodPickerModal'  // ← shared
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
-  ChevronRight, CheckCircle2, Calendar, ChevronDown, X,
+  ChevronRight, CheckCircle2, Calendar, ChevronDown,
 } from 'lucide-react'
-import { clsx } from 'clsx'
 
-// ─── Period Options (identik dengan Android PeriodPickerSheet) ────────────────
 const PERIOD_OPTIONS = [
   { value: 'All Time',   label: 'Semua Waktu' },
   { value: 'Today',      label: 'Hari Ini' },
@@ -25,10 +24,6 @@ const PERIOD_OPTIONS = [
   { value: 'Last year',  label: 'Tahun Lalu' },
 ]
 
-/**
- * Konversi period string ke label ringkas untuk tombol
- * Identik dengan displayPeriod di Android DashboardStatSection
- */
 function periodToLabel(period) {
   const match = PERIOD_OPTIONS.find(o => o.value === period)
   if (match) return match.label
@@ -37,11 +32,9 @@ function periodToLabel(period) {
       const rangeStr = period.replace('Custom:', '').trim()
       const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
       if (parts.length >= 2) {
-        const fmtDate = (s) => {
-          const d = new Date(s.trim() + 'T00:00:00')
-          return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-        }
-        return `${fmtDate(parts[0])} - ${fmtDate(parts[1])}`
+        const fmtDate = (s) => new Date(s.trim() + 'T00:00:00')
+          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+        return `${fmtDate(parts[0])} – ${fmtDate(parts[1])}`
       }
     } catch { /* ignore */ }
     return 'Rentang Kustom'
@@ -49,9 +42,6 @@ function periodToLabel(period) {
   return period || 'Semua Waktu'
 }
 
-/**
- * Konversi period ke param API — identik dengan Android resolveCurrentPeriod()
- */
 function periodToApiParam(period) {
   if (!period || period === 'All Time') return undefined
   if (period.startsWith('Custom:')) {
@@ -60,99 +50,11 @@ function periodToApiParam(period) {
   return period
 }
 
-// ─── Period Picker Modal ──────────────────────────────────────────────────────
-function PeriodPickerModal({ current, onSelect, onClose }) {
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate]     = useState('')
-
-  const handleCustomApply = () => {
-    if (startDate && endDate) {
-      onSelect(`Custom: ${startDate} - ${endDate}`)
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="bg-white rounded-t-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
-          <h3 className="font-display font-bold text-navy text-lg">Pilih Periode</h3>
-          <button onClick={onClose} className="btn-icon text-slate-400">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="flex gap-0 p-5">
-          {/* Kiri: Quick Presets — identik dengan Android PeriodPickerSheet */}
-          <div className="flex-1 pr-4 border-r border-slate-100">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Preset</p>
-            <div className="space-y-0.5">
-              {PERIOD_OPTIONS.map((opt) => {
-                const isSelected = current === opt.value
-                return (
-                  <button
-                    key={opt.value}
-                    onClick={() => onSelect(opt.value)}
-                    className={clsx(
-                      'w-full text-left px-3 py-2.5 rounded-xl text-sm transition-colors',
-                      isSelected
-                        ? 'bg-red-50 text-red-500 font-bold'
-                        : 'text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* Kanan: Custom Date Range — identik dengan Android DateInputWithPicker */}
-          <div className="flex-1 pl-4 flex flex-col gap-4">
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Rentang Kustom</p>
-            <div>
-              <label className="label">Dari Tanggal</label>
-              <input
-                type="date"
-                className="input"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Sampai Tanggal</label>
-              <input
-                type="date"
-                className="input"
-                value={endDate}
-                min={startDate}
-                onChange={e => setEndDate(e.target.value)}
-              />
-            </div>
-            <div className="flex-1" />
-            <button
-              onClick={handleCustomApply}
-              disabled={!startDate || !endDate}
-              className="btn-primary w-full justify-center disabled:opacity-40"
-            >
-              Terapkan
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const { user, isHrd } = useAuth()
   const navigate         = useNavigate()
 
-  const [period, setPeriod]       = useState('All Time')
+  const [period, setPeriod]         = useState('All Time')
   const [showPicker, setShowPicker] = useState(false)
 
   const apiParam = periodToApiParam(period)
@@ -170,10 +72,6 @@ export default function DashboardPage() {
   const stats   = statsQ.data
   const summary = summaryQ.data
 
-  /**
-   * Navigasi ke list screen sambil meneruskan period aktif
-   * Identik dengan Android: onNavigateToRequests(currentPeriod)
-   */
   const navigateWithPeriod = (path) => {
     if (!period || period === 'All Time') {
       navigate(path)
@@ -181,6 +79,15 @@ export default function DashboardPage() {
       navigate(`${path}?period=${encodeURIComponent(period)}`)
     }
   }
+
+  // Adapter: PeriodPickerModal shared pakai value null untuk "Semua Waktu"
+  // Dashboard pakai string 'All Time', jadi perlu konversi
+  const handlePickerSelect = (val) => {
+    setPeriod(val === null ? 'All Time' : val)
+    setShowPicker(false)
+  }
+
+  const pickerCurrent = period === 'All Time' ? null : period
 
   return (
     <div className="space-y-6">
@@ -192,7 +99,6 @@ export default function DashboardPage() {
           <p className="text-xs text-sapphire font-semibold mt-0.5">{user?.bagian ?? ''}</p>
         </div>
 
-        {/* Period Selector — identik dengan Android PeriodPickerSheet trigger */}
         <button
           onClick={() => setShowPicker(true)}
           className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-sapphire transition-colors"
@@ -223,7 +129,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* ── Stats Grid — onClick meneruskan period (identik Android StatCard) ── */}
+      {/* ── Stats Grid ── */}
       {statsQ.isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[1,2,3,4].map(i => <div key={i} className="card"><div className="skeleton h-16 w-full" /></div>)}
@@ -232,35 +138,18 @@ export default function DashboardPage() {
         <ErrorBox message="Gagal memuat statistik." onRetry={() => statsQ.refetch()} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            label="Permintaan"
-            value={stats?.totalPermintaan ?? 0}
-            icon={ClipboardList}
-            color="#0F52BA"
-            onClick={() => navigateWithPeriod('/recruitment')}
-          />
-          <StatCard
-            label="Pending Approval"
-            value={stats?.pendingApproval ?? 0}
-            icon={CheckSquare}
-            color="#F57C00"
-            alert={stats?.pendingApproval > 0}
-            onClick={() => navigateWithPeriod('/approval')}
-          />
-          <StatCard
-            label="SLA Aktif"
-            value={summary?.activeRequests ?? 0}
-            icon={Activity}
-            color="#0F52BA"
-            onClick={() => navigate('/monitoring')}
-          />
-          <StatCard
-            label="Selesai Bulan Ini"
-            value={summary?.completedThisMonth ?? 0}
-            icon={CheckCircle2}
-            color="#2E7D32"
-            onClick={() => navigate('/monitoring')}
-          />
+          <StatCard label="Permintaan" value={stats?.totalPermintaan ?? 0}
+            icon={ClipboardList} color="#0F52BA"
+            onClick={() => navigateWithPeriod('/recruitment')} />
+          <StatCard label="Pending Approval" value={stats?.pendingApproval ?? 0}
+            icon={CheckSquare} color="#F57C00" alert={stats?.pendingApproval > 0}
+            onClick={() => navigateWithPeriod('/approval')} />
+          <StatCard label="SLA Aktif" value={summary?.activeRequests ?? 0}
+            icon={Activity} color="#0F52BA"
+            onClick={() => navigate('/monitoring')} />
+          <StatCard label="Selesai Bulan Ini" value={summary?.completedThisMonth ?? 0}
+            icon={CheckCircle2} color="#2E7D32"
+            onClick={() => navigate('/monitoring')} />
         </div>
       )}
 
@@ -274,11 +163,8 @@ export default function DashboardPage() {
               { label: 'Terlambat',    val: summary.overdueRequests, color: '#D32F2F' },
               { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F57C00' },
             ].map(({ label, val, color }) => (
-              <button
-                key={label}
-                onClick={() => navigate('/monitoring')}
-                className="card text-center hover:shadow-card-hover transition-shadow"
-              >
+              <button key={label} onClick={() => navigate('/monitoring')}
+                className="card text-center hover:shadow-card-hover transition-shadow">
                 <p className="text-2xl font-display font-black" style={{ color }}>{val}</p>
                 <p className="text-xs text-slate-500 mt-0.5 font-medium">{label}</p>
               </button>
@@ -296,14 +182,11 @@ export default function DashboardPage() {
             { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan', Icon: CheckSquare },
             { to: '/monitoring',  label: 'SLA Monitoring',        sub: 'Pantau progress rekruitmen', Icon: Activity },
             isHrd
-              ? { to: '/kpi-hrd',      label: 'KPI HRD',       sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
-              : { to: '/kpi-approver', label: 'KPI Approval',  sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
+              ? { to: '/kpi-hrd',      label: 'KPI HRD',      sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
+              : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
           ].map(({ to, label, sub, Icon }) => (
-            <button
-              key={to}
-              onClick={() => navigate(to)}
-              className="card w-full text-left flex items-center gap-4 hover:shadow-card-hover transition-shadow"
-            >
+            <button key={to} onClick={() => navigate(to)}
+              className="card w-full text-left flex items-center gap-4 hover:shadow-card-hover transition-shadow">
               <div className="w-10 h-10 rounded-xl bg-ice-blue flex items-center justify-center shrink-0">
                 <Icon size={20} className="text-sapphire" />
               </div>
@@ -317,11 +200,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Period Picker Modal ── */}
+      {/* ── Period Picker Modal (shared, createPortal, centered) ── */}
       {showPicker && (
         <PeriodPickerModal
-          current={period}
-          onSelect={(val) => { setPeriod(val); setShowPicker(false) }}
+          current={pickerCurrent}
+          onSelect={handlePickerSelect}
           onClose={() => setShowPicker(false)}
         />
       )}
