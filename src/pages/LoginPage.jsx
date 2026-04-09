@@ -1,19 +1,72 @@
-import { useState } from 'react'
+// src/pages/LoginPage.jsx
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Eye, EyeOff, LogIn } from 'lucide-react'
+import { Eye, EyeOff, LogIn, User } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// ─── Konstanta Storage Key ─────────────────────────────────────────────────────
+const USERNAME_HISTORY_KEY = 'usernameHistory'
+const MAX_HISTORY = 10
+
+/** Ambil riwayat username dari localStorage — identik Android UserSession.getSavedUsernames() */
+function loadUsernameHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(USERNAME_HISTORY_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+/** Simpan username ke riwayat — identik Android UserSession.saveUsernameToHistory() */
+function saveUsernameHistory(username) {
+  if (!username || !username.trim()) return
+  try {
+    const current = loadUsernameHistory()
+    const updated = [username, ...current.filter(u => u !== username)].slice(0, MAX_HISTORY)
+    localStorage.setItem(USERNAME_HISTORY_KEY, JSON.stringify(updated))
+  } catch { /* ignore */ }
+}
 
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate  = useNavigate()
 
-  const [form, setForm]     = useState({ username: '', password: '', expiredDays: null })
+  const [form, setForm]       = useState({ username: '', password: '', expiredDays: null })
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError]   = useState('')
+  const [error, setError]     = useState('')
+
+  // ── Username history — identik Android savedUsernames StateFlow ──────────────
+  const [savedUsernames, setSavedUsernames]   = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const usernameRef = useRef(null)
+  const suggestRef  = useRef(null)
+
+  useEffect(() => {
+    setSavedUsernames(loadUsernameHistory())
+  }, [])
+
+  // Tutup suggestions saat klik di luar
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        usernameRef.current && !usernameRef.current.contains(e.target) &&
+        suggestRef.current  && !suggestRef.current.contains(e.target)
+      ) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  // Filter suggestions berdasarkan input yang sedang diketik
+  const filteredUsernames = form.username
+    ? savedUsernames.filter(u => u.toLowerCase().includes(form.username.toLowerCase()))
+    : savedUsernames
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -25,6 +78,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(form.username, form.password, form.expiredDays)
+      // Simpan username ke riwayat setelah login berhasil
+      // Identik Android: userSession.saveUsernameToHistory(_username.value)
+      saveUsernameHistory(form.username)
+      setSavedUsernames(loadUsernameHistory())
       navigate('/')
     } catch (err) {
       const msg = err.response?.data?.message || 'Login gagal. Periksa kembali data Anda.'
@@ -32,6 +89,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const selectUsername = (username) => {
+    setForm(f => ({ ...f, username }))
+    setShowSuggestions(false)
   }
 
   return (
@@ -52,7 +114,7 @@ export default function LoginPage() {
             Pantau proses rekruitmen, SLA, approval, dan KPI dalam satu platform terpadu.
           </p>
           <div className="mt-12 grid grid-cols-3 gap-4 text-center">
-            {[['SLA', 'Monitoring'], ['KPI', 'Dashboard'], ['Approval', 'Flow']].map(([a,b]) => (
+            {[['SLA', 'Monitoring'], ['KPI', 'Dashboard'], ['Approval', 'Flow']].map(([a, b]) => (
               <div key={a} className="bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
                 <p className="font-display font-bold text-xl">{a}</p>
                 <p className="text-blue-200 text-xs mt-0.5">{b}</p>
@@ -76,19 +138,49 @@ export default function LoginPage() {
           <p className="text-slate-500 text-sm mb-8">Masuk ke akun PKAR Anda</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* ── Username + Suggestions ─────────────────────────────────────────── */}
             <div>
               <label className="label">Username</label>
+
+              {/* Suggestions dropdown — identik Android savedUsernames dropdown */}
+              {showSuggestions && filteredUsernames.length > 0 && (
+                <div
+                  ref={suggestRef}
+                  className="mb-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-44 overflow-y-auto"
+                >
+                  {filteredUsernames.map((u, i) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => selectUsername(u)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <User size={15} className="text-slate-400 shrink-0" />
+                      <span className="font-medium text-slate-700">{u}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <input
+                ref={usernameRef}
                 className="input"
                 type="text"
                 placeholder="Masukkan NIK / username"
                 value={form.username}
-                onChange={e => set('username', e.target.value)}
-                autoComplete="username"
+                onChange={e => {
+                  set('username', e.target.value)
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => {
+                  if (savedUsernames.length > 0) setShowSuggestions(true)
+                }}
+                autoComplete="off"
                 autoFocus
               />
             </div>
 
+            {/* ── Password ── */}
             <div>
               <label className="label">Password</label>
               <div className="relative">
@@ -110,7 +202,7 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {/* Remember me */}
+            {/* ── Remember Me — identik Android RememberMeOption ── */}
             <div className="flex gap-4">
               {[
                 { days: 3,  label: 'Ingat 3 hari' },
@@ -128,12 +220,14 @@ export default function LoginPage() {
               ))}
             </div>
 
+            {/* ── Error Display ── */}
             {error && (
               <div className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-2.5">
                 {error}
               </div>
             )}
 
+            {/* ── Submit ── */}
             <button
               type="submit"
               className="btn-primary w-full justify-center h-11 text-base mt-2"

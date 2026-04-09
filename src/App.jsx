@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+// src/App.jsx
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import MainLayout from './components/MainLayout'
 import { PageLoader } from './components/ui'
@@ -29,6 +30,26 @@ function PublicRoute({ children }) {
   return children
 }
 
+/**
+ * Wrapper untuk RecruitmentListPage agar membaca ?period= dari URL
+ * Identik Android: Screen.RecruitmentList.route = "recruitment_list?period={period}"
+ */
+function RecruitmentListWrapper() {
+  const [searchParams] = useSearchParams()
+  const period = searchParams.get('period') || undefined
+  return <RecruitmentListPage initialPeriodFilter={period} />
+}
+
+/**
+ * Wrapper untuk ApprovalListPage agar membaca ?period= dari URL
+ * Identik Android: Screen.ApprovalList.route = "approval_list?period={period}"
+ */
+function ApprovalListWrapper() {
+  const [searchParams] = useSearchParams()
+  const period = searchParams.get('period') || undefined
+  return <ApprovalListPage initialPeriodFilter={period} />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -42,8 +63,9 @@ function AppRoutes() {
         <ProtectedRoute><DashboardPage /></ProtectedRoute>
       } />
 
+      {/* Recruitment — mendukung ?period= query param dari Dashboard */}
       <Route path="/recruitment" element={
-        <ProtectedRoute><RecruitmentListPage /></ProtectedRoute>
+        <ProtectedRoute><RecruitmentListWrapper /></ProtectedRoute>
       } />
       <Route path="/recruitment/new" element={
         <ProtectedRoute><RecruitmentFormPage /></ProtectedRoute>
@@ -55,8 +77,9 @@ function AppRoutes() {
         <ProtectedRoute><RecruitmentDetailPage /></ProtectedRoute>
       } />
 
+      {/* Approval — mendukung ?period= query param dari Dashboard */}
       <Route path="/approval" element={
-        <ProtectedRoute><ApprovalListPage /></ProtectedRoute>
+        <ProtectedRoute><ApprovalListWrapper /></ProtectedRoute>
       } />
 
       <Route path="/monitoring" element={
