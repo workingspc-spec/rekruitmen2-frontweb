@@ -52,7 +52,7 @@ function periodToApiParam(period) {
 
 export default function DashboardPage() {
   const { user, isHrd } = useAuth()
-  const navigate         = useNavigate()
+  const navigate        = useNavigate()
 
   const [period, setPeriod]         = useState('All Time')
   const [showPicker, setShowPicker] = useState(false)
@@ -80,8 +80,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Adapter: PeriodPickerModal shared pakai value null untuk "Semua Waktu"
-  // Dashboard pakai string 'All Time', jadi perlu konversi
   const handlePickerSelect = (val) => {
     setPeriod(val === null ? 'All Time' : val)
     setShowPicker(false)
@@ -91,7 +89,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
+      {/* ── Header (Diperbarui lebih bold & bersih) ── */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-500 text-sm font-medium">Selamat datang,</p>
@@ -153,7 +151,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── SLA Summary Cards ── */}
+      {/* ── SLA Summary Cards (Desain Premium) ── */}
       {summary && (
         <div>
           <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
@@ -173,7 +171,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Quick Menu ── */}
+      {/* ── Quick Menu (Hover Effects Premium) ── */}
       <div>
         <p className="text-lg font-bold text-slate-800 mb-3">Menu Utama</p>
         <div className="space-y-3">
@@ -200,7 +198,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Period Picker Modal (shared, createPortal, centered) ── */}
+      {/* ── Period Picker Modal ── */}
       {showPicker && (
         <PeriodPickerModal
           current={pickerCurrent}

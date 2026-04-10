@@ -20,25 +20,30 @@ function saveUsernameHistory(username) {
   } catch {}
 }
 
-// ── Logo — otomatis fallback ke huruf "P" jika file belum ada ─────────────────
-function AppLogo({ size = 64 }) {
+// ── Logo — Diperbesar dan tanpa border ───────────────────────────────────────
+function AppLogo({ size = 180 }) {
   const [imgOk, setImgOk] = useState(true)
   return imgOk ? (
     <img
       src="/logo_app.png"
       alt="Logo PKAR"
       onError={() => setImgOk(false)}
-      style={{ width: size, height: size, objectFit: 'contain' }}
+      style={{ 
+        width: size, 
+        height: 'auto', 
+        maxHeight: size, 
+        objectFit: 'contain',
+        filter: 'drop-shadow(0px 4px 12px rgba(0,0,0,0.15))'
+      }}
     />
   ) : (
-    // Fallback: kotak biru dengan huruf P (identik Android jika logo belum di-export)
     <div style={{
-      width: size, height: size, borderRadius: size * 0.28,
+      width: 64, height: 64, borderRadius: 18,
       background: 'rgba(255,255,255,0.12)',
       border: '1px solid rgba(255,255,255,0.22)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
-      <span style={{ fontSize: size * 0.42, fontWeight: 800, color: '#fff' }}>P</span>
+      <span style={{ fontSize: 28, fontWeight: 800, color: '#fff' }}>P</span>
     </div>
   )
 }
@@ -68,7 +73,7 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
     return () => window.removeEventListener('mousemove', handleMouseMove)
   }, [handleMouseMove])
 
-  const col = isError ? '#DC2626' : isFocused ? '#18181b' : '#9CA3AF'
+  const col = isError ? '#E11D48' : isFocused ? '#18181b' : '#9CA3AF'
 
   return (
     <button type="button" ref={eyeRef} onClick={onToggle}
@@ -116,7 +121,7 @@ function FloatingInput({
         top: isUp ? 0 : 26,
         fontSize: isUp ? 11 : 15,
         fontWeight: isUp ? 500 : 400,
-        color: isError ? '#DC2626' : focused ? '#18181b' : '#9CA3AF',
+        color: isError ? '#E11D48' : focused ? '#18181b' : '#9CA3AF',
         transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
         pointerEvents: 'none',
         letterSpacing: isUp ? '0.05em' : 0,
@@ -139,7 +144,7 @@ function FloatingInput({
           style={{
             width: '100%', border: 'none', outline: 'none',
             borderBottom: `${focused || isError ? 2 : 1}px solid ${
-              isError ? '#DC2626' : focused ? '#18181b' : '#D1D5DB'
+              isError ? '#E11D48' : focused ? '#18181b' : '#D1D5DB'
             }`,
             background: 'transparent',
             fontSize: 15, paddingBottom: 8,
@@ -192,7 +197,7 @@ function LeftPanel() {
   return (
     <div style={{
       width: '50%', minHeight: '100vh', flexShrink: 0,
-      background: 'linear-gradient(145deg, #0a1628 0%, #0F52BA 55%, #2563eb 100%)',
+      background: '#363435', // <-- Warna background telah diubah sesuai request
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
       padding: '3rem 2.5rem', position: 'relative', overflow: 'hidden',
@@ -208,41 +213,43 @@ function LeftPanel() {
         position: 'absolute', top: '35%', left: '50%',
         transform: 'translate(-50%, -50%)',
         width: 480, height: 480,
-        background: 'radial-gradient(circle, rgba(99,179,237,0.15) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
-      <div style={{ position: 'relative', textAlign: 'center', color: '#fff', maxWidth: 380 }}>
-        {/* Logo — sama persis dengan Android, fallback ke huruf P */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.75rem' }}>
-          <AppLogo size={72} />
+      <div style={{ position: 'relative', textAlign: 'center', color: '#fff', maxWidth: 420 }}>
+        {/* Logo — Diperbesar */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2.5rem' }}>
+          <AppLogo size={180} />
         </div>
 
+        {/* Teks Judul telah diubah */}
         <h1 style={{
-          fontSize: 'clamp(20px, 2vw, 28px)',
-          fontWeight: 800, lineHeight: 1.3,
-          margin: '0 0 0.85rem', letterSpacing: '-0.02em',
+          fontSize: 'clamp(22px, 2.5vw, 32px)',
+          fontWeight: 800, lineHeight: 1.2,
+          margin: '0 0 1rem', letterSpacing: '-0.02em',
         }}>
-          Sistem Manajemen<br />Rekruitmen
+          Permintaan Karyawan<br />Rekruitmen
         </h1>
 
         <p style={{
-          color: '#93c5fd', fontSize: 'clamp(12px, 1vw, 14px)',
-          lineHeight: 1.75, margin: '0 0 2.25rem',
+          color: 'rgba(255,255,255,0.8)', fontSize: 'clamp(13px, 1.2vw, 15px)',
+          lineHeight: 1.6, margin: '0 0 2.5rem',
         }}>
           Pantau proses rekruitmen, SLA, approval,<br />
           dan KPI dalam satu platform terpadu.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12 }}>
           {[['SLA','Monitoring'],['KPI','Dashboard'],['Approval','Flow']].map(([a, b]) => (
             <div key={a} style={{
               background: 'rgba(255,255,255,0.09)',
               border: '1px solid rgba(255,255,255,0.14)',
-              borderRadius: 14, padding: '14px 8px',
+              borderRadius: 14, padding: '16px 8px',
+              backdropFilter: 'blur(4px)'
             }}>
-              <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{a}</p>
-              <p style={{ color: '#93c5fd', fontSize: 11, margin: '3px 0 0' }}>{b}</p>
+              <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{a}</p>
+              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, margin: '4px 0 0' }}>{b}</p>
             </div>
           ))}
         </div>
@@ -266,7 +273,7 @@ export default function LoginPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
 
   const usernameRef = useRef(null)
-  const passwordRef = useRef(null)   // ← ref untuk fokus password via Enter
+  const passwordRef = useRef(null)
   const dropdownRef = useRef(null)
 
   useEffect(() => { setSavedUsernames(loadUsernameHistory()) }, [])
@@ -293,7 +300,6 @@ export default function LoginPage() {
     setTimeout(() => setShake(false), 520)
   }
 
-  // Enter di username → tutup suggestions → pindah fokus ke password (TIDAK submit, TIDAK error)
   const handleUsernameKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -302,7 +308,6 @@ export default function LoginPage() {
     }
   }
 
-  // Enter di password → submit form
   const handlePasswordKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
@@ -362,36 +367,20 @@ export default function LoginPage() {
           background: #f5f5f0;
         }
 
-        /* Panel kiri — 50% di desktop, tersembunyi di mobile */
-        .lp-left {
-          display: none;
-          width: 50%;
-          flex-shrink: 0;
-        }
-        @media (min-width: 900px) {
-          .lp-left { display: flex; }
-        }
+        .lp-left { display: none; width: 50%; flex-shrink: 0; }
+        @media (min-width: 900px) { .lp-left { display: flex; } }
 
-        /* Panel kanan — 50% desktop, full mobile */
         .lp-right {
-          flex: 1;
-          display: flex; align-items: center; justify-content: center;
-          padding: clamp(1.5rem, 4vw, 2.5rem);
-          overflow-y: auto;
-          background: #f5f5f0;
-          animation: fadeInUp 0.38s ease;
+          flex: 1; display: flex; align-items: center; justify-content: center;
+          padding: clamp(1.5rem, 4vw, 2.5rem); overflow-y: auto;
+          background: #f5f5f0; animation: fadeInUp 0.38s ease;
         }
 
-        .lp-card {
-          width: 100%;
-          max-width: 360px;
-        }
+        .lp-card { width: 100%; max-width: 360px; }
 
-        /* Card shadow di mobile */
         @media (max-width: 899px) {
           .lp-card {
-            background: #fff;
-            border-radius: 20px;
+            background: #fff; border-radius: 20px;
             padding: clamp(1.75rem, 5vw, 2.25rem);
             box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.07);
           }
@@ -401,18 +390,11 @@ export default function LoginPage() {
 
         .lp-suggestions {
           animation: fadeSlideDown 0.16s ease;
-          position: absolute;
-          top: 100%;
-          left: 0; right: 0;
-          z-index: 200;
-          background: #fff;
-          border: 0.5px solid #e5e7eb;
-          border-radius: 12px;
+          position: absolute; top: 100%; left: 0; right: 0;
+          z-index: 200; background: #fff;
+          border: 0.5px solid #e5e7eb; border-radius: 12px;
           box-shadow: 0 8px 28px rgba(0,0,0,0.11);
-          overflow: hidden;
-          margin-top: 5px;
-          max-height: 192px;
-          overflow-y: auto;
+          overflow: hidden; margin-top: 5px; max-height: 192px; overflow-y: auto;
         }
 
         .lp-sug-item {
@@ -425,6 +407,7 @@ export default function LoginPage() {
         .lp-sug-item:hover { background: #f9fafb; }
         .lp-divider { height: 0.5px; background: #f3f4f6; margin: 0 14px; }
 
+        /* Tombol Login - Lebih elegan dengan shadow */
         .lp-btn {
           width: 100%; height: 48px;
           background: #18181b; color: #fff;
@@ -455,29 +438,18 @@ export default function LoginPage() {
       `}</style>
 
       <div className="lp-root">
-
-        {/* ── Left panel (50% desktop) ── */}
-        <div className="lp-left">
-          <LeftPanel />
-        </div>
-
-        {/* ── Right panel (50% desktop, full mobile) ── */}
+        <div className="lp-left"><LeftPanel /></div>
         <div className="lp-right">
           <div className="lp-card">
-
-            {/* Sparkle icon */}
+            
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="#18181b">
                 <path d="M12 2C12 7.5 16.5 12 22 12C16.5 12 12 16.5 12 22C12 16.5 7.5 12 2 12C7.5 12 12 7.5 12 2Z" />
               </svg>
             </div>
 
-            {/* Heading */}
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <h2 style={{
-                fontSize: 24, fontWeight: 700, margin: '0 0 5px',
-                color: '#18181b', letterSpacing: '-0.02em',
-              }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 5px', color: '#18181b', letterSpacing: '-0.02em' }}>
                 Welcome back!
               </h2>
               <p style={{ fontSize: 13, color: '#9CA3AF', margin: 0 }}>
@@ -486,114 +458,70 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} autoComplete="off">
-
-              {/* ── Username ── */}
-              <div style={{ marginBottom: '1.5rem' }}>
-                <div style={{ position: 'relative' }} ref={usernameRef}>
-                  <FloatingInput
-                    id="username"
-                    label="Username"
-                    value={form.username}
-                    onChange={e => { set('username', e.target.value); setShowSuggestions(true) }}
-                    onFocus={() => { if (savedUsernames.length > 0) setShowSuggestions(true) }}
-                    onBlur={() => setTimeout(() => setShowSuggestions(false), 160)}
-                    onKeyDown={handleUsernameKeyDown}
-                    isError={!!error}
-                    autoComplete="off"
-                    autoFocus
-                  />
-
-                  {/* Dropdown BAWAH input */}
-                  {showSuggestions && filteredUsernames.length > 0 && (
-                    <div className="lp-suggestions" ref={dropdownRef}>
-                      {filteredUsernames.map((u, i) => (
-                        <div key={u}>
-                          <button
-                            type="button"
-                            className="lp-sug-item"
-                            onMouseDown={e => {
-                              e.preventDefault()
-                              set('username', u)
-                              setShowSuggestions(false)
-                              // Setelah pilih suggestion → langsung fokus password
-                              setTimeout(() => passwordRef.current?.focus(), 0)
-                            }}
-                          >
-                            <User size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
-                            {u}
-                          </button>
-                          {i < filteredUsernames.length - 1 && <div className="lp-divider" />}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <div style={{ marginBottom: '1.5rem', position: 'relative' }} ref={usernameRef}>
+                <FloatingInput
+                  id="username" label="Username" value={form.username}
+                  onChange={e => { set('username', e.target.value); setShowSuggestions(true) }}
+                  onFocus={() => { if (savedUsernames.length > 0) setShowSuggestions(true) }}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 160)}
+                  onKeyDown={handleUsernameKeyDown} isError={!!error} autoComplete="off" autoFocus
+                />
+                {showSuggestions && filteredUsernames.length > 0 && (
+                  <div className="lp-suggestions" ref={dropdownRef}>
+                    {filteredUsernames.map((u, i) => (
+                      <div key={u}>
+                        <button type="button" className="lp-sug-item"
+                          onMouseDown={e => {
+                            e.preventDefault(); set('username', u); setShowSuggestions(false);
+                            setTimeout(() => passwordRef.current?.focus(), 0)
+                          }}
+                        >
+                          <User size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} /> {u}
+                        </button>
+                        {i < filteredUsernames.length - 1 && <div className="lp-divider" />}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* ── Password ── */}
-              <div
-                className={shake ? 'lp-shake' : ''}
-                style={{ marginBottom: '1rem' }}
-              >
+              <div className={shake ? 'lp-shake' : ''} style={{ marginBottom: '1rem' }}>
                 <FloatingInput
-                  id="password"
-                  label="Password"
-                  value={form.password}
+                  id="password" label="Password" value={form.password}
                   onChange={e => set('password', e.target.value)}
-                  onKeyDown={handlePasswordKeyDown}
-                  isError={!!error}
-                  isPassword isVisible={showPwd}
-                  onToggle={() => setShowPwd(p => !p)}
-                  autoComplete="current-password"
-                  inputRef={passwordRef}
+                  onKeyDown={handlePasswordKeyDown} isError={!!error}
+                  isPassword isVisible={showPwd} onToggle={() => setShowPwd(p => !p)}
+                  autoComplete="current-password" inputRef={passwordRef}
                 />
               </div>
 
-              {/* ── Error message ── */}
+              {/* ── Error message - Diperbarui jadi Elegan (Hanya Teks & Ikon) ── */}
               {error && (
                 <div className={shake ? 'lp-shake' : ''} style={{
-                  fontSize: 11.5, color: '#DC2626',
-                  background: '#FEF2F2', border: '0.5px solid #FECACA',
-                  borderRadius: 8, padding: '8px 12px', marginBottom: '1rem',
+                  fontSize: 13, color: '#E11D48', fontWeight: 600, 
+                  marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '6px'
                 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
                   {error}
                 </div>
               )}
 
-              {/* ── Remember Me ── */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 16,
-                marginBottom: '1.75rem', marginTop: '0.25rem',
-              }}>
-                <Checkbox
-                  checked={form.expiredDays === 3}
-                  onChange={() => set('expiredDays', form.expiredDays === 3 ? null : 3)}
-                  label="Ingat 3 hari"
-                />
-                <Checkbox
-                  checked={form.expiredDays === 30}
-                  onChange={() => set('expiredDays', form.expiredDays === 30 ? null : 30)}
-                  label="Ingat 30 hari"
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: '1.75rem', marginTop: '0.25rem' }}>
+                <Checkbox checked={form.expiredDays === 3} onChange={() => set('expiredDays', form.expiredDays === 3 ? null : 3)} label="Ingat 3 hari" />
+                <Checkbox checked={form.expiredDays === 30} onChange={() => set('expiredDays', form.expiredDays === 30 ? null : 30)} label="Ingat 30 hari" />
               </div>
 
-              {/* ── Submit ── */}
               <button type="submit" className="lp-btn" disabled={loading}>
-                {loading
-                  ? <><span className="lp-spinner" /> Masuk...</>
-                  : 'Log In'
-                }
+                {loading ? <><span className="lp-spinner" /> Masuk...</> : 'Log In'}
               </button>
             </form>
 
-            <p style={{
-              textAlign: 'center', fontSize: 11.5, color: '#9CA3AF',
-              marginTop: '1.5rem', marginBottom: 0,
-            }}>
-              Belum punya akun?{' '}
-              <span style={{ fontWeight: 600, color: '#18181b' }}>
-                Hubungi departemen IT
-              </span>
+            <p style={{ textAlign: 'center', fontSize: 11.5, color: '#9CA3AF', marginTop: '1.5rem', marginBottom: 0 }}>
+              Belum punya akun? <span style={{ fontWeight: 600, color: '#18181b' }}>Hubungi departemen IT</span>
             </p>
           </div>
         </div>
