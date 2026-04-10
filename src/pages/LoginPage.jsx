@@ -20,7 +20,30 @@ function saveUsernameHistory(username) {
   } catch {}
 }
 
-// ── Animated Eye ──────────────────────────────────────────────────────────────
+// ── Logo — otomatis fallback ke huruf "P" jika file belum ada ─────────────────
+function AppLogo({ size = 64 }) {
+  const [imgOk, setImgOk] = useState(true)
+  return imgOk ? (
+    <img
+      src="/logo_app.png"
+      alt="Logo PKAR"
+      onError={() => setImgOk(false)}
+      style={{ width: size, height: size, objectFit: 'contain' }}
+    />
+  ) : (
+    // Fallback: kotak biru dengan huruf P (identik Android jika logo belum di-export)
+    <div style={{
+      width: size, height: size, borderRadius: size * 0.28,
+      background: 'rgba(255,255,255,0.12)',
+      border: '1px solid rgba(255,255,255,0.22)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      <span style={{ fontSize: size * 0.42, fontWeight: 800, color: '#fff' }}>P</span>
+    </div>
+  )
+}
+
+// ── Animated Eye (pupil follows mouse) ───────────────────────────────────────
 function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
   const eyeRef   = useRef(null)
   const pupilRef = useRef(null)
@@ -34,8 +57,10 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
     const dy    = e.clientY - cy
     const angle = Math.atan2(dy, dx)
     const dist  = Math.min(Math.sqrt(dx * dx + dy * dy), 2.8)
-    pupilRef.current.style.transform =
-      `translate(${(Math.cos(angle) * dist).toFixed(2)}px, ${(Math.sin(angle) * dist).toFixed(2)}px)`
+    if (pupilRef.current) {
+      pupilRef.current.style.transform =
+        `translate(${(Math.cos(angle) * dist).toFixed(2)}px, ${(Math.sin(angle) * dist).toFixed(2)}px)`
+    }
   }, [])
 
   useEffect(() => {
@@ -47,7 +72,7 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
 
   return (
     <button type="button" ref={eyeRef} onClick={onToggle}
-      aria-label={isVisible ? 'Sembunyikan' : 'Tampilkan'}
+      aria-label={isVisible ? 'Sembunyikan password' : 'Tampilkan password'}
       style={{
         position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
         background: 'none', border: 'none', cursor: 'pointer',
@@ -78,7 +103,8 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
 function FloatingInput({
   id, label, value, onChange, isError = false,
   isPassword = false, isVisible, onToggle,
-  onFocus, onBlur, autoComplete, autoFocus, inputRef,
+  onFocus, onBlur, autoComplete, autoFocus,
+  inputRef, onKeyDown,
 }) {
   const [focused, setFocused] = useState(false)
   const isUp = focused || value.length > 0
@@ -94,7 +120,6 @@ function FloatingInput({
         transition: 'all 0.18s cubic-bezier(.4,0,.2,1)',
         pointerEvents: 'none',
         letterSpacing: isUp ? '0.05em' : 0,
-        whiteSpace: 'nowrap',
       }}>
         {label}
       </label>
@@ -106,6 +131,7 @@ function FloatingInput({
           type={isPassword ? (isVisible ? 'text' : 'password') : 'text'}
           value={value}
           onChange={onChange}
+          onKeyDown={onKeyDown}
           onFocus={() => { setFocused(true); onFocus?.() }}
           onBlur={() => { setFocused(false); onBlur?.() }}
           autoComplete={autoComplete}
@@ -118,8 +144,7 @@ function FloatingInput({
             background: 'transparent',
             fontSize: 15, paddingBottom: 8,
             paddingRight: isPassword ? 34 : 0,
-            color: '#18181b',
-            fontFamily: 'inherit',
+            color: '#18181b', fontFamily: 'inherit',
             letterSpacing: isPassword && !isVisible ? '0.12em' : 'normal',
             transition: 'border-color 0.18s',
             boxSizing: 'border-box',
@@ -166,7 +191,7 @@ function Checkbox({ checked, onChange, label }) {
 function LeftPanel() {
   return (
     <div style={{
-      flex: '0 0 48%', minHeight: '100vh',
+      width: '50%', minHeight: '100vh', flexShrink: 0,
       background: 'linear-gradient(145deg, #0a1628 0%, #0F52BA 55%, #2563eb 100%)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
@@ -180,47 +205,43 @@ function LeftPanel() {
       }} />
       {/* Radial glow */}
       <div style={{
-        position: 'absolute', top: '30%', left: '50%',
+        position: 'absolute', top: '35%', left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: 400, height: 400,
-        background: 'radial-gradient(circle, rgba(99,179,237,0.18) 0%, transparent 70%)',
+        width: 480, height: 480,
+        background: 'radial-gradient(circle, rgba(99,179,237,0.15) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
-      <div style={{ position: 'relative', textAlign: 'center', color: '#fff', maxWidth: 340 }}>
-        <div style={{
-          width: 64, height: 64,
-          background: 'rgba(255,255,255,0.12)',
-          borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          margin: '0 auto 2rem', border: '1px solid rgba(255,255,255,0.2)',
-        }}>
-          <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em' }}>P</span>
+      <div style={{ position: 'relative', textAlign: 'center', color: '#fff', maxWidth: 380 }}>
+        {/* Logo — sama persis dengan Android, fallback ke huruf P */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.75rem' }}>
+          <AppLogo size={72} />
         </div>
 
         <h1 style={{
-          fontSize: 'clamp(22px, 2.2vw, 30px)',
-          fontWeight: 800, lineHeight: 1.25,
-          margin: '0 0 1rem', letterSpacing: '-0.02em',
+          fontSize: 'clamp(20px, 2vw, 28px)',
+          fontWeight: 800, lineHeight: 1.3,
+          margin: '0 0 0.85rem', letterSpacing: '-0.02em',
         }}>
           Sistem Manajemen<br />Rekruitmen
         </h1>
 
         <p style={{
-          color: '#93c5fd', fontSize: 'clamp(13px, 1.1vw, 15px)',
-          lineHeight: 1.75, margin: '0 0 2.5rem',
+          color: '#93c5fd', fontSize: 'clamp(12px, 1vw, 14px)',
+          lineHeight: 1.75, margin: '0 0 2.25rem',
         }}>
           Pantau proses rekruitmen, SLA, approval,<br />
           dan KPI dalam satu platform terpadu.
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-          {[['SLA','Monitoring'],['KPI','Dashboard'],['Approval','Flow']].map(([a,b]) => (
+          {[['SLA','Monitoring'],['KPI','Dashboard'],['Approval','Flow']].map(([a, b]) => (
             <div key={a} style={{
-              background: 'rgba(255,255,255,0.08)',
-              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.09)',
+              border: '1px solid rgba(255,255,255,0.14)',
               borderRadius: 14, padding: '14px 8px',
             }}>
-              <p style={{ fontWeight: 700, fontSize: 16, margin: 0 }}>{a}</p>
+              <p style={{ fontWeight: 700, fontSize: 15, margin: 0 }}>{a}</p>
               <p style={{ color: '#93c5fd', fontSize: 11, margin: '3px 0 0' }}>{b}</p>
             </div>
           ))}
@@ -244,17 +265,17 @@ export default function LoginPage() {
   const [savedUsernames, setSavedUsernames]   = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
 
-  const usernameRef  = useRef(null)
-  const dropdownRef  = useRef(null)
+  const usernameRef = useRef(null)
+  const passwordRef = useRef(null)   // ← ref untuk fokus password via Enter
+  const dropdownRef = useRef(null)
 
   useEffect(() => { setSavedUsernames(loadUsernameHistory()) }, [])
 
-  // Close suggestions on outside click
   useEffect(() => {
     const handler = (e) => {
       if (
-        usernameRef.current  && !usernameRef.current.contains(e.target) &&
-        dropdownRef.current  && !dropdownRef.current.contains(e.target)
+        usernameRef.current && !usernameRef.current.contains(e.target) &&
+        dropdownRef.current && !dropdownRef.current.contains(e.target)
       ) setShowSuggestions(false)
     }
     document.addEventListener('mousedown', handler)
@@ -272,8 +293,25 @@ export default function LoginPage() {
     setTimeout(() => setShake(false), 520)
   }
 
+  // Enter di username → tutup suggestions → pindah fokus ke password (TIDAK submit, TIDAK error)
+  const handleUsernameKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      setShowSuggestions(false)
+      passwordRef.current?.focus()
+    }
+  }
+
+  // Enter di password → submit form
+  const handlePasswordKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSubmit(e)
+    }
+  }
+
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e?.preventDefault()
     setShowSuggestions(false)
     if (!form.username || !form.password) {
       setError('Username dan password wajib diisi.')
@@ -310,97 +348,124 @@ export default function LoginPage() {
           from { opacity: 0; transform: translateY(-6px) }
           to   { opacity: 1; transform: translateY(0) }
         }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px) }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(10px) }
           to   { opacity: 1; transform: translateY(0) }
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        html, body, #root { height: 100%; margin: 0; padding: 0; }
+
         .lp-root {
-          min-height: 100vh; display: flex;
-          background: #f8f8f6;
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          display: flex; height: 100vh; overflow: hidden;
+          font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          background: #f5f5f0;
         }
-        .lp-left { display: none; }
+
+        /* Panel kiri — 50% di desktop, tersembunyi di mobile */
+        .lp-left {
+          display: none;
+          width: 50%;
+          flex-shrink: 0;
+        }
         @media (min-width: 900px) {
           .lp-left { display: flex; }
-          .lp-right { background: #f8f8f6; }
         }
+
+        /* Panel kanan — 50% desktop, full mobile */
         .lp-right {
-          flex: 1; display: flex; align-items: center; justify-content: center;
-          padding: clamp(1.5rem, 4vw, 3rem);
-          background: #f8f8f6;
-          animation: fadeIn 0.35s ease;
+          flex: 1;
+          display: flex; align-items: center; justify-content: center;
+          padding: clamp(1.5rem, 4vw, 2.5rem);
+          overflow-y: auto;
+          background: #f5f5f0;
+          animation: fadeInUp 0.38s ease;
         }
+
         .lp-card {
-          width: 100%; max-width: 360px;
-          background: #ffffff;
-          border-radius: 20px;
-          padding: clamp(1.75rem, 4vw, 2.5rem) clamp(1.5rem, 4vw, 2.25rem);
-          box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.06);
+          width: 100%;
+          max-width: 360px;
         }
-        @media (min-width: 900px) {
+
+        /* Card shadow di mobile */
+        @media (max-width: 899px) {
           .lp-card {
-            box-shadow: none;
-            border-radius: 0;
-            background: transparent;
-            padding: 0;
+            background: #fff;
+            border-radius: 20px;
+            padding: clamp(1.75rem, 5vw, 2.25rem);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 12px 32px rgba(0,0,0,0.07);
           }
         }
+
         .lp-shake { animation: shake 0.52s cubic-bezier(.36,.07,.19,.97) both; }
+
         .lp-suggestions {
           animation: fadeSlideDown 0.16s ease;
-          position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+          position: absolute;
+          top: 100%;
+          left: 0; right: 0;
+          z-index: 200;
           background: #fff;
           border: 0.5px solid #e5e7eb;
           border-radius: 12px;
-          box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+          box-shadow: 0 8px 28px rgba(0,0,0,0.11);
           overflow: hidden;
-          margin-top: 4px;
-          max-height: 188px;
+          margin-top: 5px;
+          max-height: 192px;
           overflow-y: auto;
         }
+
         .lp-sug-item {
           width: 100%; display: flex; align-items: center; gap: 9px;
-          padding: 10px 14px; background: none; border: none;
+          padding: 11px 14px; background: none; border: none;
           cursor: pointer; text-align: left; font-family: inherit;
           font-size: 13px; color: #18181b; font-weight: 500;
           transition: background 0.1s;
         }
-        .lp-sug-item:hover { background: #f3f4f6; }
+        .lp-sug-item:hover { background: #f9fafb; }
         .lp-divider { height: 0.5px; background: #f3f4f6; margin: 0 14px; }
+
         .lp-btn {
-          width: 100%; height: 46px;
+          width: 100%; height: 48px;
           background: #18181b; color: #fff;
           border: none; border-radius: 999px;
-          font-size: 14px; font-weight: 600; letter-spacing: 0.01em;
+          font-size: 14px; font-weight: 600; letter-spacing: 0.02em;
           cursor: pointer; font-family: inherit;
-          transition: background 0.15s, transform 0.1s;
+          transition: all 0.2s cubic-bezier(.4,0,.2,1);
           display: flex; align-items: center; justify-content: center; gap: 8px;
+          box-shadow: 0 4px 12px rgba(24, 24, 27, 0.15);
         }
-        .lp-btn:hover:not(:disabled) { background: #000; }
-        .lp-btn:active:not(:disabled) { transform: scale(0.985); }
-        .lp-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .lp-btn:hover:not(:disabled) { 
+          background: #27272a; 
+          transform: translateY(-2px);
+          box-shadow: 0 8px 20px rgba(24, 24, 27, 0.25);
+        }
+        .lp-btn:active:not(:disabled) { 
+          transform: translateY(0); 
+          box-shadow: 0 2px 6px rgba(24, 24, 27, 0.2);
+        }
+        .lp-btn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
         .lp-spinner {
-          width: 16px; height: 16px;
+          width: 16px; height: 16px; flex-shrink: 0;
           border: 2px solid rgba(255,255,255,0.3);
           border-top-color: #fff; border-radius: 50%;
-          animation: spin 0.65s linear infinite; display: inline-block; flex-shrink: 0;
+          animation: spin 0.65s linear infinite; display: inline-block;
         }
-        .lp-input-wrapper { position: relative; }
       `}</style>
 
       <div className="lp-root">
-        {/* Left panel */}
-        <div className="lp-left" style={{ flex: '0 0 48%' }}>
+
+        {/* ── Left panel (50% desktop) ── */}
+        <div className="lp-left">
           <LeftPanel />
         </div>
 
-        {/* Right panel */}
+        {/* ── Right panel (50% desktop, full mobile) ── */}
         <div className="lp-right">
           <div className="lp-card">
 
-            {/* Sparkle */}
+            {/* Sparkle icon */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
               <svg width="26" height="26" viewBox="0 0 24 24" fill="#18181b">
                 <path d="M12 2C12 7.5 16.5 12 22 12C16.5 12 12 16.5 12 22C12 16.5 7.5 12 2 12C7.5 12 12 7.5 12 2Z" />
@@ -422,27 +487,23 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} autoComplete="off">
 
-              {/* ── Username + dropdown BAWAH input ── */}
+              {/* ── Username ── */}
               <div style={{ marginBottom: '1.5rem' }}>
-                <div className="lp-input-wrapper" ref={usernameRef}>
+                <div style={{ position: 'relative' }} ref={usernameRef}>
                   <FloatingInput
                     id="username"
                     label="Username"
                     value={form.username}
-                    onChange={e => {
-                      set('username', e.target.value)
-                      setShowSuggestions(true)
-                    }}
-                    onFocus={() => {
-                      if (savedUsernames.length > 0) setShowSuggestions(true)
-                    }}
+                    onChange={e => { set('username', e.target.value); setShowSuggestions(true) }}
+                    onFocus={() => { if (savedUsernames.length > 0) setShowSuggestions(true) }}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 160)}
+                    onKeyDown={handleUsernameKeyDown}
                     isError={!!error}
                     autoComplete="off"
                     autoFocus
                   />
 
-                  {/* Dropdown BAWAH — tidak menabrak heading */}
+                  {/* Dropdown BAWAH input */}
                   {showSuggestions && filteredUsernames.length > 0 && (
                     <div className="lp-suggestions" ref={dropdownRef}>
                       {filteredUsernames.map((u, i) => (
@@ -454,14 +515,14 @@ export default function LoginPage() {
                               e.preventDefault()
                               set('username', u)
                               setShowSuggestions(false)
+                              // Setelah pilih suggestion → langsung fokus password
+                              setTimeout(() => passwordRef.current?.focus(), 0)
                             }}
                           >
                             <User size={13} style={{ color: '#9CA3AF', flexShrink: 0 }} />
                             {u}
                           </button>
-                          {i < filteredUsernames.length - 1 && (
-                            <div className="lp-divider" />
-                          )}
+                          {i < filteredUsernames.length - 1 && <div className="lp-divider" />}
                         </div>
                       ))}
                     </div>
@@ -479,14 +540,16 @@ export default function LoginPage() {
                   label="Password"
                   value={form.password}
                   onChange={e => set('password', e.target.value)}
+                  onKeyDown={handlePasswordKeyDown}
                   isError={!!error}
                   isPassword isVisible={showPwd}
                   onToggle={() => setShowPwd(p => !p)}
                   autoComplete="current-password"
+                  inputRef={passwordRef}
                 />
               </div>
 
-              {/* ── Error ── */}
+              {/* ── Error message ── */}
               {error && (
                 <div className={shake ? 'lp-shake' : ''} style={{
                   fontSize: 11.5, color: '#DC2626',
@@ -523,7 +586,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Footer */}
             <p style={{
               textAlign: 'center', fontSize: 11.5, color: '#9CA3AF',
               marginTop: '1.5rem', marginBottom: 0,

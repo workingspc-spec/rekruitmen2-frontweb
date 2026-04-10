@@ -94,18 +94,18 @@ export default function DashboardPage() {
       {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-slate-500 text-sm">Selamat datang,</p>
-          <h1 className="page-title">{user?.nama ?? '–'}</h1>
-          <p className="text-xs text-sapphire font-semibold mt-0.5">{user?.bagian ?? ''}</p>
+          <p className="text-slate-500 text-sm font-medium">Selamat datang,</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{user?.nama ?? '–'}</h1>
+          <p className="text-xs text-sapphire font-bold mt-1.5 uppercase tracking-wider">{user?.bagian ?? ''}</p>
         </div>
 
         <button
           onClick={() => setShowPicker(true)}
-          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-sapphire transition-colors"
+          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
         >
-          <Calendar size={14} className="text-sapphire" />
-          <span className="text-navy font-medium text-xs max-w-[100px] truncate">{label}</span>
-          <ChevronDown size={14} className="text-slate-400" />
+          <Calendar size={16} className="text-sapphire" />
+          <span className="text-slate-700 font-semibold text-xs max-w-[120px] truncate">{label}</span>
+          <ChevronDown size={16} className="text-slate-400" />
         </button>
       </div>
 
@@ -156,17 +156,17 @@ export default function DashboardPage() {
       {/* ── SLA Summary Cards ── */}
       {summary && (
         <div>
-          <p className="section-title">SLA Monitoring</p>
-          <div className="grid grid-cols-3 gap-4">
+          <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
+          <div className="grid grid-cols-3 gap-5">
             {[
               { label: 'Aktif',        val: summary.activeRequests,  color: '#0F52BA' },
-              { label: 'Terlambat',    val: summary.overdueRequests, color: '#D32F2F' },
-              { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F57C00' },
+              { label: 'Terlambat',    val: summary.overdueRequests, color: '#DC2626' },
+              { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F97316' },
             ].map(({ label, val, color }) => (
               <button key={label} onClick={() => navigate('/monitoring')}
-                className="card text-center hover:shadow-card-hover transition-shadow">
-                <p className="text-2xl font-display font-black" style={{ color }}>{val}</p>
-                <p className="text-xs text-slate-500 mt-0.5 font-medium">{label}</p>
+                className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300">
+                <p className="text-4xl font-black mb-1.5" style={{ color }}>{val}</p>
+                <p className="text-sm text-slate-500 font-semibold tracking-wide">{label}</p>
               </button>
             ))}
           </div>
@@ -175,8 +175,8 @@ export default function DashboardPage() {
 
       {/* ── Quick Menu ── */}
       <div>
-        <p className="section-title">Menu Utama</p>
-        <div className="space-y-2">
+        <p className="text-lg font-bold text-slate-800 mb-3">Menu Utama</p>
+        <div className="space-y-3">
           {[
             { to: '/recruitment', label: 'Permintaan Rekruitmen', sub: 'Buat & kelola permintaan', Icon: ClipboardList },
             { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan', Icon: CheckSquare },
@@ -186,15 +186,15 @@ export default function DashboardPage() {
               : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
           ].map(({ to, label, sub, Icon }) => (
             <button key={to} onClick={() => navigate(to)}
-              className="card w-full text-left flex items-center gap-4 hover:shadow-card-hover transition-shadow">
-              <div className="w-10 h-10 rounded-xl bg-ice-blue flex items-center justify-center shrink-0">
-                <Icon size={20} className="text-sapphire" />
+              className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+              <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
+                <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-navy text-sm">{label}</p>
-                <p className="text-xs text-slate-400">{sub}</p>
+                <p className="font-bold text-slate-800 text-[15px]">{label}</p>
+                <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>
               </div>
-              <ChevronRight size={18} className="text-slate-300" />
+              <ChevronRight size={20} className="text-slate-300 group-hover:text-sapphire group-hover:translate-x-1 transition-all" />
             </button>
           ))}
         </div>

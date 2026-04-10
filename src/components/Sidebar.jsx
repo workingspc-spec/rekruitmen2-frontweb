@@ -32,14 +32,16 @@ export default function Sidebar() {
     // flex flex-col: agar nav (flex-1) mengisi ruang dan profil selalu di bawah
     <aside className="w-60 h-screen bg-white border-r border-slate-100 flex flex-col shrink-0">
       {/* Logo */}
-      <div className="px-5 py-6 border-b border-slate-100 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-sapphire to-blue-700 flex items-center justify-center shadow-sm">
-            <span className="text-white font-display font-bold text-sm">P</span>
-          </div>
+      <div className="px-6 py-6 border-b border-slate-100 shrink-0">
+        <div className="flex items-center gap-3.5">
+          <img 
+            src="/logo_app.png" 
+            alt="Logo PKAR" 
+            className="w-11 h-11 object-contain drop-shadow-sm" 
+          />
           <div>
-            <p className="font-display font-bold text-navy text-sm leading-tight">PKAR</p>
-            <p className="text-xs text-slate-400">Sistem Rekruitmen</p>
+            <p className="font-display font-extrabold text-slate-800 text-lg leading-tight tracking-tight">PKAR</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Sistem Rekruitmen</p>
           </div>
         </div>
       </div>

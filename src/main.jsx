@@ -1,3 +1,4 @@
+// src/main.jsx
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -5,7 +6,8 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 
-const queryClient = new QueryClient({
+// Export queryClient agar AuthContext bisa clear cache saat logout/login
+export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,

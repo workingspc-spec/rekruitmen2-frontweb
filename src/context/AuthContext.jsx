@@ -1,5 +1,7 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
+import { queryClient } from '../main'   // ← import queryClient
 
 const AuthContext = createContext(null)
 
@@ -14,6 +16,8 @@ export function AuthProvider({ children }) {
     setToken(null)
     setUser(null)
     delete api.defaults.headers.common['Authorization']
+    // ✅ Hapus semua cache React Query milik akun lama
+    queryClient.clear()
   }, [])
 
   useEffect(() => {
@@ -42,6 +46,10 @@ export function AuthProvider({ children }) {
   }, [logout])
 
   const login = useCallback(async (username, password, expiredDays) => {
+    // ✅ Clear cache akun sebelumnya sebelum login akun baru
+    // Mencegah data lama tampil sesaat sebelum fetch selesai
+    queryClient.clear()
+
     const { data } = await api.post('/auth/login', { username, password, expiredDays })
     const { token: t, user: u } = data.data
     localStorage.setItem('token', t)
