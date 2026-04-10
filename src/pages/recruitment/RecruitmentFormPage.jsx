@@ -11,35 +11,147 @@ import {
   Plus, Minus, AlertTriangle, CheckCircle2, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+// Tambahkan fungsi date-fns ini di baris import
+// src/pages/recruitment/RecruitmentFormPage.jsx
+import { 
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, 
+  isSameMonth, isSameDay, isBefore, isAfter, addMonths, subMonths, 
+  setYear, setMonth, subYears, addYears 
+} from 'date-fns';
+import { id } from 'date-fns/locale'
+import { ChevronLeft, ChevronRight } from 'lucide-react' // Pastikan ini di-import
 
-// ── Date Picker Modal ─────────────────────────────────────────────────────────
+
+// ── Modern Single Date Picker Modal ──────────────────────────────────────────
 function DatePickerModal({ value, onChange, onClose, min }) {
-  const [input, setInput] = useState(value || '')
-  // FIX: toApiDate sekarang pakai LOCAL time (helpers.js sudah diperbaiki)
-  const minStr = min ? toApiDate(min.getTime()) : ''
+  const initialDate = value ? new Date(value) : new Date()
+  const [viewDate, setViewDate] = useState(initialDate)
+  const [viewMode, setViewMode] = useState('days') // 'days' | 'months' | 'years'
+  const today = new Date(); today.setHours(0,0,0,0)
+
+  // Builder grid hari
+  const buildDays = (date) => {
+    const start = startOfWeek(startOfMonth(date), { weekStartsOn: 0 })
+    const end = endOfWeek(endOfMonth(date), { weekStartsOn: 0 })
+    const days = []; let d = start;
+    while (!isAfter(d, end)) { days.push(d); d = addDays(d, 1) }
+    return days
+  }
+  const days = buildDays(viewDate)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+  const years = Array.from({ length: 12 }, (_, i) => viewDate.getFullYear() - 5 + i)
+
+  const handlePrev = () => {
+    if (viewMode === 'days') setViewDate(d => subMonths(d, 1))
+    else if (viewMode === 'years') setViewDate(d => subYears(d, 12))
+    else setViewDate(d => subYears(d, 1))
+  }
+  const handleNext = () => {
+    if (viewMode === 'days') setViewDate(d => addMonths(d, 1))
+    else if (viewMode === 'years') setViewDate(d => addYears(d, 12))
+    else setViewDate(d => addYears(d, 1))
+  }
+
+  const handleDayClick = (day) => {
+    if (min && isBefore(day, min) && !isSameDay(day, min)) return; // Validasi min date
+    onChange(format(day, 'yyyy-MM-dd'))
+    onClose()
+  }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <h3 className="font-display font-bold text-navy text-lg mb-4">Pilih Tanggal</h3>
-        <input
-          type="date"
-          className="input mb-1"
-          value={input}
-          min={minStr}
-          onChange={e => setInput(e.target.value)}
-        />
-        {minStr && (
-          <p className="text-xs text-slate-400 mb-4">Minimal: {formatDate(minStr)}</p>
-        )}
-        <div className="flex gap-3 mt-4">
-          <button className="btn-ghost flex-1 justify-center" onClick={onClose}>Batal</button>
-          <button
-            className="btn-primary flex-1 justify-center"
-            onClick={() => { if (input) { onChange(input); onClose() } }}
-          >
-            OK
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[22rem] p-5">
+        
+        {/* Navigation Header */}
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={handlePrev} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+            <ChevronLeft size={16} />
           </button>
+          
+          <button
+            onClick={() => {
+              if (viewMode === 'days') setViewMode('months')
+              else if (viewMode === 'months') setViewMode('years')
+              else setViewMode('days')
+            }}
+            className="text-[15px] font-bold text-navy capitalize hover:bg-slate-100 px-3 py-1 rounded-lg transition-colors"
+          >
+            {viewMode === 'days' ? format(viewDate, 'MMMM yyyy', { locale: id }) :
+             viewMode === 'months' ? format(viewDate, 'yyyy') :
+             `${years[0]} - ${years[years.length - 1]}`}
+          </button>
+
+          <button onClick={handleNext} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+
+        <div className="min-h-[220px]">
+          {/* DAYS VIEW */}
+          {viewMode === 'days' && (
+            <>
+              <div className="grid grid-cols-7 mb-2">
+                {['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'].map(d => (
+                  <div key={d} className="text-center text-[10px] font-bold text-slate-400">{d}</div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-y-1">
+                {days.map((day, i) => {
+                  const inMonth = isSameMonth(day, viewDate)
+                  const isSelected = value && isSameDay(day, initialDate)
+                  const isToday = isSameDay(day, today)
+                  const isDisabled = min && isBefore(day, min) && !isSameDay(day, min)
+
+                  let textClass = 'text-slate-600 hover:bg-slate-50'
+                  if (!inMonth) textClass = 'text-slate-300'
+                  if (isDisabled) textClass = 'text-slate-200 cursor-not-allowed bg-slate-50/50'
+                  if (isSelected) textClass = 'bg-sapphire text-white font-bold shadow-md hover:bg-sapphire'
+                  else if (isToday) textClass += ' font-bold text-sapphire border border-sapphire/30'
+
+                  return (
+                    <button
+                      key={i} onClick={() => inMonth && !isDisabled && handleDayClick(day)} disabled={!inMonth || isDisabled}
+                      className={`h-9 w-9 mx-auto rounded-full text-xs flex items-center justify-center transition-all ${textClass}`}
+                    >
+                      {day.getDate()}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+
+          {/* MONTHS VIEW */}
+          {viewMode === 'months' && (
+            <div className="grid grid-cols-3 gap-2">
+              {months.map((m, i) => (
+                <button
+                  key={m} onClick={() => { setViewDate(setMonth(viewDate, i)); setViewMode('days') }}
+                  className={`py-3 text-sm font-semibold rounded-xl transition-colors ${viewDate.getMonth() === i ? 'bg-sapphire text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* YEARS VIEW */}
+          {viewMode === 'years' && (
+            <div className="grid grid-cols-3 gap-2">
+              {years.map((y) => (
+                <button
+                  key={y} onClick={() => { setViewDate(setYear(viewDate, y)); setViewMode('months') }}
+                  className={`py-3 text-sm font-semibold rounded-xl transition-colors ${viewDate.getFullYear() === y ? 'bg-sapphire text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+                >
+                  {y}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-slate-100 flex justify-end">
+          <button className="btn-ghost text-sm px-4" onClick={onClose}>Batal</button>
         </div>
       </div>
     </div>,
