@@ -7,7 +7,7 @@ import { recruitmentApi } from '../../api/services'
 import { formatDate, getApprovalStatus } from '../../utils/helpers'
 import { Badge, EmptyState, PageLoader, ErrorBox, ConfirmDialog, Spinner } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
-import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X } from 'lucide-react'
+import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ─── Period Options ────────────────────────────────────────────────────────────
@@ -95,6 +95,20 @@ const STATUS_OPTS = [
   { value: 'rejected', label: 'Ditolak' },
 ]
 
+/**
+ * ApprovalChip — chip tanggal approval per approver.
+ * Identik Android: ApprovalChip di RecruitmentListScreen.kt
+ */
+function ApprovalChip({ label, date }) {
+  return (
+    <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
+      <Clock size={11} className="text-green-600 shrink-0" />
+      <span className="text-xs font-semibold text-green-700">{label}</span>
+      <span className="text-xs text-green-500">({formatDate(date)})</span>
+    </div>
+  )
+}
+
 export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const { user } = useAuth()
   const navigate  = useNavigate()
@@ -119,8 +133,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       toast.success(`${selected.size} permintaan berhasil dihapus.`)
       setSelected(new Set())
       setShowDeleteConfirm(false)
-      // FIX: Cross-screen refresh — invalidate semua query yang terdampak
-      // Identik Android: RefreshEventBus.emit(RecruitmentListRefresh + DashboardRefresh)
       qc.invalidateQueries({ queryKey: ['my-requests'] })
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
@@ -263,6 +275,10 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                   const canEdit    = isOwner(r) && (isPending(r) || r.sla_is_editable)
                   const isSelected = selected.has(r.tpk_nomor)
 
+                  // FIX Gap 1a: tampilkan approval chips hanya jika ada tanggal
+                  const showAtasanChip = r.tpk_approveatasan === 1 && r.tgl_approve_atasan
+                  const showHrdChip    = r.tpk_approveHRD === 1    && r.tgl_approve_hrd
+
                   return (
                     <tr key={r.tpk_nomor} className={isSelected ? 'bg-ice-blue/40' : ''}>
                       <td>
@@ -279,30 +295,68 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                       <td>{r.tpk_bagian}</td>
                       <td className="whitespace-nowrap">{formatDate(r.tpk_tanggal)}</td>
                       <td className="whitespace-nowrap">{formatDate(r.tpk_tgl_butuh)}</td>
+
+                      {/* ── Kolom Status (dengan ApprovalChip + slaIsEditable banner) ── */}
                       <td>
-                        <span className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
+                        {/* Badge status utama */}
+                        <span
+                          className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
                           style={{
                             background: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#fef2f2'
                               : r.tpk_approveHRD === 1 ? '#f0fdf4' : '#fff7ed',
                             color: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#991b1b'
                               : r.tpk_approveHRD === 1 ? '#166534' : '#c2410c',
-                          }}>
+                          }}
+                        >
                           {statusMeta.label}
                         </span>
+
+                        {/* FIX Gap 1a: Approval chips dengan tanggal — identik Android */}
+                        {(showAtasanChip || showHrdChip) && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {showAtasanChip && (
+                              <ApprovalChip label="Atasan ✓" date={r.tgl_approve_atasan} />
+                            )}
+                            {showHrdChip && (
+                              <ApprovalChip label="HRD ✓" date={r.tgl_approve_hrd} />
+                            )}
+                          </div>
+                        )}
+
+                        {/* FIX Gap 1b: Banner slaIsEditable penuh — identik Android */}
                         {r.sla_is_editable === 1 && (
-                          <span className="ml-1 badge text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#fff7ed', color: '#c2410c' }}>
-                            Perlu Update
-                          </span>
+                          <div className="flex items-center gap-1.5 mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1.5">
+                            <Edit2 size={12} className="text-orange-500 shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-orange-600 leading-tight">HRD Minta Update Tanggal</p>
+                              <p className="text-xs text-slate-400 leading-tight">Tap Edit untuk mengubah tanggal</p>
+                            </div>
+                          </div>
                         )}
                       </td>
+
+                      {/* ── Kolom Target SLA (dengan sla_source label) ── */}
                       <td className="whitespace-nowrap text-xs">
                         {r.sla_final_target_date ? (
-                          <span className="flex items-center gap-1">
-                            <Calendar size={12} className="text-slate-400" />
-                            {formatDate(r.sla_final_target_date)}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="flex items-center gap-1">
+                              <Calendar size={12} className="text-slate-400" />
+                              {formatDate(r.sla_final_target_date)}
+                            </span>
+                            {/* FIX Gap 2: sla_source label kecil — identik Android */}
+                            {r.sla_source && (
+                              <span className={`text-xs font-medium px-1.5 py-0.5 rounded w-fit ${
+                                r.sla_source === 'SYSTEM'   ? 'bg-amber-50 text-amber-600' :
+                                r.sla_source === 'USER'     ? 'bg-green-50 text-green-600' :
+                                                              'bg-blue-50 text-blue-600'
+                              }`}>
+                                {r.sla_source}
+                              </span>
+                            )}
+                          </div>
                         ) : '–'}
                       </td>
+
                       <td>
                         <div className="flex items-center justify-end gap-1">
                           <button className="btn-icon p-1.5" title="Detail" onClick={() => navigate(`/recruitment/${encodeURIComponent(r.tpk_nomor)}`)}>
