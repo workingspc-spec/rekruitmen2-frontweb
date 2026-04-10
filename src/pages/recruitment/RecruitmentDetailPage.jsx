@@ -1,15 +1,27 @@
+// src/pages/recruitment/RecruitmentDetailPage.jsx
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { recruitmentApi } from '../../api/services'
 import { formatDate } from '../../utils/helpers'
 import { getSlaStatusMeta } from '../../utils/helpers'
-import { Edit2, Loader2, ChevronRight, Flag, Timer, User, Building2, Calendar, Users, FileText, CheckCircle2, XCircle, Clock } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import {
+  Edit2, Loader2, Flag, User, Building2, Calendar, Users,
+  FileText, CheckCircle2, XCircle, Clock, Info,
+} from 'lucide-react'
 
 export default function RecruitmentDetailPage() {
   const { nomor }   = useParams()
   const navigate    = useNavigate()
-  const { user }    = useAuth()
+  // FIX: ambil isHrd dari AuthContext
+  // Audit: canEdit logic — pemeriksaan isHrd==0 tidak ada di web
+  const { user, isHrd } = useAuth()
+
+  // FIX: state untuk dialog tooltip SLA — muncul saat klik ikon (i) pada sumber SYSTEM
+  // Audit: RecruitmentDetailPage.jsx — tambah state + modal dialog "Informasi Penyesuaian"
+  // Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM
+  const [showSlaTooltip, setShowSlaTooltip] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['recruitment-detail', nomor],
@@ -29,9 +41,12 @@ export default function RecruitmentDetailPage() {
     </div>
   )
 
-  const isDraft   = data.tpk_approveatasan === 0 && data.tpk_approveHRD === 0
-  const isOwner   = data.tpk_peminta?.trim() === user?.kode
-  const canEdit   = isOwner && (isDraft || data.sla_is_editable === 1)
+  const isDraft = data.tpk_approveatasan === 0 && data.tpk_approveHRD === 0
+  const isOwner = data.tpk_peminta?.trim() === user?.kode
+  // FIX: tambah !isHrd pada canEdit condition
+  // Audit: Android canEdit = isHrd==0 && detail.peminta == currentUserKode && (isDraft || slaIsEditable)
+  // Web sebelumnya: canEdit = isOwner && (isDraft || sla_is_editable) — tidak cek isHrd
+  const canEdit = !isHrd && isOwner && (isDraft || data.sla_is_editable === 1)
 
   const keterangans = [1,2,3,4,5,6,7,8,9,10]
     .map(i => data[`tpk_keterangan${i === 1 ? '' : i}`])
@@ -42,11 +57,13 @@ export default function RecruitmentDetailPage() {
     .filter(Boolean)
 
   const approvalStatus = () => {
-    if (data.tpk_approveatasan === 2) return { label: 'Ditolak Atasan', color: 'text-red-600', bg: 'bg-red-50 border-red-200' }
-    if (data.tpk_approveHRD === 2)    return { label: 'Ditolak HRD',    color: 'text-red-600', bg: 'bg-red-50 border-red-200' }
-    if (data.tpk_approveatasan === 0) return { label: 'Menunggu Approval Atasan', color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' }
-    if (data.tpk_approveHRD === 0)    return { label: 'Menunggu Approval HRD',    color: 'text-amber-600', bg: 'bg-amber-50 border-amber-200' }
-    return { label: 'Disetujui Lengkap', color: 'text-green-700', bg: 'bg-green-50 border-green-200' }
+    if (data.tpk_approveatasan === 2 || data.tpk_approveHRD === 2)
+      return { label: 'Ditolak',                   color: 'text-red-600',    bg: 'bg-red-50 border-red-200' }
+    if (data.tpk_approveatasan === 0)
+      return { label: 'Menunggu Approval Atasan',   color: 'text-amber-600',  bg: 'bg-amber-50 border-amber-200' }
+    if (data.tpk_approveHRD === 0)
+      return { label: 'Menunggu Approval HRD',      color: 'text-amber-600',  bg: 'bg-amber-50 border-amber-200' }
+    return   { label: 'Disetujui Lengkap',          color: 'text-green-700',  bg: 'bg-green-50 border-green-200' }
   }
 
   const status = approvalStatus()
@@ -82,11 +99,11 @@ export default function RecruitmentDetailPage() {
           <p className="text-sm text-slate-400 mt-0.5">{data.tpk_bagian}</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <InfoItem icon={<User size={15} />}      label="Peminta"     value={data.tpk_peminta} />
-          <InfoItem icon={<Users size={15} />}     label="Jumlah"      value={`${data.tpk_jumlah} orang`} />
+          <InfoItem icon={<User size={15} />}      label="Peminta"        value={data.tpk_peminta} />
+          <InfoItem icon={<Users size={15} />}     label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
           <InfoItem icon={<Calendar size={15} />}  label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
-          <InfoItem icon={<Calendar size={15} />}  label="Tgl Butuh"   value={formatDate(data.tpk_tgl_butuh)} />
-          <InfoItem icon={<Building2 size={15} />} label="Jabatan Kode" value={data.jab_kode || data.tpk_jab_kode} />
+          <InfoItem icon={<Calendar size={15} />}  label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
+          <InfoItem icon={<Building2 size={15} />} label="Jabatan Kode"   value={data.jab_kode || data.tpk_jab_kode} />
         </div>
       </div>
 
@@ -111,7 +128,7 @@ export default function RecruitmentDetailPage() {
             {data.sla_min_days && (
               <SlaRow label="Lead Time Minimum" value={`${data.sla_min_days} hari kerja`} />
             )}
-            <div className="pt-2 border-t border-slate-100">
+            <div className="pt-2 border-t border-slate-100 flex items-center gap-2 flex-wrap">
               <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
                 data.sla_source === 'SYSTEM' ? 'bg-amber-100 text-amber-700' :
                 data.sla_source === 'USER'   ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
@@ -121,9 +138,22 @@ export default function RecruitmentDetailPage() {
                  data.sla_source === 'FLEXIBLE' ? 'Jabatan Fleksibel' : data.sla_source}
               </span>
               {data.sla_is_editable === 1 && (
-                <span className="ml-2 text-xs font-semibold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
                   Perlu Update Tanggal
                 </span>
+              )}
+              {/* FIX: Tombol ikon (i) untuk sumber SYSTEM — membuka dialog tooltip
+                  Audit: RecruitmentDetailPage.jsx — tambah state + modal dialog
+                  Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM */}
+              {data.sla_source === 'SYSTEM' && (
+                <button
+                  onClick={() => setShowSlaTooltip(true)}
+                  className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors"
+                  title="Info penyesuaian tanggal"
+                >
+                  <Info size={14} />
+                  Info
+                </button>
               )}
             </div>
           </div>
@@ -190,6 +220,33 @@ export default function RecruitmentDetailPage() {
           />
         </div>
       </div>
+
+      {/* FIX: Dialog Tooltip "Informasi Penyesuaian" untuk sla_source SYSTEM
+          Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM.
+          Menjelaskan mengapa tanggal disesuaikan oleh sistem — dengan bahasa netral. */}
+      {showSlaTooltip && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <Info size={20} className="text-amber-600" />
+              </div>
+              <h3 className="font-display font-bold text-navy text-lg">Informasi Penyesuaian</h3>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Tanggal kebutuhan telah disesuaikan otomatis untuk memastikan ketersediaan waktu
+              proses yang cukup sejak persetujuan terakhir. Penyesuaian ini dilakukan oleh
+              sistem mengikuti standar lead time rekrutmen yang berlaku.
+            </p>
+            <button
+              onClick={() => setShowSlaTooltip(false)}
+              className="btn-primary w-full justify-center"
+            >
+              Mengerti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -217,9 +274,9 @@ function SlaRow({ label, value, bold }) {
 
 function ApprovalItem({ title, status, date }) {
   const meta = {
-    0: { label: 'Menunggu', icon: <Clock size={16} />, color: 'text-amber-500' },
+    0: { label: 'Menunggu',  icon: <Clock size={16} />,        color: 'text-amber-500' },
     1: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
-    2: { label: 'Ditolak', icon: <XCircle size={16} />, color: 'text-red-500' },
+    2: { label: 'Ditolak',   icon: <XCircle size={16} />,      color: 'text-red-500' },
   }[status] ?? { label: 'Unknown', icon: null, color: 'text-slate-400' }
 
   return (

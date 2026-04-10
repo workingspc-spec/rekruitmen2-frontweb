@@ -1,3 +1,4 @@
+// src/pages/recruitment/RecruitmentFormPage.jsx
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -5,16 +6,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, recruitmentApi } from '../../api/services'
 import { validateTglButuh, getMinAllowedDate } from '../../utils/workday'
 import { formatDate, toApiDate } from '../../utils/helpers'
-import { Save, Lock, Info, Calendar, ChevronDown, Plus, Minus, AlertTriangle, CheckCircle2, Loader2 } from 'lucide-react'
+import {
+  Save, Lock, Info, Calendar, ChevronDown,
+  Plus, Minus, AlertTriangle, CheckCircle2, Loader2,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // ── Date Picker Modal ─────────────────────────────────────────────────────────
 function DatePickerModal({ value, onChange, onClose, min }) {
   const [input, setInput] = useState(value || '')
+  // FIX: toApiDate sekarang pakai LOCAL time (helpers.js sudah diperbaiki)
   const minStr = min ? toApiDate(min.getTime()) : ''
 
-  // createPortal: render langsung ke document.body agar position:fixed
-  // selalu relatif ke viewport, tidak terpengaruh transform/opacity ancestor
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
@@ -50,7 +53,6 @@ function DropdownModal({ title, items, itemKey, itemLabel, selected, onSelect, o
   const filtered = q ? items.filter(i => itemLabel(i).toLowerCase().includes(q.toLowerCase())) : items
 
   return createPortal(
-    // items-center: selalu muncul di tengah layar (bukan items-end yang jatuh ke bawah)
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
@@ -102,7 +104,6 @@ export default function RecruitmentFormPage() {
     queryKey: ['jabatan-rules'],
     queryFn: () => masterApi.jabatanRules().then(r => r.data.data ?? []),
   })
-
   const { data: detail, isLoading: detailLoading } = useQuery({
     queryKey: ['recruitment-detail', nomor],
     queryFn: () => recruitmentApi.detail(nomor).then(r => r.data.data),
@@ -176,7 +177,12 @@ export default function RecruitmentFormPage() {
     mutationFn: (body) => recruitmentApi.save(body),
     onSuccess: () => {
       toast.success(isEdit ? 'Permintaan berhasil diperbarui!' : 'Permintaan berhasil dibuat!')
+      // FIX: Invalidate queries termasuk dashboard agar data terupdate
+      // Audit: RecruitmentFormPage.jsx — setelah save berhasil, dashboard tidak di-refresh
+      // Android: emit DashboardRefresh + RecruitmentListRefresh via RefreshEventBus
       qc.invalidateQueries({ queryKey: ['my-requests'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })    // ← TAMBAHAN
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })  // ← TAMBAHAN
       navigate('/recruitment')
     },
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menyimpan.'),
@@ -304,13 +310,22 @@ export default function RecruitmentFormPage() {
               </div>
               {isLocked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
+
+            {/* Validasi tanggal — identik Android validateTanggalButuhUseCase */}
             {jabatan && tglButuh && vlResult && (
-              <div className={`mt-1.5 flex items-center gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
+              <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
                 {vlResult.valid
-                  ? <><CheckCircle2 size={13} /> Sesuai target lead time HRD</>
-                  : <><AlertTriangle size={13} /> {vlResult.message}</>
+                  ? <><CheckCircle2 size={13} className="mt-0.5 shrink-0" /> Sesuai target lead time HRD</>
+                  : <><AlertTriangle size={13} className="mt-0.5 shrink-0" /> {vlResult.message}</>
                 }
               </div>
+            )}
+
+            {/* Hint tanggal minimal */}
+            {jabatan && !tglButuh && minDate && !isReSchedule && (
+              <p className="mt-1 text-xs text-slate-400">
+                Minimal: {formatDate(toApiDate(minDate.getTime()))}
+              </p>
             )}
           </div>
         </div>
@@ -360,7 +375,7 @@ export default function RecruitmentFormPage() {
         </button>
       </div>
 
-      {/* Modals — via createPortal, selalu muncul di tengah viewport */}
+      {/* Modals */}
       {showJabatan && (
         <DropdownModal title="Pilih Jabatan" items={jabatanList}
           itemKey={j => j.jab_kode} itemLabel={j => j.jab_nama}

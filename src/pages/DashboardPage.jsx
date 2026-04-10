@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import { dashboardApi } from '../api/services'
 import { formatDate } from '../utils/helpers'
 import { StatCard, AlertBanner, PageLoader, ErrorBox } from '../components/ui'
-import { PeriodPickerModal } from '../components/PeriodPickerModal'  // ← shared
+import { PeriodPickerModal } from '../components/PeriodPickerModal'
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
@@ -72,6 +72,10 @@ export default function DashboardPage() {
   const stats   = statsQ.data
   const summary = summaryQ.data
 
+  /**
+   * Navigate ke halaman dengan meneruskan period filter via query param.
+   * Identik Android: navigateWithPeriod() di DashboardPage.kt
+   */
   const navigateWithPeriod = (path) => {
     if (!period || period === 'All Time') {
       navigate(path)
@@ -89,7 +93,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header (Diperbarui lebih bold & bersih) ── */}
+      {/* ── Header ── */}
       <div className="flex items-start justify-between">
         <div>
           <p className="text-slate-500 text-sm font-medium">Selamat datang,</p>
@@ -111,9 +115,13 @@ export default function DashboardPage() {
       {summary?.needUserUpdate > 0 && (
         <AlertBanner
           type="warning"
-          message={isHrd
-            ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
-            : 'HRD meminta Anda memperbarui tanggal target pada permintaan Anda.'}
+          message={
+            isHrd
+              ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
+              : 'HRD meminta Anda memperbarui tanggal target pada permintaan Anda.'
+          }
+          // FIX: non-HRD harus navigasi ke /recruitment (bukan /monitoring)
+          // Identik Android: isHrd != 1 → onNavigateToRecruitment
           onAction={() => navigate(isHrd ? '/monitoring' : '/recruitment')}
           actionLabel="Lihat"
         />
@@ -136,22 +144,43 @@ export default function DashboardPage() {
         <ErrorBox message="Gagal memuat statistik." onRetry={() => statsQ.refetch()} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Permintaan" value={stats?.totalPermintaan ?? 0}
-            icon={ClipboardList} color="#0F52BA"
-            onClick={() => navigateWithPeriod('/recruitment')} />
-          <StatCard label="Pending Approval" value={stats?.pendingApproval ?? 0}
-            icon={CheckSquare} color="#F57C00" alert={stats?.pendingApproval > 0}
-            onClick={() => navigateWithPeriod('/approval')} />
-          <StatCard label="SLA Aktif" value={summary?.activeRequests ?? 0}
-            icon={Activity} color="#0F52BA"
-            onClick={() => navigate('/monitoring')} />
-          <StatCard label="Selesai Bulan Ini" value={summary?.completedThisMonth ?? 0}
-            icon={CheckCircle2} color="#2E7D32"
-            onClick={() => navigate('/monitoring')} />
+          {/* Kartu Permintaan — teruskan period saat klik */}
+          <StatCard
+            label="Permintaan"
+            value={stats?.totalPermintaan ?? 0}
+            icon={ClipboardList}
+            color="#0F52BA"
+            onClick={() => navigateWithPeriod('/recruitment')}
+          />
+          {/* FIX: Kartu Persetujuan juga harus meneruskan period
+              Audit: DashboardPage.jsx — StatCard Persetujuan harus pakai navigateWithPeriod('/approval')
+              Android: klik kartu Persetujuan meneruskan currentPeriod ke ApprovalList */}
+          <StatCard
+            label="Pending Approval"
+            value={stats?.pendingApproval ?? 0}
+            icon={CheckSquare}
+            color="#F57C00"
+            alert={stats?.pendingApproval > 0}
+            onClick={() => navigateWithPeriod('/approval')}
+          />
+          <StatCard
+            label="SLA Aktif"
+            value={summary?.activeRequests ?? 0}
+            icon={Activity}
+            color="#0F52BA"
+            onClick={() => navigate('/monitoring')}
+          />
+          <StatCard
+            label="Selesai Bulan Ini"
+            value={summary?.completedThisMonth ?? 0}
+            icon={CheckCircle2}
+            color="#2E7D32"
+            onClick={() => navigate('/monitoring')}
+          />
         </div>
       )}
 
-      {/* ── SLA Summary Cards (Desain Premium) ── */}
+      {/* ── SLA Summary Cards ── */}
       {summary && (
         <div>
           <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
@@ -161,8 +190,11 @@ export default function DashboardPage() {
               { label: 'Terlambat',    val: summary.overdueRequests, color: '#DC2626' },
               { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F97316' },
             ].map(({ label, val, color }) => (
-              <button key={label} onClick={() => navigate('/monitoring')}
-                className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300">
+              <button
+                key={label}
+                onClick={() => navigate('/monitoring')}
+                className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300"
+              >
                 <p className="text-4xl font-black mb-1.5" style={{ color }}>{val}</p>
                 <p className="text-sm text-slate-500 font-semibold tracking-wide">{label}</p>
               </button>
@@ -171,7 +203,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Quick Menu (Hover Effects Premium) ── */}
+      {/* ── Quick Menu ── */}
       <div>
         <p className="text-lg font-bold text-slate-800 mb-3">Menu Utama</p>
         <div className="space-y-3">
@@ -183,8 +215,11 @@ export default function DashboardPage() {
               ? { to: '/kpi-hrd',      label: 'KPI HRD',      sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
               : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
           ].map(({ to, label, sub, Icon }) => (
-            <button key={to} onClick={() => navigate(to)}
-              className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+            <button
+              key={to}
+              onClick={() => navigate(to)}
+              className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+            >
               <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
                 <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
               </div>

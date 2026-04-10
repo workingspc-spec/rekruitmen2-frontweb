@@ -1,3 +1,4 @@
+// src/pages/monitoring/SlaDetailPage.jsx
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -7,8 +8,8 @@ import { formatDate, getDaysColor } from '../../utils/helpers'
 import { PageLoader, ErrorBox } from '../../components/ui'
 import { getSlaStatusMeta } from '../../utils/helpers'
 import {
-  CheckCircle2, XCircle, LockOpen, Lock, AlertTriangle, User,
-  Calendar, Flag, Clock, Edit3, Info, Loader2, ChevronDown, ChevronUp,
+  CheckCircle2, LockOpen, Lock, AlertTriangle, User,
+  Calendar, Clock, Edit3, Info, Loader2, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -28,10 +29,14 @@ export default function SlaDetailPage() {
     queryFn: () => monitoringApi.slaDetail(nomor).then(r => r.data.data),
   })
 
-  const { data: hiredData } = useQuery({
+  // FIX: Hapus `enabled: isHrd` — hiredCandidates harus selalu di-fetch saat halaman buka
+  // Identik Android: loadHiredCandidates(tpkNomor) dipanggil di LaunchedEffect(tpkNomor)
+  // bersamaan dengan loadSlaDetail, tidak tergantung isHrd.
+  // Display tetap dikondisikan dengan isHrd di JSX.
+  const { data: hiredData = [] } = useQuery({
     queryKey: ['hired-candidates', nomor],
     queryFn: () => recruitmentApi.hiredCandidates(nomor).then(r => r.data.data ?? []),
-    enabled: isHrd,
+    // enabled: isHrd  ← DIHAPUS, selalu fetch
   })
 
   const cancelMut = useMutation({
@@ -75,14 +80,18 @@ export default function SlaDetailPage() {
   const history  = data.edit_history ?? []
   const approval = data.approval_info
 
-  // ── Fix 6: gunakan Number() agar selalu number, bukan string dari API ───────
-  // API sudah menghitung days_remaining berbasis sla_max_target_date di backend.
-  // Jangan ada kalkulasi ulang (new Date() - sla_final_target_date) di frontend.
   const daysRem     = Number(sla?.days_remaining ?? 0)
   const isCompleted = sla?.sla_status === 'COMPLETED'
   const isEditable  = sla?.sla_is_editable === 1
   const daysColor   = getDaysColor(daysRem)
-  const meta        = getSlaStatusMeta(isCompleted ? 'COMPLETED' : isEditable ? 'NEED_USER_UPDATE' : daysRem < 0 ? 'OVERDUE' : daysRem <= 3 ? 'CRITICAL' : daysRem <= 7 ? 'WARNING' : 'ON_PROGRESS')
+  const meta        = getSlaStatusMeta(
+    isCompleted ? 'COMPLETED'
+    : isEditable ? 'NEED_USER_UPDATE'
+    : daysRem < 0 ? 'OVERDUE'
+    : daysRem <= 3 ? 'CRITICAL'
+    : daysRem <= 7 ? 'WARNING'
+    : 'ON_PROGRESS'
+  )
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
@@ -171,8 +180,9 @@ export default function SlaDetailPage() {
         </div>
       </div>
 
-      {/* HRD-only: Hired candidates */}
-      {isHrd && hiredData && hiredData.length > 0 && (
+      {/* HRD-only: Hired candidates
+          FIX: Selalu di-fetch (lihat useQuery di atas), hanya tampil untuk isHrd */}
+      {isHrd && hiredData.length > 0 && (
         <div className="card">
           <p className="font-display font-bold text-navy text-sm mb-3">Kandidat Diterima</p>
           <div className="space-y-2">
@@ -191,6 +201,7 @@ export default function SlaDetailPage() {
                   className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-40"
                   disabled={c.is_grouped}
                   onClick={() => { setSelectedRkt(c); setShowNoShow(true) }}
+                  title={c.is_grouped ? 'Data massal, batalkan via HRD Desktop' : undefined}
                 >
                   Batalkan
                 </button>
@@ -206,13 +217,18 @@ export default function SlaDetailPage() {
           {/* Editable toggle */}
           <div className={`card border-l-4 ${isEditable ? 'border-l-orange-400' : 'border-l-slate-300'}`}>
             <div className="flex items-start gap-3 mb-3">
-              {isEditable ? <LockOpen size={18} className="text-orange-500 shrink-0" /> : <Lock size={18} className="text-slate-400 shrink-0" />}
+              {isEditable
+                ? <LockOpen size={18} className="text-orange-500 shrink-0" />
+                : <Lock size={18} className="text-slate-400 shrink-0" />
+              }
               <div>
                 <p className={`font-semibold text-sm ${isEditable ? 'text-orange-600' : 'text-navy'}`}>
                   {isEditable ? 'Izin Edit: Terbuka' : 'Izin Edit Tanggal'}
                 </p>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {isEditable ? 'Peminta sedang dapat mengubah tanggal target' : 'Buka izin agar peminta dapat mengubah tanggal'}
+                  {isEditable
+                    ? 'Peminta sedang dapat mengubah tanggal target'
+                    : 'Buka izin agar peminta dapat mengubah tanggal'}
                 </p>
               </div>
             </div>
@@ -283,7 +299,9 @@ export default function SlaDetailPage() {
         <NoShowDialog
           candidate={selectedRkt}
           loading={cancelMut.isPending}
-          onConfirm={(bufferDays, keterangan) => cancelMut.mutate({ rktNomor: selectedRkt.rkt_nomor, bufferDays, keterangan })}
+          onConfirm={(bufferDays, keterangan) =>
+            cancelMut.mutate({ rktNomor: selectedRkt.rkt_nomor, bufferDays, keterangan })
+          }
           onClose={() => setShowNoShow(false)}
         />
       )}
@@ -312,17 +330,32 @@ export default function SlaDetailPage() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+/**
+ * Build timeline nodes dengan smart filtering.
+ * FIX: label untuk sla_source SYSTEM diubah ke "Target Disepakati (Sesuai Sistem)"
+ * Audit: Web pakai "Target (Disesuaikan Sistem)" — Android pakai "Target Disepakati (Sesuai Sistem)"
+ */
 function buildTimeline(timeline, sla) {
   if (!timeline) return []
   const items = []
-  if (timeline.request_created_at) items.push({ label: 'Permintaan Dibuat', date: timeline.request_created_at, color: '#2E7D32' })
-  if (timeline.approved_at)        items.push({ label: 'Disetujui Atasan',  date: timeline.approved_at,        color: '#2E7D32' })
+  if (timeline.request_created_at)
+    items.push({ label: 'Permintaan Dibuat', date: timeline.request_created_at, color: '#2E7D32' })
+  if (timeline.approved_at)
+    items.push({ label: 'Disetujui Atasan',  date: timeline.approved_at,        color: '#2E7D32' })
   if (timeline.original_target_date && timeline.original_target_date !== timeline.final_target_date)
     items.push({ label: 'Tanggal Butuh Awal (User)', date: timeline.original_target_date, color: '#0F52BA' })
   if (timeline.system_floor_date && timeline.system_floor_date !== timeline.final_target_date && sla?.sla_source === 'SYSTEM')
     items.push({ label: 'Estimasi Minimum Sistem', date: timeline.system_floor_date, color: '#475569' })
-  const finalLabel = sla?.sla_source === 'USER' ? 'Target (Sesuai Permintaan)' : sla?.sla_source === 'SYSTEM' ? 'Target (Disesuaikan Sistem)' : 'Target Final'
+
+  // FIX: samakan teks label dengan Android
+  // Android: "Target Disepakati (Sesuai Sistem)" / "Target Disepakati (Sesuai Permintaan)"
+  const finalLabel = sla?.sla_source === 'USER'
+    ? 'Target Disepakati (Sesuai Permintaan)'
+    : sla?.sla_source === 'SYSTEM'
+      ? 'Target Disepakati (Sesuai Sistem)'
+      : 'Target Final'
   items.push({ label: finalLabel, date: timeline.final_target_date, color: '#0F52BA' })
+
   if (timeline.max_target_date && timeline.max_target_date !== timeline.final_target_date)
     items.push({ label: 'Batas Maksimal', date: timeline.max_target_date, color: '#F57C00' })
   return items
@@ -379,8 +412,8 @@ function HistoryItem({ item }) {
 
 // ── Dialogs ───────────────────────────────────────────────────────────────────
 function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
-  const [days, setDays]   = useState('')
-  const [ket, setKet]     = useState('')
+  const [days, setDays] = useState('')
+  const [ket, setKet]   = useState('')
   const daysNum = parseInt(days)
   const valid   = !isNaN(daysNum) && daysNum >= 1 && daysNum <= 30 && ket.trim().length >= 5
 
@@ -391,11 +424,13 @@ function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
       <div className="space-y-3">
         <div>
           <label className="label">Tambah berapa hari buffer? (1–30)</label>
-          <input className="input" type="number" min={1} max={30} value={days} onChange={e => setDays(e.target.value)} placeholder="Contoh: 3" />
+          <input className="input" type="number" min={1} max={30} value={days}
+            onChange={e => setDays(e.target.value)} placeholder="Contoh: 3" />
         </div>
         <div>
           <label className="label">Keterangan</label>
-          <textarea className="input resize-none" rows={3} value={ket} onChange={e => setKet(e.target.value)} placeholder="Contoh: Kandidat tidak hadir 24 Feb" />
+          <textarea className="input resize-none" rows={3} value={ket}
+            onChange={e => setKet(e.target.value)} placeholder="Contoh: Kandidat tidak hadir 24 Feb" />
         </div>
       </div>
       <div className="flex gap-3 mt-4">
@@ -439,7 +474,9 @@ function EditableDialog({ isCurrentlyEditable, loading, onConfirm, onClose2, onC
     <DialogWrapper title="Buka Izin Edit Tanggal" onClose={onClose}>
       <p className="text-xs text-slate-500 bg-slate-50 rounded-xl p-3 mb-3">Peminta akan dapat mengubah tanggal kebutuhan. SLA akan dihitung ulang setelah disimpan.</p>
       <label className="label">Alasan / Instruksi untuk Peminta</label>
-      <textarea className="input resize-none" rows={3} value={ket} onChange={e => setKet(e.target.value)} placeholder="Contoh: Kandidat tidak hadir, mohon perbarui tanggal target" />
+      <textarea className="input resize-none" rows={3} value={ket}
+        onChange={e => setKet(e.target.value)}
+        placeholder="Contoh: Kandidat tidak hadir, mohon perbarui tanggal target" />
       <div className="flex gap-3 mt-4">
         <button className="btn-ghost flex-1 justify-center" onClick={onClose}>Batal</button>
         <button

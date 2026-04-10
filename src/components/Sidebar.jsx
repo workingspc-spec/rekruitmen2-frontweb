@@ -12,9 +12,11 @@ const getNavItems = (isHrd) => [
   { to: '/recruitment', label: 'Rekruitmen',     Icon: ClipboardList   },
   { to: '/approval',    label: 'Approval',       Icon: CheckSquare     },
   { to: '/monitoring',  label: 'SLA Monitoring', Icon: Activity        },
+  // Android: isHrd==1 → "KPI HRD", isHrd==0 → "KPI" (bukan "KPI Saya")
+  // Audit: ubah label 'KPI Saya' → 'KPI Approval' agar selaras Android
   isHrd
-    ? { to: '/kpi-hrd',      label: 'KPI HRD',  Icon: BarChart3  }
-    : { to: '/kpi-approver', label: 'KPI Saya', Icon: TrendingUp },
+    ? { to: '/kpi-hrd',      label: 'KPI HRD',      Icon: BarChart3  }
+    : { to: '/kpi-approver', label: 'KPI Approval',  Icon: TrendingUp },
 ]
 
 export default function Sidebar() {
@@ -28,16 +30,14 @@ export default function Sidebar() {
   }
 
   return (
-    // h-screen: sidebar selalu tepat setinggi viewport, tidak ikut memanjang
-    // flex flex-col: agar nav (flex-1) mengisi ruang dan profil selalu di bawah
     <aside className="w-60 h-screen bg-white border-r border-slate-100 flex flex-col shrink-0">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-slate-100 shrink-0">
         <div className="flex items-center gap-3.5">
-          <img 
-            src="/logo_app.png" 
-            alt="Logo PKAR" 
-            className="w-11 h-11 object-contain drop-shadow-sm" 
+          <img
+            src="/logo_app.png"
+            alt="Logo PKAR"
+            className="w-11 h-11 object-contain drop-shadow-sm"
           />
           <div>
             <p className="font-display font-extrabold text-slate-800 text-lg leading-tight tracking-tight">PKAR</p>
@@ -46,7 +46,7 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation — flex-1 + overflow-y-auto: scroll jika nav items terlalu banyak */}
+      {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {getNavItems(isHrd).map(({ to, label, Icon }) => (
           <NavLink
@@ -63,7 +63,7 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* User Profile — shrink-0: tidak pernah tercompress, selalu terlihat di bawah */}
+      {/* User Profile */}
       <div className="px-3 py-4 border-t border-slate-100 shrink-0">
         <div className="flex items-center gap-3 px-3 py-2 mb-1 rounded-xl">
           <div className="w-8 h-8 rounded-full bg-ice-blue flex items-center justify-center shrink-0">

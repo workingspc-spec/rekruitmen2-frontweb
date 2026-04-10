@@ -1,3 +1,4 @@
+// src/pages/monitoring/SlaStatusListPage.jsx
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -5,8 +6,13 @@ import { useAuth } from '../../context/AuthContext'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getSlaStatusMeta, getDaysColor } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
-import { Activity, Calendar, Users, Building2, ChevronRight, Edit2, AlertTriangle, Clock } from 'lucide-react'
+import {
+  Activity, Calendar, Users, Building2, ChevronRight,
+  Edit2, AlertTriangle, Clock, Eye,
+} from 'lucide-react'
 
+// FIX: Tambah APPROVAL_DELAYED ke FILTERS array
+// Audit: SlaStatusListPage.jsx — filter "APPROVAL_DELAYED" ada di Android tapi tidak ada di Web
 const FILTERS = [
   { key: 'ALL',              label: 'Semua' },
   { key: 'NEED_USER_UPDATE', label: 'Perlu Update' },
@@ -14,6 +20,7 @@ const FILTERS = [
   { key: 'CRITICAL',         label: 'Kritis' },
   { key: 'WARNING',          label: 'Warning' },
   { key: 'ON_PROGRESS',      label: 'Normal' },
+  { key: 'APPROVAL_DELAYED', label: 'Approval Terlambat' },
   { key: 'COMPLETED',        label: 'Selesai' },
 ]
 
@@ -34,6 +41,8 @@ export default function SlaStatusListPage() {
   const filtered = useMemo(() => {
     if (filter === 'ALL') return items
     if (filter === 'NEED_USER_UPDATE') return items.filter(i => i.sla_is_editable === 1)
+    // FIX: tambah case APPROVAL_DELAYED
+    if (filter === 'APPROVAL_DELAYED') return items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
     return items.filter(i => i.ui_status_tag === filter)
   }, [items, filter])
 
@@ -78,15 +87,28 @@ export default function SlaStatusListPage() {
             color="amber"
             title="Approval Tertunda >5 Hari"
             count={approvalDelayedCount}
+            onClick={() => setFilter('APPROVAL_DELAYED')}
           />
         )}
       </div>
 
+      {/* FIX: Banner monitoring bawahan untuk non-HRD
+          Audit: SlaStatusListPage.jsx — banner "monitoringBawahan" tidak ada di web
+          Android: jika isHrd != 1 && summary.monitoringBawahan != null tampil banner biru */}
+      {!isHrd && summary.monitoring_bawahan != null && (
+        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+          <Eye size={18} className="text-sapphire shrink-0" />
+          <p className="text-sm font-medium text-sapphire">
+            Monitoring {summary.monitoring_bawahan} permintaan bawahan
+          </p>
+        </div>
+      )}
+
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Aktif"    value={summary.total_active ?? 0}  color="text-sapphire"  onClick={() => setFilter('ALL')}       active={filter === 'ALL'} />
-        <StatCard label="Kritis"         value={summary.critical ?? 0}      color="text-red-500"   onClick={() => setFilter('CRITICAL')}  active={filter === 'CRITICAL'} />
-        <StatCard label="Warning"        value={summary.warning ?? 0}       color="text-amber-500" onClick={() => setFilter('WARNING')}   active={filter === 'WARNING'} />
+        <StatCard label="Total Aktif"    value={summary.total_active ?? 0}  color="text-sapphire"  onClick={() => setFilter('ALL')}      active={filter === 'ALL'} />
+        <StatCard label="Kritis"         value={summary.critical ?? 0}      color="text-red-500"   onClick={() => setFilter('CRITICAL')} active={filter === 'CRITICAL'} />
+        <StatCard label="Warning"        value={summary.warning ?? 0}       color="text-amber-500" onClick={() => setFilter('WARNING')}  active={filter === 'WARNING'} />
       </div>
 
       {/* Progress Card */}
@@ -101,8 +123,9 @@ export default function SlaStatusListPage() {
       {/* Filter Chips */}
       <div className="flex gap-2 flex-wrap">
         {FILTERS.map(f => {
-          const count = f.key === 'ALL' ? items.length
-            : f.key === 'NEED_USER_UPDATE' ? summary.need_update ?? 0
+          const count = f.key === 'ALL'               ? items.length
+            : f.key === 'NEED_USER_UPDATE'            ? (summary.need_update ?? 0)
+            : f.key === 'APPROVAL_DELAYED'            ? approvalDelayedCount
             : items.filter(i => i.ui_status_tag === f.key).length
           if (count === 0 && f.key !== 'ALL') return null
           return (
@@ -151,7 +174,10 @@ function AlertCard({ icon, color, title, count, onClick }) {
   }[color]
 
   return (
-    <button onClick={onClick} className={`w-full flex items-center gap-3 border rounded-2xl p-4 text-left transition-shadow hover:shadow-card-hover ${cls}`}>
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 border rounded-2xl p-4 text-left transition-shadow hover:shadow-card-hover ${cls}`}
+    >
       {icon}
       <div className="flex-1">
         <p className="font-semibold text-sm">{title}</p>
@@ -184,12 +210,14 @@ function ProgressStat({ label, value, color }) {
 }
 
 function SlaCard({ item, isHrd, onClick, onEdit }) {
-  const meta = getSlaStatusMeta(item.ui_status_tag)
+  const meta      = getSlaStatusMeta(item.ui_status_tag)
   const daysColor = getDaysColor(item.days_remaining)
   const isCompleted = item.ui_status_tag === 'COMPLETED'
 
-  // Can edit: non-HRD, own item (not bawahan), editable flag
-  const canEdit = !isHrd && !item.is_bawahan && item.sla_is_editable === 1
+  // FIX: canEdit = !isHrd && !isBawahan && slaIsEditable
+  // Audit: SlaStatusListPage.jsx — tidak ada logika canEdit sama sekali
+  // Android: canEdit = isHrd==0 && !item.is_bawahan && item.sla_is_editable
+  const canEdit = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
 
   return (
     <div
@@ -205,15 +233,25 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
           {meta.label}
         </span>
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-          {canEdit && (
+          {/* FIX: Badge "Tap untuk Update" vs "Update Required" berdasarkan canEdit
+              Audit: Android badge teks berbeda tergantung kepemilikan (canEdit)
+              canEdit → "Tap untuk Update", !canEdit → "Update Required" */}
+          {!isCompleted && item.sla_is_editable === 1 && (
             <button
-              className="text-xs font-semibold px-2.5 py-1 rounded-full bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 flex items-center gap-1"
-              onClick={onEdit}
+              className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors ${
+                canEdit
+                  ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100'
+                  : 'bg-orange-50 text-orange-500 border-orange-200 cursor-default'
+              }`}
+              onClick={canEdit ? onEdit : undefined}
+              title={canEdit ? 'Klik untuk update tanggal' : 'Hanya pemilik permintaan yang dapat update'}
             >
-              <Edit2 size={12} /> Update
+              <Edit2 size={12} />
+              {/* Android: canEdit → "Tap untuk Update", !canEdit → "Update Required" */}
+              {canEdit ? 'Tap untuk Update' : 'Update Required'}
             </button>
           )}
-          {!isCompleted && !item.sla_is_editable && (
+          {!isCompleted && item.sla_is_editable !== 1 && (
             <span className="text-xs font-bold" style={{ color: daysColor }}>
               {item.days_remaining < 0
                 ? `Terlambat ${-item.days_remaining} hari`
@@ -237,11 +275,14 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         )}
       </div>
 
-      {/* Approval delay */}
+      {/* Approval delay banner */}
       {item.approval_flag === 'APPROVAL_DELAYED' && (
         <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
           <Clock size={13} className="text-amber-600 shrink-0" />
-          <p className="text-xs text-amber-700 font-medium">Approval tertunda {item.sla_approval_delay_days} hari</p>
+          <p className="text-xs text-amber-700 font-medium">
+            Approval tertunda {item.sla_approval_delay_days} hari
+            {item.approver_name ? ` · Atasan: ${item.approver_name}` : ''}
+          </p>
         </div>
       )}
 

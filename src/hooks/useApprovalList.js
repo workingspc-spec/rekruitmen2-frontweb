@@ -9,8 +9,12 @@ import { formatDate } from '../utils/helpers'
 export function useApprovalList(statusParam) {
   const { user, isHrd } = useAuth()
   const qc = useQueryClient()
-  const [confirmItem, setConfirmItem]         = useState(null)
-  const [isHrdDialogItem, setIsHrdDialogItem] = useState(null)
+  const [confirmItem, setConfirmItem]           = useState(null)
+  const [isHrdDialogItem, setIsHrdDialogItem]   = useState(null)
+  // FIX: state untuk menampilkan dialog detail SLA setelah approve atasan berhasil
+  // Identik Android: setelah approveAsAtasan berhasil & slaInfo.source=SYSTEM,
+  // tampil dialog dengan finalTargetDate
+  const [slaResultInfo, setSlaResultInfo]       = useState(null)
 
   const atasanQ = useQuery({
     queryKey: ['approval-atasan', statusParam],
@@ -28,11 +32,11 @@ export function useApprovalList(statusParam) {
     mutationFn: ({ tpk_nomor, action }) => approvalApi.actionAtasan({ tpk_nomor, action }),
     onSuccess: (data) => {
       const slaInfo = data?.data?.data?.sla_info
-      if (slaInfo?.sla_source === 'SYSTEM') {
-        toast.success(
-          `Disetujui! Target HRD: ${formatDate(slaInfo.final_target_date)} (disesuaikan sistem)`,
-          { duration: 5000 }
-        )
+      // FIX: Jika sumber SYSTEM, tampilkan dialog detail SLA (bukan hanya toast)
+      // Identik Android: setelah approveAsAtasan berhasil & slaInfo.source=SYSTEM,
+      // tampil AlertDialog dengan finalTargetDate
+      if (slaInfo?.sla_source === 'SYSTEM' || slaInfo) {
+        setSlaResultInfo(slaInfo)
       } else {
         toast.success('Permintaan berhasil diproses!')
       }
@@ -64,6 +68,7 @@ export function useApprovalList(statusParam) {
     list, loading, error, refetch, isHrd,
     confirmItem, setConfirmItem,
     isHrdDialogItem, setIsHrdDialogItem,
+    slaResultInfo, setSlaResultInfo,
     atasanMut, hrdMut, isPending,
   }
 }

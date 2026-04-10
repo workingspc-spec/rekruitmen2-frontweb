@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
 import { PageLoader, ErrorBox, EmptyState, ConfirmDialog, SearchInput } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
-import { CheckSquare, Calendar, X } from 'lucide-react'
+import { CheckSquare, Calendar, X, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { ApprovalCard } from './ApprovalCard'
 import { HrdConfirmDialog } from './HrdConfirmDialog'
+import { formatDate } from '../../utils/helpers'
 
-// ─── Period Options (identik Android) ─────────────────────────────────────────
+// ─── Period Options ────────────────────────────────────────────────────────────
 const PERIOD_OPTIONS = [
   { value: null,          label: 'Semua Waktu' },
   { value: 'Today',       label: 'Hari Ini' },
@@ -21,10 +22,6 @@ const PERIOD_OPTIONS = [
   { value: 'Last year',   label: 'Tahun Lalu' },
 ]
 
-/**
- * Filter tanggal item berdasarkan period string
- * Identik Android matchesPeriodFilter() di ApprovalListScreen
- */
 function matchesPeriodFilter(tpkTanggal, period) {
   if (!tpkTanggal || !period) return true
   try {
@@ -74,10 +71,6 @@ function matchesPeriodFilter(tpkTanggal, period) {
   } catch { return true }
 }
 
-/**
- * Konversi period ke label ringkas untuk tombol
- * Identik Android periodToLabel() di ApprovalListScreen
- */
 function periodToLabel(period) {
   if (!period) return 'Semua Waktu'
   const match = PERIOD_OPTIONS.find(o => o.value === period)
@@ -93,7 +86,6 @@ function periodToLabel(period) {
       }
     } catch { return 'Rentang Kustom' }
   }
-  // Single date YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
     try {
       return new Date(period + 'T00:00:00')
@@ -103,7 +95,6 @@ function periodToLabel(period) {
   return period
 }
 
-// Status filter identik Android ApprovalFilter enum
 const STATUS_TABS = [
   { key: 'pending',  label: 'Belum Approve' },
   { key: 'approved', label: 'Sudah Approve' },
@@ -111,17 +102,62 @@ const STATUS_TABS = [
 ]
 
 /**
- * ApprovalListPage
- * @param {string|null} initialPeriodFilter - period dari URL query param ?period=
- *   Identik Android: initialPeriodFilter: String? = null
+ * Dialog hasil SLA setelah approve atasan berhasil.
+ * Identik Android: AlertDialog dengan finalTargetDate setelah approveAsAtasan.
  */
+function SlaResultDialog({ slaInfo, onClose }) {
+  const isSystem = slaInfo?.sla_source === 'SYSTEM'
+
+  // Teks explanation — jika SYSTEM, gunakan pesan netral (tidak menyalahkan user)
+  const explanation = isSystem
+    ? 'Tanggal disesuaikan otomatis untuk memenuhi standar waktu layanan rekrutmen.'
+    : (slaInfo?.explanation ?? 'Permintaan telah disetujui.')
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+        {/* Icon */}
+        <div className="flex items-center gap-3">
+          {isSystem
+            ? <AlertTriangle size={24} className="text-amber-500 shrink-0" />
+            : <CheckCircle2 size={24} className="text-green-600 shrink-0" />
+          }
+          <h3 className="font-display font-bold text-navy text-lg">Approval Berhasil</h3>
+        </div>
+
+        {/* Label tipe */}
+        <p className={`text-xs font-bold uppercase tracking-wide ${isSystem ? 'text-amber-600' : 'text-green-700'}`}>
+          {isSystem ? '⚠️ Catatan Sistem:' : '✅ Konfirmasi:'}
+        </p>
+
+        {/* Penjelasan */}
+        <p className="text-sm text-slate-600 leading-relaxed">{explanation}</p>
+
+        {/* Target tanggal final */}
+        {slaInfo?.final_target_date && (
+          <div className="bg-slate-50 rounded-xl p-4 space-y-1">
+            <p className="text-xs text-slate-400 font-medium">Target Rekrutmen Selesai:</p>
+            <p className="text-xl font-display font-black text-sapphire">
+              {formatDate(slaInfo.final_target_date)}
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="btn-primary w-full justify-center"
+        >
+          Mengerti
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate = useNavigate()
   const [tab, setTab]       = useState('pending')
   const [search, setSearch] = useState('')
-
-  // Period filter — inisialisasi dari prop (diteruskan dari Dashboard via URL)
-  // Identik Android: var activePeriodFilter by remember { mutableStateOf(initialPeriodFilter) }
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
   const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
 
@@ -131,15 +167,13 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     list, loading, error, refetch, isHrd,
     confirmItem, setConfirmItem,
     isHrdDialogItem, setIsHrdDialogItem,
+    // FIX: ambil slaResultInfo dari hook untuk ditampilkan sebagai dialog
+    slaResultInfo, setSlaResultInfo,
     atasanMut, hrdMut, isPending,
   } = useApprovalList(statusParam)
 
-  // Filter lokal: period + search
-  // Identik Android: filteredItems derivedStateOf { matchesPeriodFilter + status filter }
   const filteredList = useMemo(() => {
     let items = list ?? []
-
-    // Filter search lokal
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(item =>
@@ -148,16 +182,12 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         item.tpk_bagian?.toLowerCase().includes(q)
       )
     }
-
-    // Filter period — identik Android matchesPeriodFilter()
     if (activePeriodFilter) {
       items = items.filter(item => matchesPeriodFilter(item.tpk_tanggal, activePeriodFilter))
     }
-
     return items
   }, [list, search, activePeriodFilter])
 
-  // Empty message — identik Android buildEmptyMessage()
   const emptyMessage = (() => {
     const statusMsg = tab === 'pending'
       ? 'Tidak ada permintaan yang menunggu persetujuan'
@@ -181,10 +211,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       </div>
 
-      {/* ── Filter Row: Status Chips + Period Button ── */}
-      {/* Identik Android: LazyRow status chips + OutlinedButton tanggal */}
+      {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Status Chips */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_TABS.map(t => (
             <button
@@ -199,7 +227,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
           ))}
         </div>
 
-        {/* Period filter button — identik Android OutlinedButton tanggal */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-colors ${
@@ -219,14 +246,14 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </button>
       </div>
 
-      {/* Hint saat period dari Dashboard — identik Android hint chip */}
+      {/* Hint dari Dashboard */}
       {activePeriodFilter && activePeriodFilter === initialPeriodFilter && (
         <p className="text-xs text-sapphire">
           Difilter dari Dashboard · Tap tanggal untuk ubah
         </p>
       )}
 
-      {/* Search — muncul jika data sudah ada */}
+      {/* Search */}
       {!loading && !error && list.length > 0 && (
         <SearchInput
           value={search}
@@ -262,7 +289,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       )}
 
-      {/* ── Period Picker Modal — identik Android PeriodPickerSheet ── */}
       {/* ── Period Picker Modal ── */}
       {showPeriodPicker && (
         <PeriodPickerModal
@@ -272,7 +298,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── Dialogs ── */}
+      {/* ── Confirm Dialog (Atasan) ── */}
       {confirmItem && (
         <ConfirmDialog
           open
@@ -289,12 +315,23 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
+      {/* ── HRD Confirm Dialog ── */}
       {isHrdDialogItem && (
         <HrdConfirmDialog
           item={isHrdDialogItem}
           loading={hrdMut.isPending}
           onConfirm={() => hrdMut.mutate({ tpk_nomor: isHrdDialogItem.tpk_nomor })}
           onClose={() => setIsHrdDialogItem(null)}
+        />
+      )}
+
+      {/* ── FIX: Dialog Hasil SLA setelah approve atasan berhasil ──
+          Identik Android: AlertDialog yang muncul setelah approveAsAtasan & slaInfo tersedia.
+          Web sebelumnya hanya menampilkan toast, tidak ada dialog detail. */}
+      {slaResultInfo && (
+        <SlaResultDialog
+          slaInfo={slaResultInfo}
+          onClose={() => setSlaResultInfo(null)}
         />
       )}
     </div>

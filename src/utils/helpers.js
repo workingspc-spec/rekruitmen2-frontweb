@@ -2,15 +2,39 @@ import { format, parseISO, isValid } from 'date-fns'
 import { id } from 'date-fns/locale'
 
 // ── DATE ─────────────────────────────────────────────────────────────────────
+/**
+ * Format date string ke tampilan yang mudah dibaca.
+ * Handle semua format:
+ *  - ISO: "2026-02-11T08:05:21.000Z"
+ *  - Space-separated (tanpa T): "2026-02-12 18:47:00" → parse sebagai LOCAL time
+ *  - Date only: "2026-02-11"
+ * Identik dengan DateUtils.formatDate() di Android
+ */
 export function formatDate(dateStr, fmt = 'dd MMM yyyy') {
   if (!dateStr) return '–'
   try {
-    const d = typeof dateStr === 'string' && dateStr.includes('T')
-      ? parseISO(dateStr)
-      : new Date(dateStr + (dateStr.length === 10 ? 'T00:00:00' : ''))
-    return isValid(d) ? format(d, fmt, { locale: id }) : dateStr
+    let d
+    if (typeof dateStr === 'string') {
+      if (dateStr.includes('T')) {
+        // ISO-8601 → parseISO handles timezone correctly
+        d = parseISO(dateStr)
+      } else if (dateStr.includes(' ') && dateStr.length > 10) {
+        // "2026-02-12 18:47:00" — parse sebagai LOCAL time (bukan UTC)
+        // Identik Android: sdfInput.timeZone = TimeZone.getDefault()
+        const [datePart, timePart = '00:00:00'] = dateStr.split(' ')
+        const [y, m, day] = datePart.split('-').map(Number)
+        const [h, min, sec = 0] = timePart.split(':').map(Number)
+        d = new Date(y, m - 1, day, h, min, sec)
+      } else {
+        // "2026-02-11" — tambah T00:00:00 agar parse sebagai local time
+        d = new Date(dateStr + 'T00:00:00')
+      }
+    } else {
+      d = new Date(dateStr)
+    }
+    return isValid(d) ? format(d, fmt, { locale: id }) : String(dateStr)
   } catch {
-    return dateStr
+    return String(dateStr)
   }
 }
 
@@ -18,12 +42,17 @@ export function formatDateTime(dateStr) {
   return formatDate(dateStr, 'dd MMM yyyy HH:mm')
 }
 
+/**
+ * Convert millis ke string tanggal API (YYYY-MM-DD).
+ * PENTING: gunakan LOCAL time methods, bukan UTC — identik Android millisToDateString().
+ * Sebelumnya pakai d.getUTCFullYear() yang menyebabkan timezone-shift di WIB (UTC+7).
+ */
 export function toApiDate(millis) {
   if (!millis) return ''
   const d   = new Date(millis)
-  const y   = d.getUTCFullYear()
-  const m   = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(d.getUTCDate()).padStart(2, '0')
+  const y   = d.getFullYear()                            // ← LOCAL (was getUTCFullYear)
+  const m   = String(d.getMonth() + 1).padStart(2, '0') // ← LOCAL (was getUTCMonth)
+  const day = String(d.getDate()).padStart(2, '0')        // ← LOCAL (was getUTCDate)
   return `${y}-${m}-${day}`
 }
 
