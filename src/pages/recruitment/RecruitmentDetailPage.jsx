@@ -9,23 +9,30 @@ import { useAuth } from '../../context/AuthContext'
 import {
   Edit2, Loader2, Flag, User, Building2, Calendar, Users,
   FileText, CheckCircle2, XCircle, Clock, Info,
+  ChevronDown, ChevronUp, History, ArrowRight,
 } from 'lucide-react'
 
 export default function RecruitmentDetailPage() {
-  const { nomor }   = useParams()
-  const navigate    = useNavigate()
-  // FIX: ambil isHrd dari AuthContext
-  // Audit: canEdit logic — pemeriksaan isHrd==0 tidak ada di web
+  const { nomor }       = useParams()
+  const navigate        = useNavigate()
   const { user, isHrd } = useAuth()
 
-  // FIX: state untuk dialog tooltip SLA — muncul saat klik ikon (i) pada sumber SYSTEM
-  // Audit: RecruitmentDetailPage.jsx — tambah state + modal dialog "Informasi Penyesuaian"
-  // Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM
   const [showSlaTooltip, setShowSlaTooltip] = useState(false)
+  // State untuk collapse/expand log history
+  const [logOpen, setLogOpen] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['recruitment-detail', nomor],
     queryFn: () => recruitmentApi.detail(nomor).then(r => r.data.data),
+  })
+
+  // FIX: Fetch log history — missing feature in Web vs Android
+  // Android: getRecruitmentLog() endpoint via ApiService
+  // recruitmentApi.log sudah ada di services.js
+  const { data: logData = [] } = useQuery({
+    queryKey: ['recruitment-log', nomor],
+    queryFn: () => recruitmentApi.log(nomor).then(r => r.data.data ?? []),
+    enabled: Boolean(nomor),
   })
 
   if (isLoading) return (
@@ -43,9 +50,6 @@ export default function RecruitmentDetailPage() {
 
   const isDraft = data.tpk_approveatasan === 0 && data.tpk_approveHRD === 0
   const isOwner = data.tpk_peminta?.trim() === user?.kode
-  // FIX: tambah !isHrd pada canEdit condition
-  // Audit: Android canEdit = isHrd==0 && detail.peminta == currentUserKode && (isDraft || slaIsEditable)
-  // Web sebelumnya: canEdit = isOwner && (isDraft || sla_is_editable) — tidak cek isHrd
   const canEdit = !isHrd && isOwner && (isDraft || data.sla_is_editable === 1)
 
   const keterangans = [1,2,3,4,5,6,7,8,9,10]
@@ -142,9 +146,6 @@ export default function RecruitmentDetailPage() {
                   Perlu Update Tanggal
                 </span>
               )}
-              {/* FIX: Tombol ikon (i) untuk sumber SYSTEM — membuka dialog tooltip
-                  Audit: RecruitmentDetailPage.jsx — tambah state + modal dialog
-                  Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM */}
               {data.sla_source === 'SYSTEM' && (
                 <button
                   onClick={() => setShowSlaTooltip(true)}
@@ -221,9 +222,38 @@ export default function RecruitmentDetailPage() {
         </div>
       </div>
 
-      {/* FIX: Dialog Tooltip "Informasi Penyesuaian" untuk sla_source SYSTEM
-          Identik Android: AlertDialog yang muncul ketika tap ikon (i) pada sumber SYSTEM.
-          Menjelaskan mengapa tanggal disesuaikan oleh sistem — dengan bahasa netral. */}
+      {/* FIX: Log History — missing feature in Web vs Android
+          Android: getRecruitmentLog() → RecruitmentLogDto (log_id, field_name, old_value,
+          new_value, user_kode, user_nama, created_at). Kritical untuk traceability/audit trail. */}
+      {logData.length > 0 && (
+        <div className="card">
+          <button
+            className="w-full flex items-center justify-between"
+            onClick={() => setLogOpen(o => !o)}
+          >
+            <div className="flex items-center gap-2">
+              <History size={15} className="text-sapphire" />
+              <span className="font-display font-bold text-navy text-sm">
+                Log Perubahan ({logData.length})
+              </span>
+            </div>
+            {logOpen
+              ? <ChevronUp size={16} className="text-slate-400" />
+              : <ChevronDown size={16} className="text-slate-400" />
+            }
+          </button>
+
+          {logOpen && (
+            <div className="mt-4 space-y-3">
+              {logData.map(entry => (
+                <LogEntry key={entry.log_id} entry={entry} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Dialog Tooltip SLA */}
       {showSlaTooltip && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
@@ -250,6 +280,67 @@ export default function RecruitmentDetailPage() {
     </div>
   )
 }
+
+// ── Log Entry Component ────────────────────────────────────────────────────────
+/**
+ * Menampilkan satu baris log perubahan.
+ * Identik dengan HistoryItem di SlaDetailPage.jsx & EditHistoryCard di Android SlaDetailScreen.kt
+ */
+function LogEntry({ entry }) {
+  const displayName = entry.user_nama || entry.user_kode || '–'
+
+  // Label field yang lebih mudah dibaca
+  const fieldLabel = (name) => {
+    const map = {
+      tpk_tgl_butuh:    'Tanggal Butuh',
+      tpk_jumlah:       'Jumlah',
+      tpk_bagian:       'Bagian',
+      tpk_alasan:       'Alasan',
+      tpk_keterangan:   'Keterangan 1',
+      tpk_keterangan2:  'Keterangan 2',
+      tpk_keterangan3:  'Keterangan 3',
+      tpk_spesifikasi:  'Spesifikasi 1',
+      tpk_spesifikasi2: 'Spesifikasi 2',
+      tpk_spesifikasi3: 'Spesifikasi 3',
+    }
+    return map[name] ?? name?.replace(/_/g, ' ') ?? '–'
+  }
+
+  return (
+    <div className="flex gap-3">
+      {/* Avatar */}
+      <div className="w-8 h-8 rounded-full bg-sapphire/10 flex items-center justify-center shrink-0">
+        <History size={13} className="text-sapphire" />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold text-navy">{displayName}</span>
+          <span className="text-xs text-slate-400">{formatDate(entry.created_at)}</span>
+        </div>
+
+        <div className="mt-1.5 bg-slate-50 rounded-xl px-3 py-2">
+          <p className="text-xs font-semibold text-slate-500 mb-1">
+            {fieldLabel(entry.field_name)}
+          </p>
+          {/* Tampilkan old → new value */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-400 line-through">
+              {entry.old_value || '(kosong)'}
+            </span>
+            <ArrowRight size={12} className="text-slate-300 shrink-0" />
+            <span className="text-xs font-semibold text-navy">
+              {entry.new_value || '(kosong)'}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Helper Components ─────────────────────────────────────────────────────────
 
 function InfoItem({ icon, label, value }) {
   return (

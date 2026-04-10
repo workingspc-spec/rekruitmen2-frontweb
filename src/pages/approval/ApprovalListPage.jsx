@@ -95,20 +95,21 @@ function periodToLabel(period) {
   return period
 }
 
+// FIX: Urutan filter diselaraskan dengan Android → ALL → PENDING → APPROVED
+// Android ApprovalListScreen.kt: ALL → PENDING → APPROVED
 const STATUS_TABS = [
+  { key: 'all',      label: 'Semua' },
   { key: 'pending',  label: 'Belum Approve' },
   { key: 'approved', label: 'Sudah Approve' },
-  { key: 'all',      label: 'Semua' },
 ]
 
 /**
  * Dialog hasil SLA setelah approve atasan berhasil.
- * Identik Android: AlertDialog dengan finalTargetDate setelah approveAsAtasan.
+ * Identik Android: AlertDialog yang muncul setelah approveAsAtasan & slaInfo tersedia.
  */
 function SlaResultDialog({ slaInfo, onClose }) {
   const isSystem = slaInfo?.sla_source === 'SYSTEM'
 
-  // Teks explanation — jika SYSTEM, gunakan pesan netral (tidak menyalahkan user)
   const explanation = isSystem
     ? 'Tanggal disesuaikan otomatis untuk memenuhi standar waktu layanan rekrutmen.'
     : (slaInfo?.explanation ?? 'Permintaan telah disetujui.')
@@ -116,7 +117,6 @@ function SlaResultDialog({ slaInfo, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-        {/* Icon */}
         <div className="flex items-center gap-3">
           {isSystem
             ? <AlertTriangle size={24} className="text-amber-500 shrink-0" />
@@ -125,15 +125,12 @@ function SlaResultDialog({ slaInfo, onClose }) {
           <h3 className="font-display font-bold text-navy text-lg">Approval Berhasil</h3>
         </div>
 
-        {/* Label tipe */}
         <p className={`text-xs font-bold uppercase tracking-wide ${isSystem ? 'text-amber-600' : 'text-green-700'}`}>
           {isSystem ? '⚠️ Catatan Sistem:' : '✅ Konfirmasi:'}
         </p>
 
-        {/* Penjelasan */}
         <p className="text-sm text-slate-600 leading-relaxed">{explanation}</p>
 
-        {/* Target tanggal final */}
         {slaInfo?.final_target_date && (
           <div className="bg-slate-50 rounded-xl p-4 space-y-1">
             <p className="text-xs text-slate-400 font-medium">Target Rekrutmen Selesai:</p>
@@ -143,10 +140,7 @@ function SlaResultDialog({ slaInfo, onClose }) {
           </div>
         )}
 
-        <button
-          onClick={onClose}
-          className="btn-primary w-full justify-center"
-        >
+        <button onClick={onClose} className="btn-primary w-full justify-center">
           Mengerti
         </button>
       </div>
@@ -156,6 +150,8 @@ function SlaResultDialog({ slaInfo, onClose }) {
 
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate = useNavigate()
+
+  // FIX: Default tab 'pending' (identik Android default ApprovalFilter.PENDING)
   const [tab, setTab]       = useState('pending')
   const [search, setSearch] = useState('')
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
@@ -167,7 +163,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     list, loading, error, refetch, isHrd,
     confirmItem, setConfirmItem,
     isHrdDialogItem, setIsHrdDialogItem,
-    // FIX: ambil slaResultInfo dari hook untuk ditampilkan sebagai dialog
     slaResultInfo, setSlaResultInfo,
     atasanMut, hrdMut, isPending,
   } = useApprovalList(statusParam)
@@ -213,6 +208,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
 
       {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-3 items-center">
+        {/* FIX: Urutan tab ALL → PENDING → APPROVED (selaras Android) */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_TABS.map(t => (
             <button
@@ -325,9 +321,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── FIX: Dialog Hasil SLA setelah approve atasan berhasil ──
-          Identik Android: AlertDialog yang muncul setelah approveAsAtasan & slaInfo tersedia.
-          Web sebelumnya hanya menampilkan toast, tidak ada dialog detail. */}
+      {/* ── Dialog Hasil SLA setelah approve atasan berhasil ── */}
       {slaResultInfo && (
         <SlaResultDialog
           slaInfo={slaResultInfo}

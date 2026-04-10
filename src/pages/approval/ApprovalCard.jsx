@@ -1,6 +1,6 @@
 // src/pages/approval/ApprovalCard.jsx
 import { formatDate } from '../../utils/helpers'
-import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare } from 'lucide-react'
+import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare, Clock } from 'lucide-react'
 
 export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail }) {
   const approvedByAtasan = item.tpk_approveatasan === 1
@@ -16,7 +16,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         <StatusPill atasan={item.tpk_approveatasan} hrd={item.tpk_approveHRD} isHrd={isHrd} />
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
         <DetailRow icon={<Building2 size={13} />} label="Bagian"    value={item.tpk_bagian} />
         <DetailRow icon={<Users size={13} />}     label="Jumlah"    value={`${item.tpk_jumlah} orang`} />
         <DetailRow icon={<Calendar size={13} />}  label="Tgl Butuh" value={formatDate(item.tpk_tgl_butuh)} />
@@ -27,6 +27,20 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
           <DetailRow icon={<Flag size={13} />} label="Target SLA" value={formatDate(item.sla_final_target_date)} />
         )}
       </div>
+
+      {/* FIX: Tampilkan chip tanggal approval — identik Android ApprovalListScreen
+          Android: if (statusApprovalAtasan == 1) ApprovalChip("Atasan ✓", tglApproveAtasan)
+                   if (statusApprovalHRD == 1) ApprovalChip("HRD ✓", tglApproveHrd) */}
+      {(approvedByAtasan || approvedByHrd) && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {approvedByAtasan && item.tgl_approve_atasan && (
+            <ApprovalChip label="Atasan ✓" date={item.tgl_approve_atasan} />
+          )}
+          {approvedByHrd && item.tgl_approve_hrd && (
+            <ApprovalChip label="HRD ✓" date={item.tgl_approve_hrd} />
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
         <button className="btn-ghost text-xs px-3 py-1.5" onClick={onDetail}>
@@ -47,6 +61,20 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Chip yang menampilkan label approval + tanggal kapan disetujui.
+ * Identik dengan ApprovalChip di Android RecruitmentListScreen.kt
+ */
+function ApprovalChip({ label, date }) {
+  return (
+    <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
+      <Clock size={11} className="text-green-600 shrink-0" />
+      <span className="text-xs font-semibold text-green-700">{label}</span>
+      <span className="text-xs text-green-500">({formatDate(date)})</span>
     </div>
   )
 }

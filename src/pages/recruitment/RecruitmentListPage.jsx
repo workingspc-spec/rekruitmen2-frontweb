@@ -10,7 +10,7 @@ import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-// ─── Period Options (identik Android PeriodPickerSheet) ────────────────────────
+// ─── Period Options ────────────────────────────────────────────────────────────
 const PERIOD_OPTIONS = [
   { value: null,          label: 'Semua Waktu' },
   { value: 'Today',       label: 'Hari Ini' },
@@ -23,10 +23,6 @@ const PERIOD_OPTIONS = [
   { value: 'Last year',   label: 'Tahun Lalu' },
 ]
 
-/**
- * Filter tanggal item berdasarkan period string
- * Identik dengan Android matchesPeriodFilter() di RecruitmentListScreen
- */
 function matchesPeriodFilter(tpkTanggal, period) {
   if (!tpkTanggal || !period) return true
   try {
@@ -67,7 +63,6 @@ function matchesPeriodFilter(tpkTanggal, period) {
             return itemDate >= start && itemDate <= end
           }
         }
-        // Single date YYYY-MM-DD
         if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
           return itemDate.toDateString() === new Date(period + 'T00:00:00').toDateString()
         }
@@ -100,11 +95,6 @@ const STATUS_OPTS = [
   { value: 'rejected', label: 'Ditolak' },
 ]
 
-/**
- * RecruitmentListPage
- * @param {string|null} initialPeriodFilter - period dari URL query param ?period=
- *   Identik Android: initialPeriodFilter: String? = null yang diterima dari Navigation
- */
 export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const { user } = useAuth()
   const navigate  = useNavigate()
@@ -115,7 +105,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const [selected, setSelected]   = useState(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  // Period filter — inisialisasi dari prop (diteruskan dari Dashboard via URL)
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
   const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
 
@@ -130,7 +119,11 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       toast.success(`${selected.size} permintaan berhasil dihapus.`)
       setSelected(new Set())
       setShowDeleteConfirm(false)
+      // FIX: Cross-screen refresh — invalidate semua query yang terdampak
+      // Identik Android: RefreshEventBus.emit(RecruitmentListRefresh + DashboardRefresh)
       qc.invalidateQueries({ queryKey: ['my-requests'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus.'),
   })
@@ -138,16 +131,13 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const filtered = useMemo(() => {
     if (!raw) return []
     let list = raw
-    // Filter status
     if (status === 'pending')  list = list.filter(r => r.tpk_approveatasan === 0 || (r.tpk_approveatasan === 1 && r.tpk_approveHRD === 0))
     if (status === 'approved') list = list.filter(r => r.tpk_approveatasan === 1 && r.tpk_approveHRD === 1)
     if (status === 'rejected') list = list.filter(r => r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2)
-    // Filter teks
     if (search) list = list.filter(r =>
       r.jab_nama.toLowerCase().includes(search.toLowerCase()) ||
       r.tpk_nomor.toLowerCase().includes(search.toLowerCase())
     )
-    // Filter period — identik Android matchesPeriodFilter()
     if (activePeriodFilter) {
       list = list.filter(r => matchesPeriodFilter(r.tpk_tanggal, activePeriodFilter))
     }
@@ -183,12 +173,10 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
 
       {/* ── Filter Bar ── */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Search */}
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input className="input pl-9" placeholder="Cari jabatan / nomor..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        {/* Status chips */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_OPTS.map(o => (
             <button
@@ -201,7 +189,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
           ))}
         </div>
 
-        {/* Period filter button */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-colors ${
@@ -217,14 +204,12 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
           )}
         </button>
 
-        {/* Hint */}
         {hasPendingItems && (
           <p className="w-full text-xs text-slate-400 flex items-center gap-1">
             <span>☝️</span> Centang permintaan Pending Atasan untuk menghapus
           </p>
         )}
 
-        {/* Batch delete */}
         {selected.size > 0 && (
           <button className="btn-danger" onClick={() => setShowDeleteConfirm(true)}>
             <Trash2 size={16} /> Hapus ({selected.size})
@@ -232,7 +217,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         )}
       </div>
 
-      {/* Hint saat period dari Dashboard */}
       {activePeriodFilter && activePeriodFilter === initialPeriodFilter && (
         <p className="text-xs text-sapphire">Difilter dari Dashboard · Tap tanggal untuk ubah</p>
       )}
@@ -340,7 +324,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         )
       )}
 
-      {/* ── Period Picker Modal ── */}
       {/* ── Period Picker Modal ── */}
       {showPeriodPicker && (
         <PeriodPickerModal

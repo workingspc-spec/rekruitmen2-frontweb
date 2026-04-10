@@ -9,12 +9,9 @@ import { formatDate } from '../utils/helpers'
 export function useApprovalList(statusParam) {
   const { user, isHrd } = useAuth()
   const qc = useQueryClient()
-  const [confirmItem, setConfirmItem]           = useState(null)
-  const [isHrdDialogItem, setIsHrdDialogItem]   = useState(null)
-  // FIX: state untuk menampilkan dialog detail SLA setelah approve atasan berhasil
-  // Identik Android: setelah approveAsAtasan berhasil & slaInfo.source=SYSTEM,
-  // tampil dialog dengan finalTargetDate
-  const [slaResultInfo, setSlaResultInfo]       = useState(null)
+  const [confirmItem, setConfirmItem]         = useState(null)
+  const [isHrdDialogItem, setIsHrdDialogItem] = useState(null)
+  const [slaResultInfo, setSlaResultInfo]     = useState(null)
 
   const atasanQ = useQuery({
     queryKey: ['approval-atasan', statusParam],
@@ -32,15 +29,16 @@ export function useApprovalList(statusParam) {
     mutationFn: ({ tpk_nomor, action }) => approvalApi.actionAtasan({ tpk_nomor, action }),
     onSuccess: (data) => {
       const slaInfo = data?.data?.data?.sla_info
-      // FIX: Jika sumber SYSTEM, tampilkan dialog detail SLA (bukan hanya toast)
-      // Identik Android: setelah approveAsAtasan berhasil & slaInfo.source=SYSTEM,
-      // tampil AlertDialog dengan finalTargetDate
-      if (slaInfo?.sla_source === 'SYSTEM' || slaInfo) {
+      if (slaInfo) {
         setSlaResultInfo(slaInfo)
       } else {
         toast.success('Permintaan berhasil diproses!')
       }
+      // FIX: Cross-screen refresh — invalidate semua query yang terdampak
+      // Identik Android: RefreshEventBus.emit(ApprovalListRefresh + DashboardRefresh)
       qc.invalidateQueries({ queryKey: ['approval-atasan'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       setConfirmItem(null)
     },
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal memproses.'),
@@ -50,7 +48,10 @@ export function useApprovalList(statusParam) {
     mutationFn: ({ tpk_nomor }) => approvalApi.actionHrd({ tpk_nomor }),
     onSuccess: () => {
       toast.success('Permintaan disetujui! Lowongan dibuka.')
+      // FIX: Cross-screen refresh — invalidate semua query yang terdampak
       qc.invalidateQueries({ queryKey: ['approval-hrd'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       setIsHrdDialogItem(null)
     },
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal memproses.'),
