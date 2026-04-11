@@ -18,7 +18,6 @@ export default function RecruitmentDetailPage() {
   const { user, isHrd } = useAuth()
 
   const [showSlaTooltip, setShowSlaTooltip] = useState(false)
-  // State untuk collapse/expand log history
   const [logOpen, setLogOpen] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -26,9 +25,6 @@ export default function RecruitmentDetailPage() {
     queryFn: () => recruitmentApi.detail(nomor).then(r => r.data.data),
   })
 
-  // FIX: Fetch log history — missing feature in Web vs Android
-  // Android: getRecruitmentLog() endpoint via ApiService
-  // recruitmentApi.log sudah ada di services.js
   const { data: logData = [] } = useQuery({
     queryKey: ['recruitment-log', nomor],
     queryFn: () => recruitmentApi.log(nomor).then(r => r.data.data ?? []),
@@ -222,9 +218,7 @@ export default function RecruitmentDetailPage() {
         </div>
       </div>
 
-      {/* FIX: Log History — missing feature in Web vs Android
-          Android: getRecruitmentLog() → RecruitmentLogDto (log_id, field_name, old_value,
-          new_value, user_kode, user_nama, created_at). Kritical untuk traceability/audit trail. */}
+      {/* Log History */}
       {logData.length > 0 && (
         <div className="card">
           <button
@@ -253,9 +247,12 @@ export default function RecruitmentDetailPage() {
         </div>
       )}
 
-      {/* Dialog Tooltip SLA */}
+      {/* ✅ Dialog Tooltip SLA dengan BACKDROP CLICK */}
       {showSlaTooltip && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={(e) => e.target === e.currentTarget && setShowSlaTooltip(false)}
+        >
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -282,14 +279,9 @@ export default function RecruitmentDetailPage() {
 }
 
 // ── Log Entry Component ────────────────────────────────────────────────────────
-/**
- * Menampilkan satu baris log perubahan.
- * Identik dengan HistoryItem di SlaDetailPage.jsx & EditHistoryCard di Android SlaDetailScreen.kt
- */
 function LogEntry({ entry }) {
   const displayName = entry.user_nama || entry.user_kode || '–'
 
-  // Label field yang lebih mudah dibaca
   const fieldLabel = (name) => {
     const map = {
       tpk_tgl_butuh:    'Tanggal Butuh',
@@ -308,23 +300,18 @@ function LogEntry({ entry }) {
 
   return (
     <div className="flex gap-3">
-      {/* Avatar */}
       <div className="w-8 h-8 rounded-full bg-sapphire/10 flex items-center justify-center shrink-0">
         <History size={13} className="text-sapphire" />
       </div>
-
-      {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-navy">{displayName}</span>
           <span className="text-xs text-slate-400">{formatDate(entry.created_at)}</span>
         </div>
-
         <div className="mt-1.5 bg-slate-50 rounded-xl px-3 py-2">
           <p className="text-xs font-semibold text-slate-500 mb-1">
             {fieldLabel(entry.field_name)}
           </p>
-          {/* Tampilkan old → new value */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-slate-400 line-through">
               {entry.old_value || '(kosong)'}

@@ -11,15 +11,13 @@ import {
   Plus, Minus, AlertTriangle, CheckCircle2, Loader2,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-// Tambahkan fungsi date-fns ini di baris import
-// src/pages/recruitment/RecruitmentFormPage.jsx
-import { 
-  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays, 
-  isSameMonth, isSameDay, isBefore, isAfter, addMonths, subMonths, 
-  setYear, setMonth, subYears, addYears 
+import {
+  format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, addDays,
+  isSameMonth, isSameDay, isBefore, isAfter, addMonths, subMonths,
+  setYear, setMonth, subYears, addYears
 } from 'date-fns';
 import { id } from 'date-fns/locale'
-import { ChevronLeft, ChevronRight } from 'lucide-react' // Pastikan ini di-import
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 
 // ── Modern Single Date Picker Modal ──────────────────────────────────────────
@@ -29,7 +27,6 @@ function DatePickerModal({ value, onChange, onClose, min }) {
   const [viewMode, setViewMode] = useState('days') // 'days' | 'months' | 'years'
   const today = new Date(); today.setHours(0,0,0,0)
 
-  // Builder grid hari
   const buildDays = (date) => {
     const start = startOfWeek(startOfMonth(date), { weekStartsOn: 0 })
     const end = endOfWeek(endOfMonth(date), { weekStartsOn: 0 })
@@ -53,21 +50,25 @@ function DatePickerModal({ value, onChange, onClose, min }) {
   }
 
   const handleDayClick = (day) => {
-    if (min && isBefore(day, min) && !isSameDay(day, min)) return; // Validasi min date
+    if (min && isBefore(day, min) && !isSameDay(day, min)) return;
     onChange(format(day, 'yyyy-MM-dd'))
     onClose()
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
+    // ✅ BACKDROP CLICK: klik area luar langsung tutup
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[22rem] p-5">
-        
+
         {/* Navigation Header */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={handlePrev} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
             <ChevronLeft size={16} />
           </button>
-          
+
           <button
             onClick={() => {
               if (viewMode === 'days') setViewMode('months')
@@ -165,7 +166,11 @@ function DropdownModal({ title, items, itemKey, itemLabel, selected, onSelect, o
   const filtered = q ? items.filter(i => itemLabel(i).toLowerCase().includes(q.toLowerCase())) : items
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    // ✅ BACKDROP CLICK: klik area gelap (luar kotak putih) langsung tutup
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
         <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
           <h3 className="font-display font-bold text-navy">{title}</h3>
@@ -289,12 +294,9 @@ export default function RecruitmentFormPage() {
     mutationFn: (body) => recruitmentApi.save(body),
     onSuccess: () => {
       toast.success(isEdit ? 'Permintaan berhasil diperbarui!' : 'Permintaan berhasil dibuat!')
-      // FIX: Invalidate queries termasuk dashboard agar data terupdate
-      // Audit: RecruitmentFormPage.jsx — setelah save berhasil, dashboard tidak di-refresh
-      // Android: emit DashboardRefresh + RecruitmentListRefresh via RefreshEventBus
       qc.invalidateQueries({ queryKey: ['my-requests'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })    // ← TAMBAHAN
-      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })  // ← TAMBAHAN
+      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       navigate('/recruitment')
     },
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menyimpan.'),
@@ -423,7 +425,6 @@ export default function RecruitmentFormPage() {
               {isLocked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
 
-            {/* Validasi tanggal — identik Android validateTanggalButuhUseCase */}
             {jabatan && tglButuh && vlResult && (
               <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
                 {vlResult.valid
@@ -433,7 +434,6 @@ export default function RecruitmentFormPage() {
               </div>
             )}
 
-            {/* Hint tanggal minimal */}
             {jabatan && !tglButuh && minDate && !isReSchedule && (
               <p className="mt-1 text-xs text-slate-400">
                 Minimal: {formatDate(toApiDate(minDate.getTime()))}

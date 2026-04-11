@@ -95,8 +95,7 @@ function periodToLabel(period) {
   return period
 }
 
-// FIX: Urutan filter diselaraskan dengan Android → ALL → PENDING → APPROVED
-// Android ApprovalListScreen.kt: ALL → PENDING → APPROVED
+// Urutan filter: ALL → PENDING → APPROVED (identik Android)
 const STATUS_TABS = [
   { key: 'all',      label: 'Semua' },
   { key: 'pending',  label: 'Belum Approve' },
@@ -105,7 +104,7 @@ const STATUS_TABS = [
 
 /**
  * Dialog hasil SLA setelah approve atasan berhasil.
- * Identik Android: AlertDialog yang muncul setelah approveAsAtasan & slaInfo tersedia.
+ * ✅ BACKDROP CLICK: klik area gelap di luar kotak langsung tutup.
  */
 function SlaResultDialog({ slaInfo, onClose }) {
   const isSystem = slaInfo?.sla_source === 'SYSTEM'
@@ -115,7 +114,11 @@ function SlaResultDialog({ slaInfo, onClose }) {
     : (slaInfo?.explanation ?? 'Permintaan telah disetujui.')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    // ✅ BACKDROP CLICK
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center gap-3">
           {isSystem
@@ -151,7 +154,7 @@ function SlaResultDialog({ slaInfo, onClose }) {
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate = useNavigate()
 
-  // FIX: Default tab 'pending' (identik Android default ApprovalFilter.PENDING)
+  // Default tab 'pending' (identik Android default ApprovalFilter.PENDING)
   const [tab, setTab]       = useState('pending')
   const [search, setSearch] = useState('')
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
@@ -208,7 +211,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
 
       {/* ── Filter Row ── */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* FIX: Urutan tab ALL → PENDING → APPROVED (selaras Android) */}
+        {/* Tab: ALL → PENDING → APPROVED (selaras Android) */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_TABS.map(t => (
             <button
@@ -321,7 +324,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── Dialog Hasil SLA setelah approve atasan berhasil ── */}
+      {/* ── Dialog Hasil SLA (dengan backdrop click) ── */}
       {slaResultInfo && (
         <SlaResultDialog
           slaInfo={slaResultInfo}

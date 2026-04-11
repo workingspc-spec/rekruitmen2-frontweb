@@ -29,14 +29,9 @@ export default function SlaDetailPage() {
     queryFn: () => monitoringApi.slaDetail(nomor).then(r => r.data.data),
   })
 
-  // FIX: Hapus `enabled: isHrd` — hiredCandidates harus selalu di-fetch saat halaman buka
-  // Identik Android: loadHiredCandidates(tpkNomor) dipanggil di LaunchedEffect(tpkNomor)
-  // bersamaan dengan loadSlaDetail, tidak tergantung isHrd.
-  // Display tetap dikondisikan dengan isHrd di JSX.
   const { data: hiredData = [] } = useQuery({
     queryKey: ['hired-candidates', nomor],
     queryFn: () => recruitmentApi.hiredCandidates(nomor).then(r => r.data.data ?? []),
-    // enabled: isHrd  ← DIHAPUS, selalu fetch
   })
 
   const cancelMut = useMutation({
@@ -180,8 +175,7 @@ export default function SlaDetailPage() {
         </div>
       </div>
 
-      {/* HRD-only: Hired candidates
-          FIX: Selalu di-fetch (lihat useQuery di atas), hanya tampil untuk isHrd */}
+      {/* HRD-only: Hired candidates */}
       {isHrd && hiredData.length > 0 && (
         <div className="card">
           <p className="font-display font-bold text-navy text-sm mb-3">Kandidat Diterima</p>
@@ -330,11 +324,6 @@ export default function SlaDetailPage() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-/**
- * Build timeline nodes dengan smart filtering.
- * FIX: label untuk sla_source SYSTEM diubah ke "Target Disepakati (Sesuai Sistem)"
- * Audit: Web pakai "Target (Disesuaikan Sistem)" — Android pakai "Target Disepakati (Sesuai Sistem)"
- */
 function buildTimeline(timeline, sla) {
   if (!timeline) return []
   const items = []
@@ -347,8 +336,6 @@ function buildTimeline(timeline, sla) {
   if (timeline.system_floor_date && timeline.system_floor_date !== timeline.final_target_date && sla?.sla_source === 'SYSTEM')
     items.push({ label: 'Estimasi Minimum Sistem', date: timeline.system_floor_date, color: '#475569' })
 
-  // FIX: samakan teks label dengan Android
-  // Android: "Target Disepakati (Sesuai Sistem)" / "Target Disepakati (Sesuai Permintaan)"
   const finalLabel = sla?.sla_source === 'USER'
     ? 'Target Disepakati (Sesuai Permintaan)'
     : sla?.sla_source === 'SYSTEM'
@@ -410,7 +397,8 @@ function HistoryItem({ item }) {
   )
 }
 
-// ── Dialogs ───────────────────────────────────────────────────────────────────
+// ── Dialogs (semua dengan backdrop click) ─────────────────────────────────────
+
 function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
   const [days, setDays] = useState('')
   const [ket, setKet]   = useState('')
@@ -418,6 +406,7 @@ function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
   const valid   = !isNaN(daysNum) && daysNum >= 1 && daysNum <= 30 && ket.trim().length >= 5
 
   return (
+    // ✅ BACKDROP CLICK
     <DialogWrapper title="Batalkan Kandidat?" onClose={onClose}>
       <p className="text-sm font-semibold text-navy mb-1">{candidate.nama}</p>
       <p className="text-xs text-slate-400 mb-4">Buffer hari ini dikurangi dari gross duration saat menghitung KPI bersih HRD.</p>
@@ -511,9 +500,16 @@ function SimpleConfirmDialog({ title, message, confirmLabel, confirmColor, loadi
   )
 }
 
+/**
+ * ✅ DialogWrapper dengan BACKDROP CLICK.
+ * Klik area gelap (luar kotak putih) langsung menutup dialog.
+ */
 function DialogWrapper({ title, onClose, children }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
         <h3 className="font-display font-bold text-navy text-lg mb-4">{title}</h3>
         {children}
