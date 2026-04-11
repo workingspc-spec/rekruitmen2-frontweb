@@ -1,16 +1,50 @@
+// src/pages/monitoring/KpiApproverPage.jsx
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
-import { Gauge, Calendar, ChevronDown, Clock, ArrowRight, Trophy, ChevronRight } from 'lucide-react'
+import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+import { Gauge, Calendar, ChevronDown, ChevronRight, Clock, Trophy, X } from 'lucide-react'
 
-const PERIOD_OPTS = [
-  { value: '',        label: 'Semua Waktu' },
-  { value: 'month',   label: 'Bulan Ini' },
-  { value: 'quarter', label: 'Kuartal Ini' },
-  { value: 'year',    label: 'Tahun Ini' },
-]
+// ─── Helper: konversi period ke param API ─────────────────────────────────────
+function periodToApiParam(period) {
+  if (!period || period === 'All Time') return undefined
+  if (period.startsWith('Custom:')) {
+    return period.replace('Custom:', '').trim().replace(' - ', ',')
+  }
+  return period
+}
+
+// ─── Helper: label display ────────────────────────────────────────────────────
+const PRESET_LABELS = {
+  'All Time':   'Semua Waktu',
+  'Today':      'Hari Ini',
+  'Yesterday':  'Kemarin',
+  'This week':  'Minggu Ini',
+  'Last week':  'Minggu Lalu',
+  'This month': 'Bulan Ini',
+  'Last month': 'Bulan Lalu',
+  'This year':  'Tahun Ini',
+  'Last year':  'Tahun Lalu',
+}
+
+function periodToLabel(period) {
+  if (!period || period === 'All Time') return 'Semua Waktu'
+  if (PRESET_LABELS[period]) return PRESET_LABELS[period]
+  if (period.startsWith('Custom:')) {
+    try {
+      const rangeStr = period.replace('Custom:', '').trim()
+      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
+      if (parts.length >= 2) {
+        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
+          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+        return `${fmt(parts[0])} – ${fmt(parts[1])}`
+      }
+    } catch { return 'Rentang Kustom' }
+  }
+  return period
+}
 
 function getDelayColor(days) {
   if (days <= 1) return '#00C853'
@@ -20,61 +54,63 @@ function getDelayColor(days) {
 }
 
 export default function KpiApproverPage() {
-  const [period, setPeriod] = useState('')
-  const [showPeriod, setShowPeriod] = useState(false)
+  const [period, setPeriod]         = useState('All Time')
+  const [showPicker, setShowPicker] = useState(false)
+
+  const apiParam = periodToApiParam(period)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['kpi-approver', period],
-    queryFn: () => monitoringApi.kpiApprover(period || undefined).then(r => r.data),
+    queryKey: ['kpi-approver', apiParam],
+    queryFn:  () => monitoringApi.kpiApprover(apiParam).then(r => r.data),
   })
 
   const items   = data?.data    ?? []
   const summary = data?.summary ?? {}
   const dist    = summary.performance_distribution ?? {}
+  const total   = summary.total_approvals ?? 0
 
-  const periodLabel = PERIOD_OPTS.find(o => o.value === period)?.label ?? 'Semua Waktu'
-  const total = summary.total_approvals ?? 0
+  const handlePickerSelect = (val) => {
+    setPeriod(val === null ? 'All Time' : val)
+    setShowPicker(false)
+  }
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat KPI Approver." onRetry={refetch} />
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Rekap Approval</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Approval Performance — {periodLabel}</p>
+          <p className="text-sm text-slate-500 mt-0.5">Approval Performance — {periodToLabel(period)}</p>
         </div>
-        <div className="relative">
-          <button
-            onClick={() => setShowPeriod(p => !p)}
-            className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-sapphire transition-colors"
-          >
-            <Calendar size={15} className="text-sapphire" />
-            <span className="text-navy font-medium">{periodLabel}</span>
-            <ChevronDown size={15} className="text-slate-400" />
-          </button>
-          {showPeriod && (
-            <div className="absolute right-0 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden w-44">
-              {PERIOD_OPTS.map(o => (
-                <button
-                  key={o.value}
-                  onClick={() => { setPeriod(o.value); setShowPeriod(false) }}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${period === o.value ? 'bg-sapphire/10 text-sapphire font-semibold' : 'hover:bg-slate-50 text-slate-700'}`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+
+        {/* ── Period Button (sama persis dengan DashboardPage & KpiHrdPage) ── */}
+        <button
+          onClick={() => setShowPicker(true)}
+          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
+        >
+          <Calendar size={16} className="text-sapphire" />
+          <span className="text-slate-700 font-semibold text-xs max-w-[130px] truncate">
+            {periodToLabel(period)}
+          </span>
+          {period !== 'All Time' ? (
+            <X
+              size={14}
+              className="text-slate-400 hover:text-red-400 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setPeriod('All Time') }}
+            />
+          ) : (
+            <ChevronDown size={16} className="text-slate-400" />
           )}
-        </div>
+        </button>
       </div>
 
-      {/* Summary */}
+      {/* ── Summary ── */}
       <div className="card">
         <div className="flex items-center justify-evenly">
-          <BigStat label="TOTAL"    value={total.toString()}          color="text-sapphire" />
+          <BigStat label="TOTAL"     value={total.toString()} color="text-sapphire" />
           <div className="w-px h-10 bg-slate-100" />
           <BigStat
             label="FAST RATE"
@@ -90,14 +126,14 @@ export default function KpiApproverPage() {
         </div>
       </div>
 
-      {/* Distribution */}
+      {/* ── Distribution ── */}
       <div className="card">
         <p className="font-display font-bold text-navy text-sm mb-4">SLA Velocity Distribution</p>
         <div className="space-y-4">
           {[
-            { key: 'fast_track_count',      label: 'Fast Track (≤2 hari)',      color: '#00C853' },
-            { key: 'standard_review_count', label: 'Standard Review (3-5 hari)', color: '#0F52BA' },
-            { key: 'extended_review_count', label: 'Extended Review (>5 hari)',  color: '#F57C00' },
+            { key: 'fast_track_count',      label: 'Fast Track (≤2 hari)',       color: '#00C853' },
+            { key: 'standard_review_count', label: 'Standard Review (3–5 hari)', color: '#0F52BA' },
+            { key: 'extended_review_count', label: 'Extended Review (>5 hari)',   color: '#F57C00' },
           ].map(({ key, label, color }) => {
             const count = dist[key] ?? 0
             const pct   = total > 0 ? Math.round((count / total) * 100) : 0
@@ -114,7 +150,7 @@ export default function KpiApproverPage() {
         </div>
       </div>
 
-      {/* Target insight */}
+      {/* ── Insight ── */}
       <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
         <Trophy size={18} className="text-sapphire shrink-0 mt-0.5" />
         <div>
@@ -125,7 +161,7 @@ export default function KpiApproverPage() {
         </div>
       </div>
 
-      {/* Approval Log */}
+      {/* ── Items ── */}
       {items.length === 0 ? (
         <EmptyState message="Belum ada data approval pada periode ini." />
       ) : (
@@ -136,9 +172,20 @@ export default function KpiApproverPage() {
           ))}
         </div>
       )}
+
+      {/* ── Period Picker Modal (sama dengan halaman lain) ── */}
+      {showPicker && (
+        <PeriodPickerModal
+          current={period === 'All Time' ? null : period}
+          onSelect={handlePickerSelect}
+          onClose={() => setShowPicker(false)}
+        />
+      )}
     </div>
   )
 }
+
+// ── Sub Components ─────────────────────────────────────────────────────────────
 
 function BigStat({ label, value, color }) {
   return (
@@ -150,7 +197,7 @@ function BigStat({ label, value, color }) {
 }
 
 function ApprovalItemCard({ item }) {
-  const meta      = getPerformanceMeta(item.approval_performance)
+  const meta       = getPerformanceMeta(item.approval_performance)
   const delayColor = getDelayColor(item.sla_approval_delay_days)
 
   return (
@@ -175,7 +222,6 @@ function ApprovalItemCard({ item }) {
         <DateBlock label="APPROVED" date={item.approved_date} color="text-green-600" />
       </div>
 
-      {/* Delay & dept */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
           <Clock size={14} style={{ color: delayColor }} />

@@ -1,75 +1,110 @@
+// src/pages/monitoring/KpiHrdPage.jsx
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
-import { BarChart3, Calendar, ChevronDown, Users, Clock, Shield, Info } from 'lucide-react'
+import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+import { BarChart3, Calendar, ChevronDown, Users, Info, Shield, X } from 'lucide-react'
 
-const PERIOD_OPTS = [
-  { value: '',        label: 'Semua Waktu' },
-  { value: 'month',   label: 'Bulan Ini' },
-  { value: 'quarter', label: 'Kuartal Ini' },
-  { value: 'year',    label: 'Tahun Ini' },
-]
+// ─── Helper: konversi period ke param API ─────────────────────────────────────
+function periodToApiParam(period) {
+  if (!period || period === 'All Time') return undefined
+  if (period.startsWith('Custom:')) {
+    // 'Custom: 2026-01-01 - 2026-03-31' → '2026-01-01,2026-03-31'
+    return period.replace('Custom:', '').trim().replace(' - ', ',')
+  }
+  return period
+}
+
+// ─── Helper: label display ────────────────────────────────────────────────────
+const PRESET_LABELS = {
+  'All Time':   'Semua Waktu',
+  'Today':      'Hari Ini',
+  'Yesterday':  'Kemarin',
+  'This week':  'Minggu Ini',
+  'Last week':  'Minggu Lalu',
+  'This month': 'Bulan Ini',
+  'Last month': 'Bulan Lalu',
+  'This year':  'Tahun Ini',
+  'Last year':  'Tahun Lalu',
+}
+
+function periodToLabel(period) {
+  if (!period || period === 'All Time') return 'Semua Waktu'
+  if (PRESET_LABELS[period]) return PRESET_LABELS[period]
+  if (period.startsWith('Custom:')) {
+    try {
+      const rangeStr = period.replace('Custom:', '').trim()
+      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
+      if (parts.length >= 2) {
+        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
+          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
+        return `${fmt(parts[0])} – ${fmt(parts[1])}`
+      }
+    } catch { return 'Rentang Kustom' }
+  }
+  return period
+}
 
 export default function KpiHrdPage() {
-  const [period, setPeriod] = useState('')
-  const [showPeriod, setShowPeriod] = useState(false)
+  const [period, setPeriod]         = useState('All Time')
+  const [showPicker, setShowPicker] = useState(false)
+
+  const apiParam = periodToApiParam(period)
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['kpi-hrd', period],
-    queryFn: () => monitoringApi.kpiHrd(period || undefined).then(r => r.data),
+    queryKey: ['kpi-hrd', apiParam],
+    queryFn:  () => monitoringApi.kpiHrd(apiParam).then(r => r.data),
   })
 
   const items   = data?.data    ?? []
   const summary = data?.summary ?? {}
   const dist    = summary.performance_distribution ?? {}
+  const total   = summary.total_completed ?? 0
 
-  const periodLabel = PERIOD_OPTS.find(o => o.value === period)?.label ?? 'Semua Waktu'
+  const handlePickerSelect = (val) => {
+    setPeriod(val === null ? 'All Time' : val)
+    setShowPicker(false)
+  }
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat KPI HRD." onRetry={refetch} />
 
-  const total = summary.total_completed ?? 0
-
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="page-header">
         <div>
           <h1 className="page-title">KPI Rekrutmen HRD</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Executive Summary — {periodLabel}</p>
+          <p className="text-sm text-slate-500 mt-0.5">Executive Summary — {periodToLabel(period)}</p>
         </div>
-        {/* Period selector */}
-        <div className="relative">
-          <button
-            onClick={() => setShowPeriod(p => !p)}
-            className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm hover:border-sapphire transition-colors"
-          >
-            <Calendar size={15} className="text-sapphire" />
-            <span className="text-navy font-medium">{periodLabel}</span>
-            <ChevronDown size={15} className="text-slate-400" />
-          </button>
-          {showPeriod && (
-            <div className="absolute right-0 top-10 z-20 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden w-44">
-              {PERIOD_OPTS.map(o => (
-                <button
-                  key={o.value}
-                  onClick={() => { setPeriod(o.value); setShowPeriod(false) }}
-                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${period === o.value ? 'bg-sapphire/10 text-sapphire font-semibold' : 'hover:bg-slate-50 text-slate-700'}`}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
+
+        {/* ── Period Button (sama persis dengan DashboardPage) ── */}
+        <button
+          onClick={() => setShowPicker(true)}
+          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
+        >
+          <Calendar size={16} className="text-sapphire" />
+          <span className="text-slate-700 font-semibold text-xs max-w-[130px] truncate">
+            {periodToLabel(period)}
+          </span>
+          {period !== 'All Time' ? (
+            <X
+              size={14}
+              className="text-slate-400 hover:text-red-400 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setPeriod('All Time') }}
+            />
+          ) : (
+            <ChevronDown size={16} className="text-slate-400" />
           )}
-        </div>
+        </button>
       </div>
 
-      {/* Summary Cards */}
+      {/* ── Summary Cards ── */}
       <div className="card">
         <div className="flex items-center justify-evenly">
-          <BigStat label="TOTAL" value={total.toString()} color="text-sapphire" />
+          <BigStat label="TOTAL"   value={total.toString()} color="text-sapphire" />
           <div className="w-px h-10 bg-slate-100" />
           <BigStat
             label="SUCCESS RATE"
@@ -94,7 +129,7 @@ export default function KpiHrdPage() {
         />
       </div>
 
-      {/* Distribution */}
+      {/* ── Distribution ── */}
       <div className="card">
         <p className="font-display font-bold text-navy text-sm mb-4">Distribusi Kualitas Penempatan</p>
         <div className="space-y-4">
@@ -119,7 +154,7 @@ export default function KpiHrdPage() {
         </div>
       </div>
 
-      {/* Insight Box */}
+      {/* ── Insight ── */}
       <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
         <Shield size={18} className="text-sapphire shrink-0 mt-0.5" />
         <div>
@@ -130,20 +165,29 @@ export default function KpiHrdPage() {
         </div>
       </div>
 
-      {/* Items list */}
+      {/* ── Items ── */}
       {items.length === 0 ? (
         <EmptyState message="Tidak ada data pada periode ini." icon={BarChart3} />
       ) : (
         <div className="space-y-4">
           <p className="font-display font-bold text-navy text-sm">Riwayat Penempatan ({items.length})</p>
-          {items.map(item => (
-            <KpiItemCard key={item.sla_tpk_nomor} item={item} />
-          ))}
+          {items.map(item => <KpiItemCard key={item.sla_tpk_nomor} item={item} />)}
         </div>
+      )}
+
+      {/* ── Period Picker Modal (sama dengan halaman lain) ── */}
+      {showPicker && (
+        <PeriodPickerModal
+          current={period === 'All Time' ? null : period}
+          onSelect={handlePickerSelect}
+          onClose={() => setShowPicker(false)}
+        />
       )}
     </div>
   )
 }
+
+// ── Sub Components ─────────────────────────────────────────────────────────────
 
 function BigStat({ label, value, color }) {
   return (
@@ -180,23 +224,19 @@ function KpiItemCard({ item }) {
           <p className="font-display font-bold text-navy">{item.position}</p>
           <p className="text-xs text-slate-400 mt-0.5">{item.department} · {item.sla_tpk_nomor}</p>
         </div>
-        <span
-          className="text-xs font-bold px-2.5 py-1 rounded-full"
-          style={{ background: meta.bg, color: meta.text }}
-        >
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: meta.bg, color: meta.text }}>
           {meta.label}
         </span>
       </div>
 
-      {/* Metrics */}
       <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-evenly mb-3">
         {hasBuffer ? (
           <>
-            <Metric label="AKTUAL" value={`${item.gross_duration_days} hr`} color="text-amber-500" />
+            <Metric label="AKTUAL"    value={`${item.gross_duration_days} hr`} color="text-amber-500" />
             <div className="w-px h-6 bg-slate-200" />
-            <Metric label="WAKTU KPI" value={`${item.net_duration_days} hr`} color="text-green-600" />
+            <Metric label="WAKTU KPI" value={`${item.net_duration_days} hr`}   color="text-green-600" />
             <div className="w-px h-6 bg-slate-200" />
-            <Metric label="MIN SLA" value={`${item.standard_lead_time} hr`} color="text-slate-500" />
+            <Metric label="MIN SLA"   value={`${item.standard_lead_time} hr`}  color="text-slate-500" />
           </>
         ) : (
           <>
@@ -211,7 +251,6 @@ function KpiItemCard({ item }) {
         )}
       </div>
 
-      {/* Buffer note */}
       {hasBuffer && (
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mb-3">
           <Info size={13} className="text-amber-600 shrink-0 mt-0.5" />
@@ -221,7 +260,6 @@ function KpiItemCard({ item }) {
         </div>
       )}
 
-      {/* Progress */}
       <div className="flex items-center gap-2 bg-green-50 rounded-xl px-3 py-2">
         <Users size={14} className="text-green-600" />
         <span className="text-xs font-bold text-green-700">Hired: {item.hired_count}/{item.target_count}</span>

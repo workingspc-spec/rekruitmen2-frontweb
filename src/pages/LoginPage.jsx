@@ -259,34 +259,54 @@ function LeftPanelContent() {
   );
 }
 
-// ─────────────────────────────────────────────
-// UI: ANIMATED EYE TOGGLE
-// ─────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────
+// UI: ANIMATED EYE TOGGLE v4.1
+//
+// ✅ Warna solid hitam (#18181b)
+// ✅ 3 helai bulu mata atas & bawah, lebih panjang
+// ✅ Kelopak tertutup lebih cekung (curve turun dalam)
+// ─────────────────────────────────────────────────────────
 function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
   const containerRef = useRef(null);
-  const pupilRef = useRef(null);
+  const eyeballRef   = useRef(null);
 
   const movePupil = useCallback((e) => {
-    if (!containerRef.current || !pupilRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
+    if (!containerRef.current || !eyeballRef.current) return;
+    if (!isVisible) {
+      eyeballRef.current.style.transform = 'translate(0px, 0px)';
+      return;
+    }
+    const rect  = containerRef.current.getBoundingClientRect();
+    const cx    = rect.left + rect.width  / 2;
+    const cy    = rect.top  + rect.height / 2;
     const angle = Math.atan2(e.clientY - cy, e.clientX - cx);
-    const dist = Math.min(Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2), 2.8);
-    pupilRef.current.style.transform =
-      `translate(${(Math.cos(angle) * dist).toFixed(2)}px, ${(Math.sin(angle) * dist).toFixed(2)}px)`;
-  }, []);
+    const maxR  = isError ? 3.0 : 2.0;
+    const dist  = Math.min(
+      Math.sqrt((e.clientX - cx) ** 2 + (e.clientY - cy) ** 2) * 0.045,
+      maxR
+    );
+    eyeballRef.current.style.transform =
+      `translate(${(Math.cos(angle) * dist).toFixed(2)}px,` +
+      `${(Math.sin(angle) * dist).toFixed(2)}px)`;
+  }, [isVisible, isError]);
 
   useEffect(() => {
     window.addEventListener('mousemove', movePupil);
     return () => window.removeEventListener('mousemove', movePupil);
   }, [movePupil]);
 
-  const stroke = isError
-    ? SYSTEM_CONFIG.colors.error
-    : isFocused
-    ? SYSTEM_CONFIG.colors.sapphire
-    : SYSTEM_CONFIG.colors.textMuted;
+  const color = '#18181b';
+
+  const pupilR = isError ? 3.5  : 3.0;
+  const catchR = isError ? 0.9  : 0.6;
+
+  const P_NORMAL = 'M2,12 C6,5.5 18,5.5 22,12 C18,18.5 6,18.5 2,12 Z';
+  const P_ERROR  = 'M2,12 C5,4   19,4   22,12 C19,20   5,20   2,12 Z';
+  const P_CLOSED = 'M2,12 C6,18  18,18  22,12 C18,18   6,18   2,12 Z';
+
+  const eyePath = !isVisible ? P_CLOSED : isError ? P_ERROR : P_NORMAL;
+  const D_T = 'd 0.40s cubic-bezier(0.34, 1.56, 0.64, 1)';
+  const R_T = 'r 0.32s cubic-bezier(0.34, 1.56, 0.64, 1)';
 
   return (
     <button
@@ -298,21 +318,83 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
         position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)',
         background: 'none', border: 'none', cursor: 'pointer',
         padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        width: 28, height: 28, borderRadius: 6, outline: 'none',
+        width: 32, height: 32, borderRadius: 6, outline: 'none',
       }}
     >
-      {isVisible ? (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible' }}>
-          <path d="M2 12s5-7 10-7 10 7 10 7-5 7-10 7S2 12 2 12Z" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" fill="none" />
-          <circle cx="12" cy="12" r="3.2" stroke={stroke} strokeWidth="1.5" fill="none" />
-          <circle ref={pupilRef} cx="12" cy="12" r="1.4" fill={stroke} style={{ transition: 'transform 0.05s linear', transformOrigin: '12px 12px' }} />
-        </svg>
-      ) : (
-        <svg width="19" height="19" viewBox="0 0 24 24" fill="none">
-          <path d="M4 10s3.5 6 8 6 8-6 8-6" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-          <path d="M12 16v2.5M7.5 14.5 6 17M16.5 14.5 18 17" stroke={stroke} strokeWidth="1.8" strokeLinecap="round" />
-        </svg>
-      )}
+      <svg
+        width="22" height="22"
+        viewBox="0 0 24 24"
+        fill="none"
+        style={{ overflow: 'visible' }}
+      >
+        {/* 1. SCLERA */}
+        <path
+          d={eyePath}
+          fill="white"
+          stroke="none"
+          style={{ transition: D_T }}
+        />
+
+        {/* 2. BOLA MATA: iris ring luar · pupil · catchlight (tanpa fill & ring dalam) */}
+        <g
+          ref={eyeballRef}
+          style={{
+            opacity: isVisible ? 1 : 0,
+            transition: 'opacity 0.22s ease, transform 0.055s linear',
+            pointerEvents: 'none',
+          }}
+        >
+
+          {/* Pupil hitam solid */}
+          <circle cx="12" cy="12" r={pupilR}
+            fill={color}
+            style={{ transition: R_T }} />
+          {/* Catchlight utama */}
+          <circle cx="13.1" cy="10.7" r={catchR}
+            fill="white"
+            style={{ transition: R_T }} />
+          {/* Catchlight sekunder kecil */}
+          <circle cx="11.0" cy="13.2" r={catchR * 0.42}
+            fill="white" opacity="0.55"
+            style={{ transition: R_T }} />
+        </g>
+
+        {/* 3. OUTLINE KELOPAK MATA */}
+        <path
+          d={eyePath}
+          stroke={color}
+          strokeWidth={isError ? '1.7' : '1.5'}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+          style={{ transition: `${D_T}, stroke-width 0.2s` }}
+        />
+
+        {/* 4. BULU MATA — hanya muncul saat mata TERTUTUP (!isVisible) */}
+        <g style={{
+          opacity: !isVisible ? 1 : 0,
+          transform: !isVisible ? 'translateY(0px)' : 'translateY(-3px)',
+          transition: 'opacity 0.30s ease, transform 0.40s cubic-bezier(0.34,1.56,0.64,1)',
+          pointerEvents: 'none',
+        }}>
+          {/* Kiri — miring ke kiri-bawah */}
+          <path
+            d="M7.5,15.6 Q6.7,18.6 6.0,20.8"
+            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
+          />
+          {/* Tengah — lurus ke bawah */}
+          <path
+            d="M12.0,16.5 Q12.0,19.5 12.1,22.0"
+            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
+          />
+          {/* Kanan — miring ke kanan-bawah */}
+          <path
+            d="M16.5,15.6 Q17.3,18.6 18.0,20.8"
+            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
+          />
+        </g>
+
+      </svg>
     </button>
   );
 }
@@ -566,8 +648,8 @@ export default function LoginPage() {
     /* ── FORM GLASS CARD ── */
     .form-glass-card {
       width: 100%;
-      max-width: 410px;
-      padding: 2.75rem 2.5rem;
+      max-width: 420px;
+      padding: 2.2rem 3rem;
       position: relative;
       z-index: 30;
       background: rgba(255,255,255,0.92);
@@ -581,7 +663,7 @@ export default function LoginPage() {
 
     .checkbox-layout-row {
       display: flex; align-items: center; justify-content: space-between;
-      margin-top: 1.5rem; margin-bottom: 2.5rem; width: 100%;
+      margin-top: 0.75rem; margin-bottom: 1.25rem; width: 100%;
     }
 
     .error-shake-effect { animation: shakeAnimation 0.52s cubic-bezier(.36,.07,.19,.97) both; }
@@ -670,7 +752,7 @@ return (
               marginTop: '0.5rem',    /* Menurunkan logo agar ada space aman dari border atas */
               marginBottom: '0.5rem'  /* Margin bawah diperkecil drastis untuk mengimbangi logo yang membesar */
             }}>
-              <AppLogo size={120} />
+              <AppLogo size={135} />
             </div>
 
             {/* Header */}
@@ -687,7 +769,7 @@ return (
             <form onSubmit={handleSubmit} autoComplete="off" noValidate>
 
               {/* Username + autocomplete */}
-              <div style={{ marginBottom: '1.75rem', position: 'relative' }} ref={usernameInputRef}>
+              <div style={{ marginBottom: '0.75rem', position: 'relative' }} ref={usernameInputRef}>
                 <FloatingInput
                   id="usernameInput"
                   label="Username"
@@ -784,9 +866,9 @@ return (
 
             {/* Footer */}
             <div style={{
-              textAlign: 'center', marginTop: '2.5rem',
+              textAlign: 'center', marginTop: '1.25rem',
               borderTop: `1px solid ${SYSTEM_CONFIG.colors.borderLight}60`,
-              paddingTop: '1.25rem',
+              paddingTop: '1rem',
             }}>
               <p style={{ fontSize: 13, color: SYSTEM_CONFIG.colors.textMuted, margin: 0 }}>
                 Belum punya akun?{' '}
