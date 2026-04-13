@@ -113,17 +113,33 @@ export default function KpiHrdPage() {
       </div>
 
       {/*
-       * ✅ SIMPLIFIED: Satu kartu "Rata-rata Penyelesaian" menggantikan dua kartu
-       * perbandingan (Aktual vs KPI) yang membingungkan.
-       * Nilai yang ditampilkan adalah avg_net_duration — angka yang sudah adil
-       * (sudah dipotong toleransi no-show) — tanpa perlu menjelaskan rumusnya.
+       * FIX #3: Rata-rata Penyelesaian + Catatan Performa side-by-side
+       * Sebelumnya keduanya full-width dan berdiri sendiri.
+       * Sekarang dibungkus dalam flex row agar sejajar.
        */}
-      <DurationCard
-        title="Rata-rata Penyelesaian"
-        days={summary.avg_net_duration ?? 0}
-        sub="Rata-rata hari kerja per rekrutmen"
-        color="text-sapphire bg-blue-50"
-      />
+      <div className="flex gap-3 items-stretch">
+        {/* Rata-rata Penyelesaian */}
+        <div className="flex-1">
+          <DurationCard
+            title="Rata-rata Penyelesaian"
+            days={summary.avg_net_duration ?? 0}
+            sub="Rata-rata hari kerja per rekrutmen"
+            color="text-sapphire bg-blue-50"
+          />
+        </div>
+
+        {/* Catatan Performa — sejajar di sebelah kanan */}
+        <div className="flex-1 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
+          <Shield size={18} className="text-sapphire shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-sapphire">Catatan Performa</p>
+            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+              Tingkat sukses rekrutmen mencapai <strong>{summary.success_rate ?? 0}%</strong> dengan
+              rata-rata waktu penyelesaian <strong>{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* ── Distribution ── */}
       <div className="card">
@@ -147,22 +163,6 @@ export default function KpiHrdPage() {
               </div>
             )
           })}
-        </div>
-      </div>
-
-      {/* ── Insight ── */}
-      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
-        <Shield size={18} className="text-sapphire shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-bold text-sapphire">Catatan Performa</p>
-          {/*
-           * ✅ UPDATED: Teks insight disederhanakan — tidak lagi menampilkan
-           * perbandingan Aktual vs KPI yang membingungkan.
-           */}
-          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            Secara keseluruhan, tingkat sukses rekrutmen mencapai <strong>{summary.success_rate ?? 0}%</strong> dengan
-            rata-rata waktu penyelesaian <strong>{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
-          </p>
         </div>
       </div>
 
@@ -199,10 +199,10 @@ function BigStat({ label, value, color }) {
   )
 }
 
-// ✅ UPDATED: DurationCard kini hanya menerima satu warna string tanpa perlu split
-function DurationCard({ title, days, sub, color }) {
+// DurationCard menerima optional className untuk fleksibilitas layout
+function DurationCard({ title, days, sub, color, className = '' }) {
   return (
-    <div className={`rounded-2xl p-5 ${color}`}>
+    <div className={`rounded-2xl p-5 h-full ${color} ${className}`}>
       <p className="text-xs font-bold text-slate-500 mb-1">{title}</p>
       <div className="flex items-baseline gap-1">
         <span className="text-4xl font-display font-black text-sapphire">{Math.round(days)}</span>

@@ -74,7 +74,6 @@ export default function DashboardPage() {
 
   /**
    * Navigate ke halaman dengan meneruskan period filter via query param.
-   * Identik Android: navigateWithPeriod() di DashboardPage.kt
    */
   const navigateWithPeriod = (path) => {
     if (!period || period === 'All Time') {
@@ -82,6 +81,18 @@ export default function DashboardPage() {
     } else {
       navigate(`${path}?period=${encodeURIComponent(period)}`)
     }
+  }
+
+  /**
+   * Navigate ke SLA Monitoring dengan filter status + period opsional.
+   * Digunakan untuk kartu yang spesifik menampilkan subset data monitoring.
+   */
+  const navigateToMonitoring = (statusFilter = null, periodFilter = null) => {
+    const params = new URLSearchParams()
+    if (statusFilter) params.set('status', statusFilter)
+    if (periodFilter) params.set('period', periodFilter)
+    const query = params.toString()
+    navigate(query ? `/monitoring?${query}` : '/monitoring')
   }
 
   const handlePickerSelect = (val) => {
@@ -120,8 +131,6 @@ export default function DashboardPage() {
               ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
               : 'HRD meminta Anda memperbarui tanggal target pada permintaan Anda.'
           }
-          // FIX: non-HRD harus navigasi ke /recruitment (bukan /monitoring)
-          // Identik Android: isHrd != 1 → onNavigateToRecruitment
           onAction={() => navigate(isHrd ? '/monitoring' : '/recruitment')}
           actionLabel="Lihat"
         />
@@ -130,7 +139,7 @@ export default function DashboardPage() {
         <AlertBanner
           type="error"
           message={`${summary.overdueRequests} permintaan melewati target SLA.`}
-          onAction={() => navigate('/monitoring')}
+          onAction={() => navigateToMonitoring('OVERDUE')}
           actionLabel="Periksa"
         />
       )}
@@ -144,7 +153,7 @@ export default function DashboardPage() {
         <ErrorBox message="Gagal memuat statistik." onRetry={() => statsQ.refetch()} />
       ) : (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Kartu Permintaan — teruskan period saat klik */}
+          {/* Kartu Permintaan */}
           <StatCard
             label="Permintaan"
             value={stats?.totalPermintaan ?? 0}
@@ -152,9 +161,7 @@ export default function DashboardPage() {
             color="#0F52BA"
             onClick={() => navigateWithPeriod('/recruitment')}
           />
-          {/* FIX: Kartu Persetujuan juga harus meneruskan period
-              Audit: DashboardPage.jsx — StatCard Persetujuan harus pakai navigateWithPeriod('/approval')
-              Android: klik kartu Persetujuan meneruskan currentPeriod ke ApprovalList */}
+          {/* Kartu Persetujuan */}
           <StatCard
             label="Pending Approval"
             value={stats?.pendingApproval ?? 0}
@@ -163,6 +170,7 @@ export default function DashboardPage() {
             alert={stats?.pendingApproval > 0}
             onClick={() => navigateWithPeriod('/approval')}
           />
+          {/* Kartu SLA Aktif — navigasi ke monitoring tanpa filter khusus */}
           <StatCard
             label="SLA Aktif"
             value={summary?.activeRequests ?? 0}
@@ -170,12 +178,18 @@ export default function DashboardPage() {
             color="#0F52BA"
             onClick={() => navigate('/monitoring')}
           />
+          {/*
+           * ✅ FIX: Kartu "Selesai Bulan Ini" harus menavigasi ke monitoring
+           * dengan filter status=COMPLETED dan period=This month agar
+           * jumlah yang ditampilkan selaras dengan data yang difilter.
+           * Identik Android: navigate ke SlaStatusList dengan filter COMPLETED + This month.
+           */}
           <StatCard
             label="Selesai Bulan Ini"
             value={summary?.completedThisMonth ?? 0}
             icon={CheckCircle2}
             color="#2E7D32"
-            onClick={() => navigate('/monitoring')}
+            onClick={() => navigateToMonitoring('COMPLETED', 'This month')}
           />
         </div>
       )}
@@ -186,13 +200,28 @@ export default function DashboardPage() {
           <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
           <div className="grid grid-cols-3 gap-5">
             {[
-              { label: 'Aktif',        val: summary.activeRequests,  color: '#0F52BA' },
-              { label: 'Terlambat',    val: summary.overdueRequests, color: '#DC2626' },
-              { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F97316' },
-            ].map(({ label, val, color }) => (
+              {
+                label: 'Aktif',
+                val: summary.activeRequests,
+                color: '#0F52BA',
+                onClick: () => navigate('/monitoring'),
+              },
+              {
+                label: 'Terlambat',
+                val: summary.overdueRequests,
+                color: '#DC2626',
+                onClick: () => navigateToMonitoring('OVERDUE'),
+              },
+              {
+                label: 'Perlu Update',
+                val: summary.needUserUpdate,
+                color: '#F97316',
+                onClick: () => navigateToMonitoring('NEED_USER_UPDATE'),
+              },
+            ].map(({ label, val, color, onClick }) => (
               <button
                 key={label}
-                onClick={() => navigate('/monitoring')}
+                onClick={onClick}
                 className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300"
               >
                 <p className="text-4xl font-black mb-1.5" style={{ color }}>{val}</p>

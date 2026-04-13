@@ -6,9 +6,10 @@ import { useAuth } from '../../context/AuthContext'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getSlaStatusMeta, getDaysColor } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
+import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
   Activity, Calendar, Users, ChevronRight,
-  Edit2, AlertTriangle, Clock, X,
+  Edit2, AlertTriangle, Clock, X, ChevronDown,
 } from 'lucide-react'
 
 // ── FILTER DEFINITIONS ─────────────────────────────────────────────────────────
@@ -24,6 +25,18 @@ const FILTERS = [
 ]
 
 // ── PERIOD HELPERS ─────────────────────────────────────────────────────────────
+const PERIOD_OPTIONS = [
+  { value: null,          label: 'Semua Waktu' },
+  { value: 'Today',       label: 'Hari Ini' },
+  { value: 'Yesterday',   label: 'Kemarin' },
+  { value: 'This week',   label: 'Minggu Ini' },
+  { value: 'Last week',   label: 'Minggu Lalu' },
+  { value: 'This month',  label: 'Bulan Ini' },
+  { value: 'Last month',  label: 'Bulan Lalu' },
+  { value: 'This year',   label: 'Tahun Ini' },
+  { value: 'Last year',   label: 'Tahun Lalu' },
+]
+
 /**
  * Cocokkan item dengan period filter.
  * Untuk COMPLETED: filter berdasarkan sla_completed_at.
@@ -32,9 +45,6 @@ const FILTERS = [
 function matchesPeriodFilter(item, period) {
   if (!period) return true
 
-  // Pilih field tanggal yang relevan:
-  // - Item COMPLETED → gunakan sla_completed_at (kapan tiket benar-benar selesai)
-  // - Item lain      → gunakan tpk_tanggal (tanggal permintaan dibuat)
   const rawDate = item.ui_status_tag === 'COMPLETED'
     ? (item.sla_completed_at || item.tpk_tanggal)
     : item.tpk_tanggal
@@ -99,20 +109,21 @@ function matchesPeriodFilter(item, period) {
  * Ubah nilai period ke label yang mudah dibaca.
  */
 function periodToLabel(period) {
-  if (!period) return null
-  const MAP = {
-    'today':      'Hari Ini',
-    'yesterday':  'Kemarin',
-    'this week':  'Minggu Ini',
-    'this+week':  'Minggu Ini',
-    'last week':  'Minggu Lalu',
-    'this month': 'Bulan Ini',
-    'this+month': 'Bulan Ini',
-    'last month': 'Bulan Lalu',
-    'this year':  'Tahun Ini',
-    'last year':  'Tahun Lalu',
+  if (!period) return 'Semua Waktu'
+  const match = PERIOD_OPTIONS.find(o => o.value === period)
+  if (match) return match.label
+  if (period.toLowerCase().startsWith('custom:')) {
+    try {
+      const rangeStr = period.replace(/custom:/i, '').trim()
+      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
+      if (parts.length >= 2) {
+        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
+          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+        return `${fmt(parts[0])} – ${fmt(parts[1])}`
+      }
+    } catch { return 'Rentang Kustom' }
   }
-  return MAP[period.toLowerCase()] ?? period
+  return period
 }
 
 // ── MAIN PAGE ──────────────────────────────────────────────────────────────────
@@ -124,9 +135,9 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const { isHrd }  = useAuth()
   const navigate   = useNavigate()
 
-  // ✅ FIX: Inisialisasi filter dari props (dikirim Dashboard via URL params)
   const [filter, setFilter]               = useState(initialStatusFilter || 'ALL')
   const [activePeriodFilter, setPeriod]   = useState(initialPeriodFilter || null)
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
@@ -137,7 +148,6 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const items   = data?.data    ?? []
   const summary = data?.summary ?? {}
 
-  // ✅ FIX: useMemo sekarang juga menerapkan period filter di atas status filter
   const filtered = useMemo(() => {
     // Step 1: filter berdasarkan STATUS
     let result = items
@@ -146,7 +156,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
     else if (filter === 'APPROVAL_DELAYED') result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
     else                                    result = items.filter(i => i.ui_status_tag === filter)
 
-    // Step 2: filter berdasarkan PERIOD (opsional, hanya jika ada period aktif)
+    // Step 2: filter berdasarkan PERIOD (opsional)
     if (activePeriodFilter) {
       result = result.filter(i => matchesPeriodFilter(i, activePeriodFilter))
     }
@@ -156,37 +166,79 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
 
   const approvalDelayedCount = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED').length
 
-  // Label period yang ditampilkan di banner
-  const periodLabel = periodToLabel(activePeriodFilter)
+  // Helper: apakah filter berasal dari navigasi Dashboard
+  const isFromDashboard = (initialStatusFilter || initialPeriodFilter) &&
+    (filter === initialStatusFilter || activePeriodFilter === initialPeriodFilter)
+
+  const handlePeriodSelect = (val) => {
+    setPeriod(val)
+    setShowPeriodPicker(false)
+  }
+
+  const clearAllFilters = () => {
+    setFilter('ALL')
+    setPeriod(null)
+  }
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat data monitoring." onRetry={refetch} />
 
   return (
     <div className="space-y-5">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="page-header">
         <div>
           <h1 className="page-title">SLA Monitoring</h1>
           <p className="text-sm text-slate-500 mt-0.5">{summary.total_active ?? 0} permintaan aktif</p>
         </div>
+
+        {/* ── Period Filter Button — konsisten dengan halaman lain ── */}
+        <button
+          onClick={() => setShowPeriodPicker(true)}
+          className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm border transition-all hover:shadow-sm hover:-translate-y-0.5 ${
+            activePeriodFilter
+              ? 'bg-sapphire/10 text-sapphire border-sapphire/30'
+              : 'bg-white text-slate-700 border-slate-200 hover:border-sapphire'
+          }`}
+        >
+          <Calendar size={16} className={activePeriodFilter ? 'text-sapphire' : 'text-sapphire'} />
+          <span className="font-semibold text-xs max-w-[130px] truncate">
+            {periodToLabel(activePeriodFilter)}
+          </span>
+          {activePeriodFilter ? (
+            <X
+              size={14}
+              className="text-slate-400 hover:text-red-400 transition-colors"
+              onClick={(e) => { e.stopPropagation(); setPeriod(null) }}
+            />
+          ) : (
+            <ChevronDown size={16} className="text-slate-400" />
+          )}
+        </button>
       </div>
 
-      {/* ✅ BARU: Banner filter aktif dari Dashboard (tampil jika ada period filter) */}
-      {activePeriodFilter && (
+      {/* ── Banner filter aktif (dari Dashboard atau pilihan manual) ── */}
+      {(activePeriodFilter || (filter !== 'ALL')) && (
         <div className="flex items-center justify-between bg-sapphire/5 border border-sapphire/20 rounded-xl px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Calendar size={15} className="text-sapphire" />
             <span className="text-sm font-semibold text-sapphire">
-              Difilter: {FILTERS.find(f => f.key === filter)?.label ?? filter}
-              {periodLabel ? ` · ${periodLabel}` : ''}
+              {filter !== 'ALL' && (
+                <span>{FILTERS.find(f => f.key === filter)?.label ?? filter}</span>
+              )}
+              {filter !== 'ALL' && activePeriodFilter && (
+                <span className="text-slate-400 font-normal"> · </span>
+              )}
+              {activePeriodFilter && (
+                <span>{periodToLabel(activePeriodFilter)}</span>
+              )}
+              {isFromDashboard && (
+                <span className="text-xs text-slate-400 font-normal ml-1">· dari Dashboard</span>
+              )}
             </span>
-            {initialStatusFilter && initialPeriodFilter && (
-              <span className="text-xs text-slate-400 ml-1">· dari Dashboard</span>
-            )}
           </div>
           <button
-            onClick={() => { setFilter('ALL'); setPeriod(null) }}
+            onClick={clearAllFilters}
             className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors"
           >
             <X size={13} /> Hapus Filter
@@ -194,7 +246,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         </div>
       )}
 
-      {/* Alert Cards */}
+      {/* ── Alert Cards ── */}
       <div className="space-y-3">
         {(summary.need_update ?? 0) > 0 && (
           <AlertCard
@@ -225,7 +277,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         )}
       </div>
 
-      {/* Banner monitoring bawahan untuk non-HRD */}
+      {/* ── Banner monitoring bawahan untuk non-HRD ── */}
       {!isHrd && summary.monitoring_bawahan != null && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
           <Activity size={18} className="text-sapphire shrink-0" />
@@ -235,7 +287,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         </div>
       )}
 
-      {/* Summary Stats */}
+      {/* ── Summary Stats ── */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard
           label="Total Aktif"
@@ -260,7 +312,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         />
       </div>
 
-      {/* Progress Card */}
+      {/* ── Progress Card ── */}
       <div className="card">
         <div className="flex items-center justify-evenly">
           <ProgressStat label="Hired"  value={summary.total_hired ?? 0}  color="text-green-600" />
@@ -269,7 +321,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         </div>
       </div>
 
-      {/* Filter Chips */}
+      {/* ── Filter Chips ── */}
       <div className="flex gap-2 flex-wrap">
         {FILTERS.map(f => {
           const count = f.key === 'ALL'               ? items.length
@@ -293,12 +345,12 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         })}
       </div>
 
-      {/* List */}
+      {/* ── List ── */}
       {filtered.length === 0 ? (
         <EmptyState
           message={
             activePeriodFilter
-              ? `Tidak ada data "${FILTERS.find(f => f.key === filter)?.label}" pada periode ${periodLabel}.`
+              ? `Tidak ada data "${FILTERS.find(f => f.key === filter)?.label ?? filter}" pada periode ${periodToLabel(activePeriodFilter)}.`
               : 'Tidak ada data dengan filter ini.'
           }
           icon={Activity}
@@ -315,6 +367,15 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
             />
           ))}
         </div>
+      )}
+
+      {/* ── Period Picker Modal — konsisten dengan halaman lain ── */}
+      {showPeriodPicker && (
+        <PeriodPickerModal
+          current={activePeriodFilter}
+          onSelect={handlePeriodSelect}
+          onClose={() => setShowPeriodPicker(false)}
+        />
       )}
     </div>
   )
@@ -370,7 +431,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
   const daysColor = getDaysColor(item.days_remaining)
   const isCompleted = item.ui_status_tag === 'COMPLETED'
 
-  // canEdit: hanya pemilik permintaan yang bukan bawahan dan izin dibuka
   const canEdit = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
 
   return (
@@ -453,7 +513,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
       <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
         <Calendar size={13} className="text-slate-400" />
         <span className="text-xs text-slate-400">Target: {formatDate(item.sla_final_target_date)}</span>
-        {/* ✅ BARU: Tampilkan tanggal selesai aktual untuk item COMPLETED */}
         {isCompleted && item.sla_completed_at && (
           <span className="text-xs text-green-600 font-semibold ml-2">
             · Selesai: {formatDate(item.sla_completed_at)}

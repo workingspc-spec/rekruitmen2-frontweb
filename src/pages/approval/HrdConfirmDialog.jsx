@@ -1,12 +1,16 @@
 // src/pages/approval/HrdConfirmDialog.jsx
+import { createPortal } from 'react-dom'
 import { formatDate } from '../../utils/helpers'
 import { Spinner } from '../../components/ui'
 import { CheckCircle2, AlertTriangle, Flag, Building2, Users, Calendar, CheckSquare } from 'lucide-react'
 import { DetailRow } from './ApprovalCard'
 
+/**
+ * FIX #4: Menggunakan createPortal agar dialog selalu terpusat
+ * di tengah viewport, tidak terpengaruh posisi scroll halaman.
+ */
 export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
-  return (
-    // ✅ FIX: Backdrop click — klik area gelap di luar dialog langsung tutup
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
@@ -44,6 +48,7 @@ export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

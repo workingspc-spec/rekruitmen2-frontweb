@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi, monitoringApi } from '../../api/services'
 import { formatDate, getDaysColor } from '../../utils/helpers'
@@ -288,7 +289,7 @@ export default function SlaDetailPage() {
         </div>
       )}
 
-      {/* Dialogs */}
+      {/* Dialogs — all use createPortal via DialogWrapper */}
       {showNoShow && selectedRkt && (
         <NoShowDialog
           candidate={selectedRkt}
@@ -397,7 +398,7 @@ function HistoryItem({ item }) {
   )
 }
 
-// ── Dialogs (semua dengan backdrop click) ─────────────────────────────────────
+// ── Dialogs — semua dengan backdrop click & createPortal ──────────────────────
 
 function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
   const [days, setDays] = useState('')
@@ -406,7 +407,6 @@ function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
   const valid   = !isNaN(daysNum) && daysNum >= 1 && daysNum <= 30 && ket.trim().length >= 5
 
   return (
-    // ✅ BACKDROP CLICK
     <DialogWrapper title="Batalkan Kandidat?" onClose={onClose}>
       <p className="text-sm font-semibold text-navy mb-1">{candidate.nama}</p>
       <p className="text-xs text-slate-400 mb-4">Buffer hari ini dikurangi dari gross duration saat menghitung KPI bersih HRD.</p>
@@ -501,19 +501,21 @@ function SimpleConfirmDialog({ title, message, confirmLabel, confirmColor, loadi
 }
 
 /**
- * ✅ DialogWrapper dengan BACKDROP CLICK.
- * Klik area gelap (luar kotak putih) langsung menutup dialog.
+ * FIX #4: DialogWrapper menggunakan createPortal agar posisi fixed
+ * selalu relatif ke viewport, bukan ke parent yang di-scroll.
+ * Sebelumnya dialog muncul mengikuti scroll posisi halaman.
  */
 function DialogWrapper({ title, onClose, children }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content">
         <h3 className="font-display font-bold text-navy text-lg mb-4">{title}</h3>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
