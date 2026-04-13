@@ -7,12 +7,11 @@ import { monitoringApi } from '../../api/services'
 import { formatDate, getSlaStatusMeta, getDaysColor } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import {
-  Activity, Calendar, Users, Building2, ChevronRight,
-  Edit2, AlertTriangle, Clock, Eye,
+  Activity, Calendar, Users, ChevronRight,
+  Edit2, AlertTriangle, Clock, X,
 } from 'lucide-react'
 
-// FIX: Tambah APPROVAL_DELAYED ke FILTERS array
-// Audit: SlaStatusListPage.jsx — filter "APPROVAL_DELAYED" ada di Android tapi tidak ada di Web
+// ── FILTER DEFINITIONS ─────────────────────────────────────────────────────────
 const FILTERS = [
   { key: 'ALL',              label: 'Semua' },
   { key: 'NEED_USER_UPDATE', label: 'Perlu Update' },
@@ -24,10 +23,110 @@ const FILTERS = [
   { key: 'COMPLETED',        label: 'Selesai' },
 ]
 
-export default function SlaStatusListPage() {
+// ── PERIOD HELPERS ─────────────────────────────────────────────────────────────
+/**
+ * Cocokkan item dengan period filter.
+ * Untuk COMPLETED: filter berdasarkan sla_completed_at.
+ * Untuk lainnya: filter berdasarkan tpk_tanggal.
+ */
+function matchesPeriodFilter(item, period) {
+  if (!period) return true
+
+  // Pilih field tanggal yang relevan:
+  // - Item COMPLETED → gunakan sla_completed_at (kapan tiket benar-benar selesai)
+  // - Item lain      → gunakan tpk_tanggal (tanggal permintaan dibuat)
+  const rawDate = item.ui_status_tag === 'COMPLETED'
+    ? (item.sla_completed_at || item.tpk_tanggal)
+    : item.tpk_tanggal
+
+  if (!rawDate) return true
+
+  try {
+    const itemDate = new Date(rawDate.substring(0, 10) + 'T00:00:00')
+    const today    = new Date(); today.setHours(0, 0, 0, 0)
+
+    switch (period.toLowerCase()) {
+      case 'today':
+        return itemDate.toDateString() === today.toDateString()
+      case 'yesterday': {
+        const y = new Date(today); y.setDate(y.getDate() - 1)
+        return itemDate.toDateString() === y.toDateString()
+      }
+      case 'this week':
+      case 'this+week': {
+        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) + 1)
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+        return itemDate >= mon && itemDate <= sun
+      }
+      case 'last week': {
+        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) - 6)
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
+        return itemDate >= mon && itemDate <= sun
+      }
+      case 'this month':
+      case 'this+month':
+        return itemDate.getMonth() === today.getMonth() &&
+               itemDate.getFullYear() === today.getFullYear()
+      case 'last month': {
+        const lm = new Date(today); lm.setMonth(lm.getMonth() - 1)
+        return itemDate.getMonth() === lm.getMonth() &&
+               itemDate.getFullYear() === lm.getFullYear()
+      }
+      case 'this year':
+        return itemDate.getFullYear() === today.getFullYear()
+      case 'last year':
+        return itemDate.getFullYear() === today.getFullYear() - 1
+      default: {
+        if (period.toLowerCase().startsWith('custom:')) {
+          const rangeStr = period.replace(/custom:/i, '').trim()
+          const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
+          if (parts.length === 2) {
+            const start = new Date(parts[0].trim() + 'T00:00:00')
+            const end   = new Date(parts[1].trim() + 'T00:00:00')
+            return itemDate >= start && itemDate <= end
+          }
+        }
+        if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
+          return itemDate.toDateString() === new Date(period + 'T00:00:00').toDateString()
+        }
+        return true
+      }
+    }
+  } catch { return true }
+}
+
+/**
+ * Ubah nilai period ke label yang mudah dibaca.
+ */
+function periodToLabel(period) {
+  if (!period) return null
+  const MAP = {
+    'today':      'Hari Ini',
+    'yesterday':  'Kemarin',
+    'this week':  'Minggu Ini',
+    'this+week':  'Minggu Ini',
+    'last week':  'Minggu Lalu',
+    'this month': 'Bulan Ini',
+    'this+month': 'Bulan Ini',
+    'last month': 'Bulan Lalu',
+    'this year':  'Tahun Ini',
+    'last year':  'Tahun Lalu',
+  }
+  return MAP[period.toLowerCase()] ?? period
+}
+
+// ── MAIN PAGE ──────────────────────────────────────────────────────────────────
+/**
+ * @param {string}  [initialStatusFilter]  - Status filter awal dari URL (mis. 'COMPLETED', 'OVERDUE')
+ * @param {string}  [initialPeriodFilter]  - Period filter awal dari URL (mis. 'This month')
+ */
+export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFilter }) {
   const { isHrd }  = useAuth()
   const navigate   = useNavigate()
-  const [filter, setFilter] = useState('ALL')
+
+  // ✅ FIX: Inisialisasi filter dari props (dikirim Dashboard via URL params)
+  const [filter, setFilter]               = useState(initialStatusFilter || 'ALL')
+  const [activePeriodFilter, setPeriod]   = useState(initialPeriodFilter || null)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
@@ -38,15 +137,27 @@ export default function SlaStatusListPage() {
   const items   = data?.data    ?? []
   const summary = data?.summary ?? {}
 
+  // ✅ FIX: useMemo sekarang juga menerapkan period filter di atas status filter
   const filtered = useMemo(() => {
-    if (filter === 'ALL') return items
-    if (filter === 'NEED_USER_UPDATE') return items.filter(i => i.sla_is_editable === 1)
-    // FIX: tambah case APPROVAL_DELAYED
-    if (filter === 'APPROVAL_DELAYED') return items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
-    return items.filter(i => i.ui_status_tag === filter)
-  }, [items, filter])
+    // Step 1: filter berdasarkan STATUS
+    let result = items
+    if (filter === 'ALL')               result = items
+    else if (filter === 'NEED_USER_UPDATE') result = items.filter(i => i.sla_is_editable === 1)
+    else if (filter === 'APPROVAL_DELAYED') result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
+    else                                    result = items.filter(i => i.ui_status_tag === filter)
+
+    // Step 2: filter berdasarkan PERIOD (opsional, hanya jika ada period aktif)
+    if (activePeriodFilter) {
+      result = result.filter(i => matchesPeriodFilter(i, activePeriodFilter))
+    }
+
+    return result
+  }, [items, filter, activePeriodFilter])
 
   const approvalDelayedCount = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED').length
+
+  // Label period yang ditampilkan di banner
+  const periodLabel = periodToLabel(activePeriodFilter)
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat data monitoring." onRetry={refetch} />
@@ -61,6 +172,28 @@ export default function SlaStatusListPage() {
         </div>
       </div>
 
+      {/* ✅ BARU: Banner filter aktif dari Dashboard (tampil jika ada period filter) */}
+      {activePeriodFilter && (
+        <div className="flex items-center justify-between bg-sapphire/5 border border-sapphire/20 rounded-xl px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <Calendar size={15} className="text-sapphire" />
+            <span className="text-sm font-semibold text-sapphire">
+              Difilter: {FILTERS.find(f => f.key === filter)?.label ?? filter}
+              {periodLabel ? ` · ${periodLabel}` : ''}
+            </span>
+            {initialStatusFilter && initialPeriodFilter && (
+              <span className="text-xs text-slate-400 ml-1">· dari Dashboard</span>
+            )}
+          </div>
+          <button
+            onClick={() => { setFilter('ALL'); setPeriod(null) }}
+            className="flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-red-500 transition-colors"
+          >
+            <X size={13} /> Hapus Filter
+          </button>
+        </div>
+      )}
+
       {/* Alert Cards */}
       <div className="space-y-3">
         {(summary.need_update ?? 0) > 0 && (
@@ -69,7 +202,7 @@ export default function SlaStatusListPage() {
             color="orange"
             title={isHrd ? 'Perlu Update Tanggal' : 'HRD Minta Update Tanggal'}
             count={summary.need_update}
-            onClick={() => setFilter('NEED_USER_UPDATE')}
+            onClick={() => { setFilter('NEED_USER_UPDATE'); setPeriod(null) }}
           />
         )}
         {(summary.overdue ?? 0) > 0 && (
@@ -78,7 +211,7 @@ export default function SlaStatusListPage() {
             color="red"
             title="Target Terlambat"
             count={summary.overdue}
-            onClick={() => setFilter('OVERDUE')}
+            onClick={() => { setFilter('OVERDUE'); setPeriod(null) }}
           />
         )}
         {approvalDelayedCount > 0 && isHrd && (
@@ -87,17 +220,15 @@ export default function SlaStatusListPage() {
             color="amber"
             title="Approval Tertunda >5 Hari"
             count={approvalDelayedCount}
-            onClick={() => setFilter('APPROVAL_DELAYED')}
+            onClick={() => { setFilter('APPROVAL_DELAYED'); setPeriod(null) }}
           />
         )}
       </div>
 
-      {/* FIX: Banner monitoring bawahan untuk non-HRD
-          Audit: SlaStatusListPage.jsx — banner "monitoringBawahan" tidak ada di web
-          Android: jika isHrd != 1 && summary.monitoringBawahan != null tampil banner biru */}
+      {/* Banner monitoring bawahan untuk non-HRD */}
       {!isHrd && summary.monitoring_bawahan != null && (
         <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
-          <Eye size={18} className="text-sapphire shrink-0" />
+          <Activity size={18} className="text-sapphire shrink-0" />
           <p className="text-sm font-medium text-sapphire">
             Monitoring {summary.monitoring_bawahan} permintaan bawahan
           </p>
@@ -106,9 +237,27 @@ export default function SlaStatusListPage() {
 
       {/* Summary Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Aktif"    value={summary.total_active ?? 0}  color="text-sapphire"  onClick={() => setFilter('ALL')}      active={filter === 'ALL'} />
-        <StatCard label="Kritis"         value={summary.critical ?? 0}      color="text-red-500"   onClick={() => setFilter('CRITICAL')} active={filter === 'CRITICAL'} />
-        <StatCard label="Warning"        value={summary.warning ?? 0}       color="text-amber-500" onClick={() => setFilter('WARNING')}  active={filter === 'WARNING'} />
+        <StatCard
+          label="Total Aktif"
+          value={summary.total_active ?? 0}
+          color="text-sapphire"
+          onClick={() => { setFilter('ALL'); setPeriod(null) }}
+          active={filter === 'ALL' && !activePeriodFilter}
+        />
+        <StatCard
+          label="Kritis"
+          value={summary.critical ?? 0}
+          color="text-red-500"
+          onClick={() => { setFilter('CRITICAL'); setPeriod(null) }}
+          active={filter === 'CRITICAL'}
+        />
+        <StatCard
+          label="Warning"
+          value={summary.warning ?? 0}
+          color="text-amber-500"
+          onClick={() => { setFilter('WARNING'); setPeriod(null) }}
+          active={filter === 'WARNING'}
+        />
       </div>
 
       {/* Progress Card */}
@@ -131,7 +280,7 @@ export default function SlaStatusListPage() {
           return (
             <button
               key={f.key}
-              onClick={() => setFilter(f.key)}
+              onClick={() => { setFilter(f.key); setPeriod(null) }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                 filter === f.key
                   ? 'bg-sapphire text-white border-sapphire'
@@ -146,7 +295,14 @@ export default function SlaStatusListPage() {
 
       {/* List */}
       {filtered.length === 0 ? (
-        <EmptyState message="Tidak ada data dengan filter ini." icon={Activity} />
+        <EmptyState
+          message={
+            activePeriodFilter
+              ? `Tidak ada data "${FILTERS.find(f => f.key === filter)?.label}" pada periode ${periodLabel}.`
+              : 'Tidak ada data dengan filter ini.'
+          }
+          icon={Activity}
+        />
       ) : (
         <div className="space-y-4">
           {filtered.map(item => (
@@ -183,7 +339,7 @@ function AlertCard({ icon, color, title, count, onClick }) {
         <p className="font-semibold text-sm">{title}</p>
         <p className="text-xs opacity-70">{count} permintaan</p>
       </div>
-      {onClick && <ChevronRight size={18} />}
+      <ChevronRight size={18} />
     </button>
   )
 }
@@ -214,9 +370,7 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
   const daysColor = getDaysColor(item.days_remaining)
   const isCompleted = item.ui_status_tag === 'COMPLETED'
 
-  // FIX: canEdit = !isHrd && !isBawahan && slaIsEditable
-  // Audit: SlaStatusListPage.jsx — tidak ada logika canEdit sama sekali
-  // Android: canEdit = isHrd==0 && !item.is_bawahan && item.sla_is_editable
+  // canEdit: hanya pemilik permintaan yang bukan bawahan dan izin dibuka
   const canEdit = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
 
   return (
@@ -233,9 +387,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
           {meta.label}
         </span>
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-          {/* FIX: Badge "Tap untuk Update" vs "Update Required" berdasarkan canEdit
-              Audit: Android badge teks berbeda tergantung kepemilikan (canEdit)
-              canEdit → "Tap untuk Update", !canEdit → "Update Required" */}
           {!isCompleted && item.sla_is_editable === 1 && (
             <button
               className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors ${
@@ -244,10 +395,8 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
                   : 'bg-orange-50 text-orange-500 border-orange-200 cursor-default'
               }`}
               onClick={canEdit ? onEdit : undefined}
-              title={canEdit ? 'Klik untuk update tanggal' : 'Hanya pemilik permintaan yang dapat update'}
             >
               <Edit2 size={12} />
-              {/* Android: canEdit → "Tap untuk Update", !canEdit → "Update Required" */}
               {canEdit ? 'Tap untuk Update' : 'Update Required'}
             </button>
           )}
@@ -304,6 +453,12 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
       <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
         <Calendar size={13} className="text-slate-400" />
         <span className="text-xs text-slate-400">Target: {formatDate(item.sla_final_target_date)}</span>
+        {/* ✅ BARU: Tampilkan tanggal selesai aktual untuk item COMPLETED */}
+        {isCompleted && item.sla_completed_at && (
+          <span className="text-xs text-green-600 font-semibold ml-2">
+            · Selesai: {formatDate(item.sla_completed_at)}
+          </span>
+        )}
       </div>
     </div>
   )

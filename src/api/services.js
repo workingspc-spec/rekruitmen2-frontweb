@@ -43,7 +43,8 @@ export const approvalApi = {
 
 // ── MONITORING ────────────────────────────────────────────────────────────────
 export const monitoringApi = {
-  slaStatus:   ()       => api.get('/monitoring/sla-status'),
+  // ✅ FIX: Tambah parameter period agar backend bisa filter completed by month
+  slaStatus:   (period) => api.get('/monitoring/sla-status', { params: period ? { period } : {} }),
   slaDetail:   (nomor)  => api.get(`/monitoring/sla-detail/${encodeURIComponent(nomor)}`),
   kpiHrd:      (period) => api.get('/monitoring/kpi-hrd',      { params: { period } }),
   kpiApprover: (period) => api.get('/monitoring/kpi-approver', { params: { period } }),

@@ -2,31 +2,19 @@ import { format, parseISO, isValid } from 'date-fns'
 import { id } from 'date-fns/locale'
 
 // ── DATE ─────────────────────────────────────────────────────────────────────
-/**
- * Format date string ke tampilan yang mudah dibaca.
- * Handle semua format:
- *  - ISO: "2026-02-11T08:05:21.000Z"
- *  - Space-separated (tanpa T): "2026-02-12 18:47:00" → parse sebagai LOCAL time
- *  - Date only: "2026-02-11"
- * Identik dengan DateUtils.formatDate() di Android
- */
 export function formatDate(dateStr, fmt = 'dd MMM yyyy') {
   if (!dateStr) return '–'
   try {
     let d
     if (typeof dateStr === 'string') {
       if (dateStr.includes('T')) {
-        // ISO-8601 → parseISO handles timezone correctly
         d = parseISO(dateStr)
       } else if (dateStr.includes(' ') && dateStr.length > 10) {
-        // "2026-02-12 18:47:00" — parse sebagai LOCAL time (bukan UTC)
-        // Identik Android: sdfInput.timeZone = TimeZone.getDefault()
         const [datePart, timePart = '00:00:00'] = dateStr.split(' ')
         const [y, m, day] = datePart.split('-').map(Number)
         const [h, min, sec = 0] = timePart.split(':').map(Number)
         d = new Date(y, m - 1, day, h, min, sec)
       } else {
-        // "2026-02-11" — tambah T00:00:00 agar parse sebagai local time
         d = new Date(dateStr + 'T00:00:00')
       }
     } else {
@@ -42,17 +30,12 @@ export function formatDateTime(dateStr) {
   return formatDate(dateStr, 'dd MMM yyyy HH:mm')
 }
 
-/**
- * Convert millis ke string tanggal API (YYYY-MM-DD).
- * PENTING: gunakan LOCAL time methods, bukan UTC — identik Android millisToDateString().
- * Sebelumnya pakai d.getUTCFullYear() yang menyebabkan timezone-shift di WIB (UTC+7).
- */
 export function toApiDate(millis) {
   if (!millis) return ''
   const d   = new Date(millis)
-  const y   = d.getFullYear()                            // ← LOCAL (was getUTCFullYear)
-  const m   = String(d.getMonth() + 1).padStart(2, '0') // ← LOCAL (was getUTCMonth)
-  const day = String(d.getDate()).padStart(2, '0')        // ← LOCAL (was getUTCDate)
+  const y   = d.getFullYear()
+  const m   = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
 
@@ -74,6 +57,20 @@ export function getSlaStatusMeta(tag) {
     ON_PROGRESS:      { label: 'Berjalan',     bg: '#eff6ff', text: '#1e40af' },
   }
   return map[tag] ?? { label: tag ?? '–', bg: '#f8fafc', text: '#475569' }
+}
+
+/**
+ * getSlaSourceMeta — utility terpusat untuk pewarnaan badge sla_source.
+ * Digunakan di RecruitmentListPage, RecruitmentDetailPage, SlaStatusListPage.
+ * Warna SYSTEM=amber, USER=green, FLEXIBLE=blue — konsisten di seluruh aplikasi.
+ */
+export function getSlaSourceMeta(source) {
+  const map = {
+    SYSTEM:   { label: 'Disesuaikan Sistem', bg: '#fff7ed', text: '#c2410c' },
+    USER:     { label: 'Sesuai Permintaan',  bg: '#f0fdf4', text: '#166534' },
+    FLEXIBLE: { label: 'Jabatan Fleksibel',  bg: '#eff6ff', text: '#1e40af' },
+  }
+  return map[source] ?? { label: source ?? '–', bg: '#f1f5f9', text: '#475569' }
 }
 
 export function getPerformanceMeta(perf) {

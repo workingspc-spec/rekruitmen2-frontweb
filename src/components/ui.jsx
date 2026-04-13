@@ -140,13 +140,17 @@ export function ConfirmDialog({
 }
 
 // ── PROGRESS BAR ──────────────────────────────────────────────────────────────
-export function ProgressBar({ value, color = '#0F52BA', className = '' }) {
+export function ProgressBar({ value, color = '#0F52BA', className = '', animated = true }) {
   const pct = Math.min(Math.max(value ?? 0, 0), 100)
   return (
     <div className={`h-2 bg-slate-100 rounded-full overflow-hidden ${className}`}>
       <div
-        className="h-full rounded-full transition-all duration-500"
-        style={{ width: `${pct}%`, background: color }}
+        className={`h-full rounded-full ${animated ? 'progress-animated' : ''}`}
+        style={{
+          width: `${pct}%`,
+          background: color,
+          transition: 'width 0.5s ease-out',
+        }}
       />
     </div>
   )

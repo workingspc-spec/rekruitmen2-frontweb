@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi } from '../../api/services'
-import { formatDate, getApprovalStatus } from '../../utils/helpers'
 import { Badge, EmptyState, PageLoader, ErrorBox, ConfirmDialog, Spinner } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lucide-react'
+import { formatDate, getApprovalStatus, getSlaSourceMeta } from '../../utils/helpers'
 import toast from 'react-hot-toast'
 
 // ─── Period Options ────────────────────────────────────────────────────────────
@@ -335,7 +335,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                         )}
                       </td>
 
-                      {/* ── Kolom Target SLA (dengan sla_source label) ── */}
+                      {/* ── Kolom Target SLA ── */}
                       <td className="whitespace-nowrap text-xs">
                         {r.sla_final_target_date ? (
                           <div className="flex flex-col gap-0.5">
@@ -343,16 +343,17 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                               <Calendar size={12} className="text-slate-400" />
                               {formatDate(r.sla_final_target_date)}
                             </span>
-                            {/* FIX Gap 2: sla_source label kecil — identik Android */}
-                            {r.sla_source && (
-                              <span className={`text-xs font-medium px-1.5 py-0.5 rounded w-fit ${
-                                r.sla_source === 'SYSTEM'   ? 'bg-amber-50 text-amber-600' :
-                                r.sla_source === 'USER'     ? 'bg-green-50 text-green-600' :
-                                                              'bg-blue-50 text-blue-600'
-                              }`}>
-                                {r.sla_source}
-                              </span>
-                            )}
+                            {r.sla_source && (() => {
+                              const meta = getSlaSourceMeta(r.sla_source)
+                              return (
+                                <span
+                                  className="text-xs font-medium px-1.5 py-0.5 rounded w-fit"
+                                  style={{ background: meta.bg, color: meta.text }}
+                                >
+                                  {meta.label}
+                                </span>
+                              )
+                            })()}
                           </div>
                         ) : '–'}
                       </td>

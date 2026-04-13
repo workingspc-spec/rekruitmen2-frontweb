@@ -95,26 +95,13 @@ function periodToLabel(period) {
   return period
 }
 
-// Urutan filter: ALL → PENDING → APPROVED (identik Android)
-const STATUS_TABS = [
-  { key: 'all',      label: 'Semua' },
-  { key: 'pending',  label: 'Belum Approve' },
-  { key: 'approved', label: 'Sudah Approve' },
-]
-
-/**
- * Dialog hasil SLA setelah approve atasan berhasil.
- * ✅ BACKDROP CLICK: klik area gelap di luar kotak langsung tutup.
- */
 function SlaResultDialog({ slaInfo, onClose }) {
   const isSystem = slaInfo?.sla_source === 'SYSTEM'
-
   const explanation = isSystem
     ? 'Tanggal disesuaikan otomatis untuk memenuhi standar waktu layanan rekrutmen.'
     : (slaInfo?.explanation ?? 'Permintaan telah disetujui.')
 
   return (
-    // ✅ BACKDROP CLICK
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -123,17 +110,13 @@ function SlaResultDialog({ slaInfo, onClose }) {
         <div className="flex items-center gap-3">
           {isSystem
             ? <AlertTriangle size={24} className="text-amber-500 shrink-0" />
-            : <CheckCircle2 size={24} className="text-green-600 shrink-0" />
-          }
+            : <CheckCircle2 size={24} className="text-green-600 shrink-0" />}
           <h3 className="font-display font-bold text-navy text-lg">Approval Berhasil</h3>
         </div>
-
         <p className={`text-xs font-bold uppercase tracking-wide ${isSystem ? 'text-amber-600' : 'text-green-700'}`}>
           {isSystem ? '⚠️ Catatan Sistem:' : '✅ Konfirmasi:'}
         </p>
-
         <p className="text-sm text-slate-600 leading-relaxed">{explanation}</p>
-
         {slaInfo?.final_target_date && (
           <div className="bg-slate-50 rounded-xl p-4 space-y-1">
             <p className="text-xs text-slate-400 font-medium">Target Rekrutmen Selesai:</p>
@@ -142,10 +125,7 @@ function SlaResultDialog({ slaInfo, onClose }) {
             </p>
           </div>
         )}
-
-        <button onClick={onClose} className="btn-primary w-full justify-center">
-          Mengerti
-        </button>
+        <button onClick={onClose} className="btn-primary w-full justify-center">Mengerti</button>
       </div>
     </div>
   )
@@ -153,8 +133,6 @@ function SlaResultDialog({ slaInfo, onClose }) {
 
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate = useNavigate()
-
-  // Default tab 'pending' (identik Android default ApprovalFilter.PENDING)
   const [tab, setTab]       = useState('pending')
   const [search, setSearch] = useState('')
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
@@ -170,8 +148,17 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     atasanMut, hrdMut, isPending,
   } = useApprovalList(statusParam)
 
+  // ── Hitung count per tab dari data mentah (sebelum filter search/period) ──
+  // list sudah difilter oleh statusParam dari server, jadi kita hitung dari raw list
+  // Untuk count badge, kita perlu ALL data — ambil dari useApprovalList dengan status=all
+  // Pendekatan pragmatis: hitung dari filteredList dengan tab tertentu
+  const rawList = list ?? []
+  const pendingCount  = rawList.filter(item => isPending(item)).length
+  const approvedCount = rawList.filter(item => !isPending(item)).length
+  const allCount      = rawList.length
+
   const filteredList = useMemo(() => {
-    let items = list ?? []
+    let items = rawList
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(item =>
@@ -184,7 +171,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       items = items.filter(item => matchesPeriodFilter(item.tpk_tanggal, activePeriodFilter))
     }
     return items
-  }, [list, search, activePeriodFilter])
+  }, [rawList, search, activePeriodFilter])
 
   const emptyMessage = (() => {
     const statusMsg = tab === 'pending'
@@ -197,9 +184,18 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     return statusMsg
   })()
 
+  // Tab definitions dengan count badge dinamis
+  // Note: count ditampilkan dari data yang sudah di-fetch (sesuai statusParam)
+  // Saat tab='all', count total; saat tab='pending', count pending; dst.
+  const STATUS_TABS = [
+    { key: 'all',      label: 'Semua',         count: tab === 'all'      ? allCount : null },
+    { key: 'pending',  label: 'Belum Approve',  count: tab === 'pending'  ? pendingCount : null },
+    { key: 'approved', label: 'Sudah Approve',  count: tab === 'approved' ? approvedCount : null },
+  ]
+
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Approval</h1>
@@ -209,23 +205,43 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       </div>
 
-      {/* ── Filter Row ── */}
+      {/* Filter Row */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Tab: ALL → PENDING → APPROVED (selaras Android) */}
+        {/* Tabs dengan count badge */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-          {STATUS_TABS.map(t => (
-            <button
-              key={t.key}
-              onClick={() => { setTab(t.key); setSearch('') }}
-              className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
-                tab === t.key ? 'bg-white shadow text-sapphire' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+          {STATUS_TABS.map(t => {
+            const isActive = tab === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => { setTab(t.key); setSearch('') }}
+                className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${
+                  isActive ? 'bg-white shadow text-sapphire' : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {t.label}
+                {/* Count badge — muncul saat tab aktif dan ada data */}
+                {isActive && t.count !== null && t.count > 0 && (
+                  <span className={`ml-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold ${
+                    t.key === 'pending'
+                      ? 'bg-amber-100 text-amber-700'
+                      : t.key === 'approved'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-sapphire/10 text-sapphire'
+                  }`}>
+                    {t.count}
+                  </span>
+                )}
+                {/* Dot merah untuk pending saat tab tidak aktif */}
+                {!isActive && t.key === 'pending' && pendingCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
+                )}
+              </button>
+            )
+          })}
         </div>
 
+        {/* Period filter button */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-colors ${
@@ -253,7 +269,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       )}
 
       {/* Search */}
-      {!loading && !error && list.length > 0 && (
+      {!loading && !error && rawList.length > 0 && (
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -262,7 +278,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── Content ── */}
+      {/* Content */}
       {loading ? (
         <PageLoader />
       ) : error ? (
@@ -288,7 +304,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       )}
 
-      {/* ── Period Picker Modal ── */}
+      {/* Period Picker Modal */}
       {showPeriodPicker && (
         <PeriodPickerModal
           current={activePeriodFilter}
@@ -297,7 +313,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── Confirm Dialog (Atasan) ── */}
+      {/* Confirm Dialog (Atasan) */}
       {confirmItem && (
         <ConfirmDialog
           open
@@ -314,7 +330,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── HRD Confirm Dialog ── */}
+      {/* HRD Confirm Dialog */}
       {isHrdDialogItem && (
         <HrdConfirmDialog
           item={isHrdDialogItem}
@@ -324,7 +340,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* ── Dialog Hasil SLA (dengan backdrop click) ── */}
+      {/* Dialog Hasil SLA */}
       {slaResultInfo && (
         <SlaResultDialog
           slaInfo={slaResultInfo}

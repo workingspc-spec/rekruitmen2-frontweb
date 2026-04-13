@@ -50,6 +50,18 @@ function ApprovalListWrapper() {
   return <ApprovalListPage initialPeriodFilter={period} />
 }
 
+/**
+ * ✅ BARU: Wrapper untuk SlaStatusListPage agar membaca ?status= dan ?period= dari URL.
+ * Dipakai saat navigasi dari Dashboard (mis. klik kartu "Selesai Bulan Ini").
+ * Identik dengan pola RecruitmentListWrapper & ApprovalListWrapper.
+ */
+function MonitoringListWrapper() {
+  const [searchParams] = useSearchParams()
+  const status = searchParams.get('status') || undefined
+  const period = searchParams.get('period') || undefined
+  return <SlaStatusListPage initialStatusFilter={status} initialPeriodFilter={period} />
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -82,8 +94,9 @@ function AppRoutes() {
         <ProtectedRoute><ApprovalListWrapper /></ProtectedRoute>
       } />
 
+      {/* ✅ FIX: Monitoring sekarang pakai Wrapper agar bisa terima ?status= dan ?period= dari Dashboard */}
       <Route path="/monitoring" element={
-        <ProtectedRoute><SlaStatusListPage /></ProtectedRoute>
+        <ProtectedRoute><MonitoringListWrapper /></ProtectedRoute>
       } />
       <Route path="/monitoring/:nomor" element={
         <ProtectedRoute><SlaDetailPage /></ProtectedRoute>

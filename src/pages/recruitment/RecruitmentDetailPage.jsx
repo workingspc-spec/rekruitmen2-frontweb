@@ -3,8 +3,7 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { recruitmentApi } from '../../api/services'
-import { formatDate } from '../../utils/helpers'
-import { getSlaStatusMeta } from '../../utils/helpers'
+import { formatDate, getSlaStatusMeta, getSlaSourceMeta } from '../../utils/helpers'
 import { useAuth } from '../../context/AuthContext'
 import {
   Edit2, Loader2, Flag, User, Building2, Calendar, Users,
@@ -129,14 +128,17 @@ export default function RecruitmentDetailPage() {
               <SlaRow label="Lead Time Minimum" value={`${data.sla_min_days} hari kerja`} />
             )}
             <div className="pt-2 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-              <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
-                data.sla_source === 'SYSTEM' ? 'bg-amber-100 text-amber-700' :
-                data.sla_source === 'USER'   ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-              }`}>
-                {data.sla_source === 'SYSTEM'   ? 'Disesuaikan Sistem' :
-                 data.sla_source === 'USER'     ? 'Sesuai Permintaan User' :
-                 data.sla_source === 'FLEXIBLE' ? 'Jabatan Fleksibel' : data.sla_source}
-              </span>
+              {(() => {
+                const meta = getSlaSourceMeta(data.sla_source)
+                return (
+                  <span
+                    className="text-xs font-semibold px-2 py-1 rounded-full"
+                    style={{ background: meta.bg, color: meta.text }}
+                  >
+                    {meta.label}
+                  </span>
+                )
+              })()}
               {data.sla_is_editable === 1 && (
                 <span className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
                   Perlu Update Tanggal
