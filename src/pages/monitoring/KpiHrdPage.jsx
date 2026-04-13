@@ -114,30 +114,34 @@ export default function KpiHrdPage() {
 
       {/*
        * FIX #3: Rata-rata Penyelesaian + Catatan Performa side-by-side
-       * Sebelumnya keduanya full-width dan berdiri sendiri.
-       * Sekarang dibungkus dalam flex row agar sejajar.
+       * ✅ items-stretch agar kedua card sama tinggi
+       * ✅ DurationCard diberi border agar seragam dengan kanan
+       * ✅ Catatan Performa: p-5, flex-col, warna seragam bg-blue-50/50 border border-blue-100
        */}
       <div className="flex gap-3 items-stretch">
-        {/* Rata-rata Penyelesaian */}
+        {/* Rata-rata Penyelesaian (kiri) */}
         <div className="flex-1">
           <DurationCard
             title="Rata-rata Penyelesaian"
             days={summary.avg_net_duration ?? 0}
             sub="Rata-rata hari kerja per rekrutmen"
-            color="text-sapphire bg-blue-50"
+            color="text-sapphire bg-blue-50/50 border border-blue-100"
           />
         </div>
 
-        {/* Catatan Performa — sejajar di sebelah kanan */}
-        <div className="flex-1 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
-          <Shield size={18} className="text-sapphire shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-bold text-sapphire">Catatan Performa</p>
-            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-              Tingkat sukses rekrutmen mencapai <strong>{summary.success_rate ?? 0}%</strong> dengan
-              rata-rata waktu penyelesaian <strong>{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
-            </p>
+        {/* Catatan Performa (kanan) — sejajar dengan kiri */}
+        {/* ✅ p-5 (sama dengan DurationCard), flex-col, warna seragam */}
+        <div className="flex-1 flex flex-col bg-blue-50/50 border border-blue-100 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield size={16} className="text-sapphire shrink-0" />
+            <p className="text-xs font-bold text-sapphire">Catatan Performa</p>
           </div>
+          <p className="text-xs text-slate-600 leading-relaxed">
+            Tingkat sukses rekrutmen mencapai{' '}
+            <strong>{summary.success_rate ?? 0}%</strong>{' '}
+            dengan rata-rata waktu penyelesaian{' '}
+            <strong>{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
+          </p>
         </div>
       </div>
 
@@ -199,7 +203,7 @@ function BigStat({ label, value, color }) {
   )
 }
 
-// DurationCard menerima optional className untuk fleksibilitas layout
+// ✅ DurationCard: terima border dari color prop — h-full agar bisa stretch dengan parent
 function DurationCard({ title, days, sub, color, className = '' }) {
   return (
     <div className={`rounded-2xl p-5 h-full ${color} ${className}`}>
