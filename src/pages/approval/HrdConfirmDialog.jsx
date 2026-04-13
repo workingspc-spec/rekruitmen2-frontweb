@@ -6,8 +6,12 @@ import { DetailRow } from './ApprovalCard'
 
 export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+    // ✅ FIX: Backdrop click — klik area gelap di luar dialog langsung tutup
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content">
         <div className="flex items-start gap-3 mb-4">
           <AlertTriangle size={24} className="text-amber-500 shrink-0" />
           <div>
@@ -27,7 +31,7 @@ export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
         </div>
 
         <div className="flex gap-3">
-          <button className="btn-ghost flex-1 justify-center" onClick={onClose}>
+          <button className="btn-ghost flex-1 justify-center" onClick={onClose} disabled={loading}>
             Batal
           </button>
           <button

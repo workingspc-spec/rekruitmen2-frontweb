@@ -11,7 +11,6 @@ import { BarChart3, Calendar, ChevronDown, Users, Info, Shield, X } from 'lucide
 function periodToApiParam(period) {
   if (!period || period === 'All Time') return undefined
   if (period.startsWith('Custom:')) {
-    // 'Custom: 2026-01-01 - 2026-03-31' → '2026-01-01,2026-03-31'
     return period.replace('Custom:', '').trim().replace(' - ', ',')
   }
   return period
@@ -80,7 +79,6 @@ export default function KpiHrdPage() {
           <p className="text-sm text-slate-500 mt-0.5">Executive Summary — {periodToLabel(period)}</p>
         </div>
 
-        {/* ── Period Button (sama persis dengan DashboardPage) ── */}
         <button
           onClick={() => setShowPicker(true)}
           className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
@@ -114,20 +112,18 @@ export default function KpiHrdPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <DurationCard
-          title="Rata-rata Aktual"
-          days={summary.avg_gross_duration ?? 0}
-          sub="Total hari kerja"
-          color="text-amber-600 bg-amber-50"
-        />
-        <DurationCard
-          title="Rata-rata KPI"
-          days={summary.avg_net_duration ?? 0}
-          sub="Setelah potong toleransi"
-          color="text-green-700 bg-green-50"
-        />
-      </div>
+      {/*
+       * ✅ SIMPLIFIED: Satu kartu "Rata-rata Penyelesaian" menggantikan dua kartu
+       * perbandingan (Aktual vs KPI) yang membingungkan.
+       * Nilai yang ditampilkan adalah avg_net_duration — angka yang sudah adil
+       * (sudah dipotong toleransi no-show) — tanpa perlu menjelaskan rumusnya.
+       */}
+      <DurationCard
+        title="Rata-rata Penyelesaian"
+        days={summary.avg_net_duration ?? 0}
+        sub="Rata-rata hari kerja per rekrutmen"
+        color="text-sapphire bg-blue-50"
+      />
 
       {/* ── Distribution ── */}
       <div className="card">
@@ -159,8 +155,13 @@ export default function KpiHrdPage() {
         <Shield size={18} className="text-sapphire shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-bold text-sapphire">Catatan Performa</p>
+          {/*
+           * ✅ UPDATED: Teks insight disederhanakan — tidak lagi menampilkan
+           * perbandingan Aktual vs KPI yang membingungkan.
+           */}
           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            Waktu Aktual ({Math.round(summary.avg_gross_duration ?? 0)} hari) → Waktu KPI ({Math.round(summary.avg_net_duration ?? 0)} hari) | Tingkat Sukses {summary.success_rate ?? 0}%
+            Secara keseluruhan, tingkat sukses rekrutmen mencapai <strong>{summary.success_rate ?? 0}%</strong> dengan
+            rata-rata waktu penyelesaian <strong>{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
           </p>
         </div>
       </div>
@@ -175,7 +176,7 @@ export default function KpiHrdPage() {
         </div>
       )}
 
-      {/* ── Period Picker Modal (sama dengan halaman lain) ── */}
+      {/* ── Period Picker Modal ── */}
       {showPicker && (
         <PeriodPickerModal
           current={period === 'All Time' ? null : period}
@@ -198,14 +199,14 @@ function BigStat({ label, value, color }) {
   )
 }
 
+// ✅ UPDATED: DurationCard kini hanya menerima satu warna string tanpa perlu split
 function DurationCard({ title, days, sub, color }) {
-  const [bg, text] = color.split(' ')
   return (
-    <div className={`rounded-2xl p-4 ${bg}`}>
+    <div className={`rounded-2xl p-5 ${color}`}>
       <p className="text-xs font-bold text-slate-500 mb-1">{title}</p>
       <div className="flex items-baseline gap-1">
-        <span className={`text-3xl font-display font-black ${text}`}>{Math.round(days)}</span>
-        <span className={`text-sm ${text}`}>hari</span>
+        <span className="text-4xl font-display font-black text-sapphire">{Math.round(days)}</span>
+        <span className="text-base text-sapphire">hari</span>
       </div>
       <p className="text-xs text-slate-400 mt-0.5">{sub}</p>
     </div>

@@ -120,6 +120,8 @@ export default function DashboardPage() {
               ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
               : 'HRD meminta Anda memperbarui tanggal target pada permintaan Anda.'
           }
+          // FIX: non-HRD harus navigasi ke /recruitment (bukan /monitoring)
+          // Identik Android: isHrd != 1 → onNavigateToRecruitment
           onAction={() => navigate(isHrd ? '/monitoring' : '/recruitment')}
           actionLabel="Lihat"
         />
@@ -128,7 +130,7 @@ export default function DashboardPage() {
         <AlertBanner
           type="error"
           message={`${summary.overdueRequests} permintaan melewati target SLA.`}
-          onAction={() => navigate('/monitoring?status=OVERDUE')}
+          onAction={() => navigate('/monitoring')}
           actionLabel="Periksa"
         />
       )}
@@ -150,7 +152,9 @@ export default function DashboardPage() {
             color="#0F52BA"
             onClick={() => navigateWithPeriod('/recruitment')}
           />
-          {/* Kartu Persetujuan — teruskan period saat klik */}
+          {/* FIX: Kartu Persetujuan juga harus meneruskan period
+              Audit: DashboardPage.jsx — StatCard Persetujuan harus pakai navigateWithPeriod('/approval')
+              Android: klik kartu Persetujuan meneruskan currentPeriod ke ApprovalList */}
           <StatCard
             label="Pending Approval"
             value={stats?.pendingApproval ?? 0}
@@ -164,20 +168,14 @@ export default function DashboardPage() {
             value={summary?.activeRequests ?? 0}
             icon={Activity}
             color="#0F52BA"
-            onClick={() => navigate('/monitoring?status=ON_PROGRESS')}
+            onClick={() => navigate('/monitoring')}
           />
-          {/*
-           * ✅ FIX: Kartu "Selesai Bulan Ini" sekarang membawa parameter status=COMPLETED
-           * dan period=This month agar halaman Monitoring langsung menampilkan
-           * data yang relevan — identik dengan logika atasan di monitoring.js backend
-           * yang menghitung berdasarkan sla_completed_at bulan berjalan.
-           */}
           <StatCard
             label="Selesai Bulan Ini"
             value={summary?.completedThisMonth ?? 0}
             icon={CheckCircle2}
             color="#2E7D32"
-            onClick={() => navigate('/monitoring?status=COMPLETED&period=This+month')}
+            onClick={() => navigate('/monitoring')}
           />
         </div>
       )}
@@ -188,29 +186,13 @@ export default function DashboardPage() {
           <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
           <div className="grid grid-cols-3 gap-5">
             {[
-              {
-                label: 'Aktif',
-                val: summary.activeRequests,
-                color: '#0F52BA',
-                // ✅ FIX: Navigasi dengan status filter
-                onClick: () => navigate('/monitoring?status=ON_PROGRESS'),
-              },
-              {
-                label: 'Terlambat',
-                val: summary.overdueRequests,
-                color: '#DC2626',
-                onClick: () => navigate('/monitoring?status=OVERDUE'),
-              },
-              {
-                label: 'Perlu Update',
-                val: summary.needUserUpdate,
-                color: '#F97316',
-                onClick: () => navigate('/monitoring?status=NEED_USER_UPDATE'),
-              },
-            ].map(({ label, val, color, onClick }) => (
+              { label: 'Aktif',        val: summary.activeRequests,  color: '#0F52BA' },
+              { label: 'Terlambat',    val: summary.overdueRequests, color: '#DC2626' },
+              { label: 'Perlu Update', val: summary.needUserUpdate,  color: '#F97316' },
+            ].map(({ label, val, color }) => (
               <button
                 key={label}
-                onClick={onClick}
+                onClick={() => navigate('/monitoring')}
                 className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300"
               >
                 <p className="text-4xl font-black mb-1.5" style={{ color }}>{val}</p>
