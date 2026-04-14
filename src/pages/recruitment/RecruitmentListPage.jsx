@@ -6,87 +6,13 @@ import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi } from '../../api/services'
 import { Badge, EmptyState, PageLoader, ErrorBox, ConfirmDialog, Spinner } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+import {
+  matchesPeriodFilter,
+  periodToLabel,
+} from '../../src/utils/periodFilter'
 import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lucide-react'
 import { formatDate, getApprovalStatus, getSlaSourceMeta } from '../../utils/helpers'
 import toast from 'react-hot-toast'
-
-// ─── Period Options ────────────────────────────────────────────────────────────
-const PERIOD_OPTIONS = [
-  { value: null,          label: 'Semua Waktu' },
-  { value: 'Today',       label: 'Hari Ini' },
-  { value: 'Yesterday',   label: 'Kemarin' },
-  { value: 'This week',   label: 'Minggu Ini' },
-  { value: 'Last week',   label: 'Minggu Lalu' },
-  { value: 'This month',  label: 'Bulan Ini' },
-  { value: 'Last month',  label: 'Bulan Lalu' },
-  { value: 'This year',   label: 'Tahun Ini' },
-  { value: 'Last year',   label: 'Tahun Lalu' },
-]
-
-function matchesPeriodFilter(tpkTanggal, period) {
-  if (!tpkTanggal || !period) return true
-  try {
-    const itemDate = new Date(tpkTanggal.substring(0, 10) + 'T00:00:00')
-    const today    = new Date(); today.setHours(0, 0, 0, 0)
-
-    switch (period.toLowerCase()) {
-      case 'today':     return itemDate.toDateString() === today.toDateString()
-      case 'yesterday': {
-        const y = new Date(today); y.setDate(y.getDate() - 1)
-        return itemDate.toDateString() === y.toDateString()
-      }
-      case 'this week': {
-        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) + 1)
-        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-        return itemDate >= mon && itemDate <= sun
-      }
-      case 'last week': {
-        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) - 6)
-        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-        return itemDate >= mon && itemDate <= sun
-      }
-      case 'this month':
-        return itemDate.getMonth() === today.getMonth() && itemDate.getFullYear() === today.getFullYear()
-      case 'last month': {
-        const lm = new Date(today); lm.setMonth(lm.getMonth() - 1)
-        return itemDate.getMonth() === lm.getMonth() && itemDate.getFullYear() === lm.getFullYear()
-      }
-      case 'this year':  return itemDate.getFullYear() === today.getFullYear()
-      case 'last year':  return itemDate.getFullYear() === today.getFullYear() - 1
-      default: {
-        if (period.toLowerCase().startsWith('custom:')) {
-          const rangeStr = period.replace(/custom:/i, '').trim()
-          const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
-          if (parts.length === 2) {
-            const start = new Date(parts[0].trim() + 'T00:00:00')
-            const end   = new Date(parts[1].trim() + 'T00:00:00')
-            return itemDate >= start && itemDate <= end
-          }
-        }
-        if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
-          return itemDate.toDateString() === new Date(period + 'T00:00:00').toDateString()
-        }
-        return true
-      }
-    }
-  } catch { return true }
-}
-
-function periodToLabel(period) {
-  if (!period) return 'Semua Waktu'
-  const match = PERIOD_OPTIONS.find(o => o.value === period)
-  if (match) return match.label
-  if (period.toLowerCase().startsWith('custom:')) {
-    try {
-      const parts = period.replace(/custom:/i, '').trim().split(/,| - /)
-      if (parts.length >= 2) {
-        const fmt = (s) => new Date(s.trim() + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-        return `${fmt(parts[0])} – ${fmt(parts[1])}`
-      }
-    } catch { return 'Rentang Kustom' }
-  }
-  return period
-}
 
 const STATUS_OPTS = [
   { value: 'all',      label: 'Semua' },
@@ -143,16 +69,25 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const filtered = useMemo(() => {
     if (!raw) return []
     let list = raw
+
+    // Status filter
     if (status === 'pending')  list = list.filter(r => r.tpk_approveatasan === 0 || (r.tpk_approveatasan === 1 && r.tpk_approveHRD === 0))
     if (status === 'approved') list = list.filter(r => r.tpk_approveatasan === 1 && r.tpk_approveHRD === 1)
     if (status === 'rejected') list = list.filter(r => r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2)
-    if (search) list = list.filter(r =>
-      r.jab_nama.toLowerCase().includes(search.toLowerCase()) ||
-      r.tpk_nomor.toLowerCase().includes(search.toLowerCase())
-    )
+
+    // Search filter
+    if (search) {
+      list = list.filter(r =>
+        r.jab_nama.toLowerCase().includes(search.toLowerCase()) ||
+        r.tpk_nomor.toLowerCase().includes(search.toLowerCase())
+      )
+    }
+
+    // Period filter (client-side) — menggunakan shared utility
     if (activePeriodFilter) {
       list = list.filter(r => matchesPeriodFilter(r.tpk_tanggal, activePeriodFilter))
     }
+
     return list
   }, [raw, status, search, activePeriodFilter])
 
@@ -187,14 +122,22 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input className="input pl-9" placeholder="Cari jabatan / nomor..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input
+            className="input pl-9"
+            placeholder="Cari jabatan / nomor..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
         </div>
+
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_OPTS.map(o => (
             <button
               key={o.value}
               onClick={() => setStatus(o.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${status === o.value ? 'bg-white shadow text-sapphire' : 'text-slate-500'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                status === o.value ? 'bg-white shadow text-sapphire' : 'text-slate-500'
+              }`}
             >
               {o.label}
             </button>
@@ -234,149 +177,155 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       )}
 
       {/* ── Table ── */}
-      {isLoading ? <PageLoader /> : isError ? <ErrorBox message="Gagal memuat data." onRetry={refetch} /> : (
-        filtered.length === 0 ? (
-          <EmptyState
-            message={activePeriodFilter
+      {isLoading ? (
+        <PageLoader />
+      ) : isError ? (
+        <ErrorBox message="Gagal memuat data." onRetry={refetch} />
+      ) : filtered.length === 0 ? (
+        <EmptyState
+          message={
+            activePeriodFilter
               ? `Tidak ada permintaan pada periode: ${periodToLabel(activePeriodFilter)}`
-              : 'Tidak ada permintaan yang cocok.'}
-            icon={Layers}
-            action={() => navigate('/recruitment/new')}
-            actionLabel="Buat Permintaan"
-          />
-        ) : (
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th className="w-8">
-                    <input type="checkbox" className="accent-sapphire" onChange={(e) => {
+              : 'Tidak ada permintaan yang cocok.'
+          }
+          icon={Layers}
+          action={() => navigate('/recruitment/new')}
+          actionLabel="Buat Permintaan"
+        />
+      ) : (
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th className="w-8">
+                  <input
+                    type="checkbox"
+                    className="accent-sapphire"
+                    onChange={(e) => {
                       if (e.target.checked) {
                         setSelected(new Set(filtered.filter(r => isPending(r) && isOwner(r)).map(r => r.tpk_nomor)))
                       } else {
                         setSelected(new Set())
                       }
-                    }} />
-                  </th>
-                  <th>Nomor</th>
-                  <th>Jabatan</th>
-                  <th>Bagian</th>
-                  <th>Tgl Permintaan</th>
-                  <th>Tgl Butuh</th>
-                  <th>Status</th>
-                  <th>Target SLA</th>
-                  <th className="text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(r => {
-                  const statusMeta = getApprovalStatus(r.tpk_approveatasan, r.tpk_approveHRD)
-                  const canSelect  = isPending(r) && isOwner(r)
-                  const canEdit    = isOwner(r) && (isPending(r) || r.sla_is_editable)
-                  const isSelected = selected.has(r.tpk_nomor)
+                    }}
+                  />
+                </th>
+                <th>Nomor</th>
+                <th>Jabatan</th>
+                <th>Bagian</th>
+                <th>Tgl Permintaan</th>
+                <th>Tgl Butuh</th>
+                <th>Status</th>
+                <th>Target SLA</th>
+                <th className="text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(r => {
+                const statusMeta = getApprovalStatus(r.tpk_approveatasan, r.tpk_approveHRD)
+                const canSelect  = isPending(r) && isOwner(r)
+                const canEdit    = isOwner(r) && (isPending(r) || r.sla_is_editable)
+                const isSelected = selected.has(r.tpk_nomor)
 
-                  // FIX Gap 1a: tampilkan approval chips hanya jika ada tanggal
-                  const showAtasanChip = r.tpk_approveatasan === 1 && r.tgl_approve_atasan
-                  const showHrdChip    = r.tpk_approveHRD === 1    && r.tgl_approve_hrd
+                const showAtasanChip = r.tpk_approveatasan === 1 && r.tgl_approve_atasan
+                const showHrdChip    = r.tpk_approveHRD === 1    && r.tgl_approve_hrd
 
-                  return (
-                    <tr key={r.tpk_nomor} className={isSelected ? 'bg-ice-blue/40' : ''}>
-                      <td>
-                        <input
-                          type="checkbox"
-                          className="accent-sapphire"
-                          checked={isSelected}
-                          disabled={!canSelect}
-                          onChange={() => toggleSelect(r.tpk_nomor, canSelect)}
-                        />
-                      </td>
-                      <td className="font-mono text-xs text-slate-500 whitespace-nowrap">{r.tpk_nomor}</td>
-                      <td className="font-semibold text-navy">{r.jab_nama}</td>
-                      <td>{r.tpk_bagian}</td>
-                      <td className="whitespace-nowrap">{formatDate(r.tpk_tanggal)}</td>
-                      <td className="whitespace-nowrap">{formatDate(r.tpk_tgl_butuh)}</td>
+                return (
+                  <tr key={r.tpk_nomor} className={isSelected ? 'bg-ice-blue/40' : ''}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="accent-sapphire"
+                        checked={isSelected}
+                        disabled={!canSelect}
+                        onChange={() => toggleSelect(r.tpk_nomor, canSelect)}
+                      />
+                    </td>
+                    <td className="font-mono text-xs text-slate-500 whitespace-nowrap">{r.tpk_nomor}</td>
+                    <td className="font-semibold text-navy">{r.jab_nama}</td>
+                    <td>{r.tpk_bagian}</td>
+                    <td className="whitespace-nowrap">{formatDate(r.tpk_tanggal)}</td>
+                    <td className="whitespace-nowrap">{formatDate(r.tpk_tgl_butuh)}</td>
 
-                      {/* ── Kolom Status (dengan ApprovalChip + slaIsEditable banner) ── */}
-                      <td>
-                        {/* Badge status utama */}
-                        <span
-                          className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
-                          style={{
-                            background: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#fef2f2'
-                              : r.tpk_approveHRD === 1 ? '#f0fdf4' : '#fff7ed',
-                            color: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#991b1b'
-                              : r.tpk_approveHRD === 1 ? '#166534' : '#c2410c',
-                          }}
-                        >
-                          {statusMeta.label}
-                        </span>
+                    <td>
+                      <span
+                        className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
+                        style={{
+                          background: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#fef2f2'
+                            : r.tpk_approveHRD === 1 ? '#f0fdf4' : '#fff7ed',
+                          color: r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2 ? '#991b1b'
+                            : r.tpk_approveHRD === 1 ? '#166534' : '#c2410c',
+                        }}
+                      >
+                        {statusMeta.label}
+                      </span>
 
-                        {/* FIX Gap 1a: Approval chips dengan tanggal — identik Android */}
-                        {(showAtasanChip || showHrdChip) && (
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {showAtasanChip && (
-                              <ApprovalChip label="Atasan ✓" date={r.tgl_approve_atasan} />
-                            )}
-                            {showHrdChip && (
-                              <ApprovalChip label="HRD ✓" date={r.tgl_approve_hrd} />
-                            )}
-                          </div>
-                        )}
-
-                        {/* FIX Gap 1b: Banner slaIsEditable penuh — identik Android */}
-                        {r.sla_is_editable === 1 && (
-                          <div className="flex items-center gap-1.5 mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1.5">
-                            <Edit2 size={12} className="text-orange-500 shrink-0" />
-                            <div>
-                              <p className="text-xs font-semibold text-orange-600 leading-tight">HRD Minta Update Tanggal</p>
-                              <p className="text-xs text-slate-400 leading-tight">Tap Edit untuk mengubah tanggal</p>
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* ── Kolom Target SLA ── */}
-                      <td className="whitespace-nowrap text-xs">
-                        {r.sla_final_target_date ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="flex items-center gap-1">
-                              <Calendar size={12} className="text-slate-400" />
-                              {formatDate(r.sla_final_target_date)}
-                            </span>
-                            {r.sla_source && (() => {
-                              const meta = getSlaSourceMeta(r.sla_source)
-                              return (
-                                <span
-                                  className="text-xs font-medium px-1.5 py-0.5 rounded w-fit"
-                                  style={{ background: meta.bg, color: meta.text }}
-                                >
-                                  {meta.label}
-                                </span>
-                              )
-                            })()}
-                          </div>
-                        ) : '–'}
-                      </td>
-
-                      <td>
-                        <div className="flex items-center justify-end gap-1">
-                          <button className="btn-icon p-1.5" title="Detail" onClick={() => navigate(`/recruitment/${encodeURIComponent(r.tpk_nomor)}`)}>
-                            <Eye size={15} />
-                          </button>
-                          {canEdit && (
-                            <button className="btn-icon p-1.5 text-sapphire" title="Edit" onClick={() => navigate(`/recruitment/edit/${encodeURIComponent(r.tpk_nomor)}`)}>
-                              <Edit2 size={15} />
-                            </button>
-                          )}
+                      {(showAtasanChip || showHrdChip) && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {showAtasanChip && <ApprovalChip label="Atasan ✓" date={r.tgl_approve_atasan} />}
+                          {showHrdChip    && <ApprovalChip label="HRD ✓"    date={r.tgl_approve_hrd}    />}
                         </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
+                      )}
+
+                      {r.sla_is_editable === 1 && (
+                        <div className="flex items-center gap-1.5 mt-1.5 bg-orange-50 border border-orange-200 rounded-lg px-2 py-1.5">
+                          <Edit2 size={12} className="text-orange-500 shrink-0" />
+                          <div>
+                            <p className="text-xs font-semibold text-orange-600 leading-tight">HRD Minta Update Tanggal</p>
+                            <p className="text-xs text-slate-400 leading-tight">Tap Edit untuk mengubah tanggal</p>
+                          </div>
+                        </div>
+                      )}
+                    </td>
+
+                    <td className="whitespace-nowrap text-xs">
+                      {r.sla_final_target_date ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="flex items-center gap-1">
+                            <Calendar size={12} className="text-slate-400" />
+                            {formatDate(r.sla_final_target_date)}
+                          </span>
+                          {r.sla_source && (() => {
+                            const meta = getSlaSourceMeta(r.sla_source)
+                            return (
+                              <span
+                                className="text-xs font-medium px-1.5 py-0.5 rounded w-fit"
+                                style={{ background: meta.bg, color: meta.text }}
+                              >
+                                {meta.label}
+                              </span>
+                            )
+                          })()}
+                        </div>
+                      ) : '–'}
+                    </td>
+
+                    <td>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          className="btn-icon p-1.5"
+                          title="Detail"
+                          onClick={() => navigate(`/recruitment/${encodeURIComponent(r.tpk_nomor)}`)}
+                        >
+                          <Eye size={15} />
+                        </button>
+                        {canEdit && (
+                          <button
+                            className="btn-icon p-1.5 text-sapphire"
+                            title="Edit"
+                            onClick={() => navigate(`/recruitment/edit/${encodeURIComponent(r.tpk_nomor)}`)}
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Period Picker Modal ── */}

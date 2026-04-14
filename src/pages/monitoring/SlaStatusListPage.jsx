@@ -5,6 +5,11 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getSlaStatusMeta, getDaysColor } from '../../utils/helpers'
+import {
+  matchesPeriodFilter,
+  periodToLabel,
+  PERIOD_OPTIONS,
+} from '../../src/utils/periodFilter'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
@@ -24,124 +29,54 @@ const FILTERS = [
   { key: 'COMPLETED',        label: 'Selesai' },
 ]
 
-// ── PERIOD HELPERS ─────────────────────────────────────────────────────────────
-const PERIOD_OPTIONS = [
-  { value: null,          label: 'Semua Waktu' },
-  { value: 'Today',       label: 'Hari Ini' },
-  { value: 'Yesterday',   label: 'Kemarin' },
-  { value: 'This week',   label: 'Minggu Ini' },
-  { value: 'Last week',   label: 'Minggu Lalu' },
-  { value: 'This month',  label: 'Bulan Ini' },
-  { value: 'Last month',  label: 'Bulan Lalu' },
-  { value: 'This year',   label: 'Tahun Ini' },
-  { value: 'Last year',   label: 'Tahun Lalu' },
-]
-
 /**
- * Cocokkan item dengan period filter.
- * Untuk COMPLETED: filter berdasarkan sla_completed_at.
- * Untuk lainnya: filter berdasarkan tpk_tanggal.
+ * Cocokkan SlaStatusItem dengan period filter.
+ *
+ * Untuk item COMPLETED, gunakan sla_completed_at sebagai referensi tanggal
+ * agar filter "Bulan Ini" menampilkan rekrutmen yang SELESAI bulan ini
+ * (bukan yang DIBUAT bulan ini). Untuk status lain, gunakan tpk_tanggal.
+ *
+ * Catatan desain: monitoringApi.slaStatus() dipanggil TANPA parameter period
+ * karena backend selalu mengembalikan semua data aktif dan semua yang sudah
+ * COMPLETED. Filter period dilakukan sepenuhnya di sisi client (browser).
+ * Ini disengaja agar:
+ *   1. Summary stats (needUpdate, overdue, dll.) selalu akurat terhadap
+ *      keseluruhan data, bukan subset yang sudah difilter.
+ *   2. User bisa bebas mengganti filter period tanpa refetch ke server.
+ * Trade-off: jika data sangat besar (ribuan baris), pertimbangkan server-side
+ * filtering dengan menambah param ke endpoint.
  */
-function matchesPeriodFilter(item, period) {
-  if (!period) return true
-
-  const rawDate = item.ui_status_tag === 'COMPLETED'
-    ? (item.sla_completed_at || item.tpk_tanggal)
-    : item.tpk_tanggal
-
-  if (!rawDate) return true
-
-  try {
-    const itemDate = new Date(rawDate.substring(0, 10) + 'T00:00:00')
-    const today    = new Date(); today.setHours(0, 0, 0, 0)
-
-    switch (period.toLowerCase()) {
-      case 'today':
-        return itemDate.toDateString() === today.toDateString()
-      case 'yesterday': {
-        const y = new Date(today); y.setDate(y.getDate() - 1)
-        return itemDate.toDateString() === y.toDateString()
-      }
-      case 'this week':
-      case 'this+week': {
-        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) + 1)
-        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-        return itemDate >= mon && itemDate <= sun
-      }
-      case 'last week': {
-        const mon = new Date(today); mon.setDate(today.getDate() - (today.getDay() || 7) - 6)
-        const sun = new Date(mon); sun.setDate(mon.getDate() + 6)
-        return itemDate >= mon && itemDate <= sun
-      }
-      case 'this month':
-      case 'this+month':
-        return itemDate.getMonth() === today.getMonth() &&
-               itemDate.getFullYear() === today.getFullYear()
-      case 'last month': {
-        const lm = new Date(today); lm.setMonth(lm.getMonth() - 1)
-        return itemDate.getMonth() === lm.getMonth() &&
-               itemDate.getFullYear() === lm.getFullYear()
-      }
-      case 'this year':
-        return itemDate.getFullYear() === today.getFullYear()
-      case 'last year':
-        return itemDate.getFullYear() === today.getFullYear() - 1
-      default: {
-        if (period.toLowerCase().startsWith('custom:')) {
-          const rangeStr = period.replace(/custom:/i, '').trim()
-          const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
-          if (parts.length === 2) {
-            const start = new Date(parts[0].trim() + 'T00:00:00')
-            const end   = new Date(parts[1].trim() + 'T00:00:00')
-            return itemDate >= start && itemDate <= end
-          }
-        }
-        if (/^\d{4}-\d{2}-\d{2}$/.test(period)) {
-          return itemDate.toDateString() === new Date(period + 'T00:00:00').toDateString()
-        }
-        return true
-      }
-    }
-  } catch { return true }
-}
-
-/**
- * Ubah nilai period ke label yang mudah dibaca.
- */
-function periodToLabel(period) {
-  if (!period) return 'Semua Waktu'
-  const match = PERIOD_OPTIONS.find(o => o.value === period)
-  if (match) return match.label
-  if (period.toLowerCase().startsWith('custom:')) {
-    try {
-      const rangeStr = period.replace(/custom:/i, '').trim()
-      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
-      if (parts.length >= 2) {
-        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
-          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
-        return `${fmt(parts[0])} – ${fmt(parts[1])}`
-      }
-    } catch { return 'Rentang Kustom' }
-  }
-  return period
+function matchesSlaItemPeriod(item, period) {
+  const dateStr =
+    item.ui_status_tag === 'COMPLETED'
+      ? item.sla_completed_at || item.tpk_tanggal
+      : item.tpk_tanggal
+  return matchesPeriodFilter(dateStr, period)
 }
 
 // ── MAIN PAGE ──────────────────────────────────────────────────────────────────
 /**
- * @param {string}  [initialStatusFilter]  - Status filter awal dari URL (mis. 'COMPLETED', 'OVERDUE')
- * @param {string}  [initialPeriodFilter]  - Period filter awal dari URL (mis. 'This month')
+ * @param {string}  [initialStatusFilter]  - Filter status awal dari URL (mis. 'COMPLETED', 'OVERDUE')
+ * @param {string}  [initialPeriodFilter]  - Filter period awal dari URL (mis. 'This month')
+ *
+ * Kedua prop ini diisi oleh MonitoringListWrapper di App.jsx yang membaca
+ * query param ?status= dan ?period= dari URL — navigasi dari DashboardPage.
  */
 export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFilter }) {
   const { isHrd }  = useAuth()
   const navigate   = useNavigate()
 
-  const [filter, setFilter]               = useState(initialStatusFilter || 'ALL')
-  const [activePeriodFilter, setPeriod]   = useState(initialPeriodFilter || null)
+  const [filter, setFilter]                    = useState(initialStatusFilter || 'ALL')
+  const [activePeriodFilter, setActivePeriod]  = useState(initialPeriodFilter || null)
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
 
+  /**
+   * slaStatus() dipanggil tanpa argumen period — lihat komentar desain di atas.
+   * refetchInterval 60s menjaga data tetap segar tanpa membebani server.
+   */
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
-    queryFn: () => monitoringApi.slaStatus().then(r => r.data),
+    queryFn:  () => monitoringApi.slaStatus().then(r => r.data),
     refetchInterval: 60_000,
   })
 
@@ -149,16 +84,16 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const summary = data?.summary ?? {}
 
   const filtered = useMemo(() => {
-    // Step 1: filter berdasarkan STATUS
-    let result = items
-    if (filter === 'ALL')               result = items
-    else if (filter === 'NEED_USER_UPDATE') result = items.filter(i => i.sla_is_editable === 1)
-    else if (filter === 'APPROVAL_DELAYED') result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
-    else                                    result = items.filter(i => i.ui_status_tag === filter)
+    // Step 1: filter status
+    let result
+    if      (filter === 'ALL')               result = items
+    else if (filter === 'NEED_USER_UPDATE')  result = items.filter(i => i.sla_is_editable === 1)
+    else if (filter === 'APPROVAL_DELAYED')  result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
+    else                                     result = items.filter(i => i.ui_status_tag === filter)
 
-    // Step 2: filter berdasarkan PERIOD (opsional)
+    // Step 2: filter period (client-side)
     if (activePeriodFilter) {
-      result = result.filter(i => matchesPeriodFilter(i, activePeriodFilter))
+      result = result.filter(i => matchesSlaItemPeriod(i, activePeriodFilter))
     }
 
     return result
@@ -166,18 +101,13 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
 
   const approvalDelayedCount = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED').length
 
-  // Helper: apakah filter berasal dari navigasi Dashboard
-  const isFromDashboard = (initialStatusFilter || initialPeriodFilter) &&
+  const isFromDashboard =
+    (initialStatusFilter || initialPeriodFilter) &&
     (filter === initialStatusFilter || activePeriodFilter === initialPeriodFilter)
-
-  const handlePeriodSelect = (val) => {
-    setPeriod(val)
-    setShowPeriodPicker(false)
-  }
 
   const clearAllFilters = () => {
     setFilter('ALL')
-    setPeriod(null)
+    setActivePeriod(null)
   }
 
   if (isLoading) return <PageLoader />
@@ -192,7 +122,6 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
           <p className="text-sm text-slate-500 mt-0.5">{summary.total_active ?? 0} permintaan aktif</p>
         </div>
 
-        {/* ── Period Filter Button — konsisten dengan halaman lain ── */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm border transition-all hover:shadow-sm hover:-translate-y-0.5 ${
@@ -201,7 +130,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
               : 'bg-white text-slate-700 border-slate-200 hover:border-sapphire'
           }`}
         >
-          <Calendar size={16} className={activePeriodFilter ? 'text-sapphire' : 'text-sapphire'} />
+          <Calendar size={16} className="text-sapphire" />
           <span className="font-semibold text-xs max-w-[130px] truncate">
             {periodToLabel(activePeriodFilter)}
           </span>
@@ -209,7 +138,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
             <X
               size={14}
               className="text-slate-400 hover:text-red-400 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setPeriod(null) }}
+              onClick={(e) => { e.stopPropagation(); setActivePeriod(null) }}
             />
           ) : (
             <ChevronDown size={16} className="text-slate-400" />
@@ -217,8 +146,8 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         </button>
       </div>
 
-      {/* ── Banner filter aktif (dari Dashboard atau pilihan manual) ── */}
-      {(activePeriodFilter || (filter !== 'ALL')) && (
+      {/* ── Banner filter aktif ── */}
+      {(activePeriodFilter || filter !== 'ALL') && (
         <div className="flex items-center justify-between bg-sapphire/5 border border-sapphire/20 rounded-xl px-4 py-2.5">
           <div className="flex items-center gap-2">
             <Calendar size={15} className="text-sapphire" />
@@ -229,9 +158,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
               {filter !== 'ALL' && activePeriodFilter && (
                 <span className="text-slate-400 font-normal"> · </span>
               )}
-              {activePeriodFilter && (
-                <span>{periodToLabel(activePeriodFilter)}</span>
-              )}
+              {activePeriodFilter && <span>{periodToLabel(activePeriodFilter)}</span>}
               {isFromDashboard && (
                 <span className="text-xs text-slate-400 font-normal ml-1">· dari Dashboard</span>
               )}
@@ -254,7 +181,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
             color="orange"
             title={isHrd ? 'Perlu Update Tanggal' : 'HRD Minta Update Tanggal'}
             count={summary.need_update}
-            onClick={() => { setFilter('NEED_USER_UPDATE'); setPeriod(null) }}
+            onClick={() => { setFilter('NEED_USER_UPDATE'); setActivePeriod(null) }}
           />
         )}
         {(summary.overdue ?? 0) > 0 && (
@@ -263,7 +190,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
             color="red"
             title="Target Terlambat"
             count={summary.overdue}
-            onClick={() => { setFilter('OVERDUE'); setPeriod(null) }}
+            onClick={() => { setFilter('OVERDUE'); setActivePeriod(null) }}
           />
         )}
         {approvalDelayedCount > 0 && isHrd && (
@@ -272,7 +199,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
             color="amber"
             title="Approval Tertunda >5 Hari"
             count={approvalDelayedCount}
-            onClick={() => { setFilter('APPROVAL_DELAYED'); setPeriod(null) }}
+            onClick={() => { setFilter('APPROVAL_DELAYED'); setActivePeriod(null) }}
           />
         )}
       </div>
@@ -293,21 +220,21 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
           label="Total Aktif"
           value={summary.total_active ?? 0}
           color="text-sapphire"
-          onClick={() => { setFilter('ALL'); setPeriod(null) }}
+          onClick={() => { setFilter('ALL'); setActivePeriod(null) }}
           active={filter === 'ALL' && !activePeriodFilter}
         />
         <StatCard
           label="Kritis"
           value={summary.critical ?? 0}
           color="text-red-500"
-          onClick={() => { setFilter('CRITICAL'); setPeriod(null) }}
+          onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }}
           active={filter === 'CRITICAL'}
         />
         <StatCard
           label="Warning"
           value={summary.warning ?? 0}
           color="text-amber-500"
-          onClick={() => { setFilter('WARNING'); setPeriod(null) }}
+          onClick={() => { setFilter('WARNING'); setActivePeriod(null) }}
           active={filter === 'WARNING'}
         />
       </div>
@@ -324,15 +251,16 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
       {/* ── Filter Chips ── */}
       <div className="flex gap-2 flex-wrap">
         {FILTERS.map(f => {
-          const count = f.key === 'ALL'               ? items.length
-            : f.key === 'NEED_USER_UPDATE'            ? (summary.need_update ?? 0)
-            : f.key === 'APPROVAL_DELAYED'            ? approvalDelayedCount
+          const count =
+            f.key === 'ALL'               ? items.length
+            : f.key === 'NEED_USER_UPDATE' ? (summary.need_update ?? 0)
+            : f.key === 'APPROVAL_DELAYED' ? approvalDelayedCount
             : items.filter(i => i.ui_status_tag === f.key).length
           if (count === 0 && f.key !== 'ALL') return null
           return (
             <button
               key={f.key}
-              onClick={() => { setFilter(f.key); setPeriod(null) }}
+              onClick={() => { setFilter(f.key); setActivePeriod(null) }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${
                 filter === f.key
                   ? 'bg-sapphire text-white border-sapphire'
@@ -369,11 +297,11 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         </div>
       )}
 
-      {/* ── Period Picker Modal — konsisten dengan halaman lain ── */}
+      {/* ── Period Picker Modal ── */}
       {showPeriodPicker && (
         <PeriodPickerModal
           current={activePeriodFilter}
-          onSelect={handlePeriodSelect}
+          onSelect={(val) => { setActivePeriod(val); setShowPeriodPicker(false) }}
           onClose={() => setShowPeriodPicker(false)}
         />
       )}
@@ -381,7 +309,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   )
 }
 
-// ── Sub Components ─────────────────────────────────────────────────────────────
+// ── Sub Components (tidak berubah dari versi sebelumnya) ───────────────────────
 
 function AlertCard({ icon, color, title, count, onClick }) {
   const cls = {
@@ -430,8 +358,7 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
   const meta      = getSlaStatusMeta(item.ui_status_tag)
   const daysColor = getDaysColor(item.days_remaining)
   const isCompleted = item.ui_status_tag === 'COMPLETED'
-
-  const canEdit = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
+  const canEdit   = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
 
   return (
     <div
@@ -471,11 +398,9 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         </div>
       </div>
 
-      {/* Job info */}
       <p className="font-display font-bold text-navy">{item.jab_nama}</p>
       <p className="text-xs text-slate-400 mt-0.5">{item.tpk_bagian} • {item.tpk_nomor}</p>
 
-      {/* Requester */}
       <div className="flex items-center gap-1.5 mt-2">
         <Users size={13} className="text-slate-400" />
         <span className="text-xs text-slate-400">{item.nama_peminta}</span>
@@ -484,7 +409,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         )}
       </div>
 
-      {/* Approval delay banner */}
       {item.approval_flag === 'APPROVAL_DELAYED' && (
         <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
           <Clock size={13} className="text-amber-600 shrink-0" />
