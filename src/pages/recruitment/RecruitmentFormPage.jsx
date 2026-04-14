@@ -208,6 +208,11 @@ export default function RecruitmentFormPage() {
   const navigate  = useNavigate()
   const qc        = useQueryClient()
   const isEdit    = Boolean(nomor)
+  const { data: holidaysData = [] } = useQuery({
+    queryKey: ['holidays'],
+    queryFn: () => masterApi.holidays().then(r => r.data.data ?? []),
+    staleTime: 24 * 60 * 60 * 1000, // cache 24 jam, data libur jarang berubah
+  })
 
   const { data: jabatanList = [] } = useQuery({
     queryKey: ['jabatan'],
@@ -279,12 +284,14 @@ export default function RecruitmentFormPage() {
   }, [detail, jabatanList])
 
   const validation = useCallback(() => {
-    if (!jabatan || !tglButuh) return null
-    return validateTglButuh(tglButuh, jabatan.jab_kode, jabatanRules, jumlah, isReSchedule)
-  }, [jabatan, tglButuh, jabatanRules, jumlah, isReSchedule])
+      if (!jabatan || !tglButuh) return null
+      return validateTglButuh(tglButuh, jabatan.jab_kode, jabatanRules, jumlah, isReSchedule, holidaysData)
+  }, [jabatan, tglButuh, jabatanRules, jumlah, isReSchedule, holidaysData])
 
   const vlResult = validation()
-  const minDate  = jabatan ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah) ?? null) : null
+  const minDate  = jabatan
+      ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah, holidaysData) ?? null)
+      : null
 
   const handleJumlahChange = (delta) => {
     setJumlah(prev => Math.max(1, prev + delta))
