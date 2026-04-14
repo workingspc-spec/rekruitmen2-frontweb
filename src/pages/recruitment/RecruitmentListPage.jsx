@@ -9,7 +9,7 @@ import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
   matchesPeriodFilter,
   periodToLabel,
-} from '../../src/utils/periodFilter'
+} from '../../utils/periodFilter'   // ✅ FIX: was '../../src/utils/periodFilter' (wrong path)
 import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lucide-react'
 import { formatDate, getApprovalStatus, getSlaSourceMeta } from '../../utils/helpers'
 import toast from 'react-hot-toast'

@@ -9,7 +9,7 @@ import {
   matchesPeriodFilter,
   periodToLabel,
   PERIOD_OPTIONS,
-} from '../../src/utils/periodFilter'
+} from '../../utils/periodFilter'   // ✅ FIX: was '../../src/utils/periodFilter' (wrong path)
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
@@ -35,16 +35,6 @@ const FILTERS = [
  * Untuk item COMPLETED, gunakan sla_completed_at sebagai referensi tanggal
  * agar filter "Bulan Ini" menampilkan rekrutmen yang SELESAI bulan ini
  * (bukan yang DIBUAT bulan ini). Untuk status lain, gunakan tpk_tanggal.
- *
- * Catatan desain: monitoringApi.slaStatus() dipanggil TANPA parameter period
- * karena backend selalu mengembalikan semua data aktif dan semua yang sudah
- * COMPLETED. Filter period dilakukan sepenuhnya di sisi client (browser).
- * Ini disengaja agar:
- *   1. Summary stats (needUpdate, overdue, dll.) selalu akurat terhadap
- *      keseluruhan data, bukan subset yang sudah difilter.
- *   2. User bisa bebas mengganti filter period tanpa refetch ke server.
- * Trade-off: jika data sangat besar (ribuan baris), pertimbangkan server-side
- * filtering dengan menambah param ke endpoint.
  */
 function matchesSlaItemPeriod(item, period) {
   const dateStr =
@@ -58,9 +48,6 @@ function matchesSlaItemPeriod(item, period) {
 /**
  * @param {string}  [initialStatusFilter]  - Filter status awal dari URL (mis. 'COMPLETED', 'OVERDUE')
  * @param {string}  [initialPeriodFilter]  - Filter period awal dari URL (mis. 'This month')
- *
- * Kedua prop ini diisi oleh MonitoringListWrapper di App.jsx yang membaca
- * query param ?status= dan ?period= dari URL — navigasi dari DashboardPage.
  */
 export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFilter }) {
   const { isHrd }  = useAuth()
@@ -70,10 +57,6 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const [activePeriodFilter, setActivePeriod]  = useState(initialPeriodFilter || null)
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
 
-  /**
-   * slaStatus() dipanggil tanpa argumen period — lihat komentar desain di atas.
-   * refetchInterval 60s menjaga data tetap segar tanpa membebani server.
-   */
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
     queryFn:  () => monitoringApi.slaStatus().then(r => r.data),
@@ -309,7 +292,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   )
 }
 
-// ── Sub Components (tidak berubah dari versi sebelumnya) ───────────────────────
+// ── Sub Components ─────────────────────────────────────────────────────────────
 
 function AlertCard({ icon, color, title, count, onClick }) {
   const cls = {

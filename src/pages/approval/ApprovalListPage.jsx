@@ -7,7 +7,7 @@ import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
   matchesPeriodFilter,
   periodToLabel,
-} from '../../src/utils/periodFilter'
+} from '../../utils/periodFilter'   // ✅ FIX: was '../../src/utils/periodFilter' (wrong path)
 import { CheckSquare, Calendar, X, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { ApprovalCard } from './ApprovalCard'
 import { HrdConfirmDialog } from './HrdConfirmDialog'
