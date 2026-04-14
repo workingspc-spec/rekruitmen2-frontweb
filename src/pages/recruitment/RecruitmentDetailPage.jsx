@@ -47,7 +47,8 @@ export default function RecruitmentDetailPage() {
   const isOwner = data.tpk_peminta?.trim() === user?.kode
   const canEdit = !isHrd && isOwner && (isDraft || data.sla_is_editable === 1)
 
-  const keterangans = [1,2,3,4,5,6,7,8,9,10]
+  // ── Jobdesk fields (renamed from keterangan) ──────────────────────────────
+  const jobdesks = [1,2,3,4,5,6,7,8,9,10]
     .map(i => data[`tpk_keterangan${i === 1 ? '' : i}`])
     .filter(Boolean)
 
@@ -148,7 +149,6 @@ export default function RecruitmentDetailPage() {
                 <button
                   onClick={() => setShowSlaTooltip(true)}
                   className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors"
-                  title="Info penyesuaian tanggal"
                 >
                   <Info size={14} />
                   Info
@@ -172,12 +172,12 @@ export default function RecruitmentDetailPage() {
         </div>
       )}
 
-      {/* Keterangan */}
-      {keterangans.length > 0 && (
+      {/* Jobdesk (renamed from Keterangan Pekerjaan) */}
+      {jobdesks.length > 0 && (
         <div className="card">
-          <h3 className="font-display font-bold text-navy text-sm mb-3">Keterangan Pekerjaan</h3>
+          <h3 className="font-display font-bold text-navy text-sm mb-3">Jobdesk</h3>
           <ol className="space-y-2">
-            {keterangans.map((k, i) => (
+            {jobdesks.map((k, i) => (
               <li key={i} className="flex gap-3 text-sm">
                 <span className="text-sapphire font-bold w-5 shrink-0">{i + 1}.</span>
                 <span className="text-slate-700">{k}</span>
@@ -249,7 +249,7 @@ export default function RecruitmentDetailPage() {
         </div>
       )}
 
-      {/* ✅ Dialog Tooltip SLA dengan BACKDROP CLICK */}
+      {/* SLA Tooltip Dialog */}
       {showSlaTooltip && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
@@ -280,22 +280,30 @@ export default function RecruitmentDetailPage() {
   )
 }
 
-// ── Log Entry Component ────────────────────────────────────────────────────────
+// ── Log Entry ─────────────────────────────────────────────────────────────────
 function LogEntry({ entry }) {
   const displayName = entry.user_nama || entry.user_kode || '–'
 
+  // Updated: tpk_keterangan* → Jobdesk *
   const fieldLabel = (name) => {
     const map = {
-      tpk_tgl_butuh:    'Tanggal Butuh',
-      tpk_jumlah:       'Jumlah',
-      tpk_bagian:       'Bagian',
-      tpk_alasan:       'Alasan',
-      tpk_keterangan:   'Keterangan 1',
-      tpk_keterangan2:  'Keterangan 2',
-      tpk_keterangan3:  'Keterangan 3',
-      tpk_spesifikasi:  'Spesifikasi 1',
-      tpk_spesifikasi2: 'Spesifikasi 2',
-      tpk_spesifikasi3: 'Spesifikasi 3',
+      tpk_tgl_butuh:     'Tanggal Butuh',
+      tpk_jumlah:        'Jumlah',
+      tpk_bagian:        'Bagian',
+      tpk_alasan:        'Alasan',
+      tpk_keterangan:    'Jobdesk 1',
+      tpk_keterangan2:   'Jobdesk 2',
+      tpk_keterangan3:   'Jobdesk 3',
+      tpk_keterangan4:   'Jobdesk 4',
+      tpk_keterangan5:   'Jobdesk 5',
+      tpk_keterangan6:   'Jobdesk 6',
+      tpk_keterangan7:   'Jobdesk 7',
+      tpk_keterangan8:   'Jobdesk 8',
+      tpk_keterangan9:   'Jobdesk 9',
+      tpk_keterangan10:  'Jobdesk 10',
+      tpk_spesifikasi:   'Spesifikasi 1',
+      tpk_spesifikasi2:  'Spesifikasi 2',
+      tpk_spesifikasi3:  'Spesifikasi 3',
     }
     return map[name] ?? name?.replace(/_/g, ' ') ?? '–'
   }
@@ -330,7 +338,6 @@ function LogEntry({ entry }) {
 }
 
 // ── Helper Components ─────────────────────────────────────────────────────────
-
 function InfoItem({ icon, label, value }) {
   return (
     <div className="flex items-start gap-2">

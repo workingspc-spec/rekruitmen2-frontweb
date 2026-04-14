@@ -6,7 +6,6 @@ import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
 
-// Export queryClient agar AuthContext bisa clear cache saat logout/login
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -30,12 +29,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             fontSize: '14px',
             borderRadius: '12px',
             boxShadow: '0 4px 24px rgba(0,0,0,0.1)',
+            zIndex: 9999,
           },
           success: {
-            style: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' },
+            style: { background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', zIndex: 9999 },
           },
           error: {
-            style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' },
+            style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', zIndex: 9999 },
           },
         }}
       />

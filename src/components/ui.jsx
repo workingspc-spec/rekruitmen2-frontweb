@@ -81,8 +81,6 @@ export function ErrorBox({ message, onRetry }) {
 export function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   if (!open) return null
   const maxW = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }[size]
-  // createPortal: render ke document.body agar position:fixed selalu
-  // relatif ke viewport — tidak terpengaruh transform/opacity ancestor manapun
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
@@ -222,11 +220,12 @@ export function TextArea({ label, required, error, rows = 3, ...props }) {
 }
 
 // ── STAT CARD ─────────────────────────────────────────────────────────────────
+// Added: hover:scale-[1.02] transition-all for premium micro-animation
 export function StatCard({ label, value, icon: Icon, color = '#0F52BA', onClick, alert, subtitle }) {
   return (
     <button
       onClick={onClick}
-      className="card text-left w-full hover:shadow-card-hover transition-shadow duration-200 relative overflow-hidden"
+      className="card text-left w-full hover:shadow-card-hover hover:scale-[1.02] transition-all duration-200 relative overflow-hidden"
     >
       {alert && (
         <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white animate-pulse" />
