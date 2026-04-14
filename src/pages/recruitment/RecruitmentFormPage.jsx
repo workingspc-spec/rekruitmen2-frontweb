@@ -24,7 +24,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 function DatePickerModal({ value, onChange, onClose, min }) {
   const initialDate = value ? new Date(value) : new Date()
   const [viewDate, setViewDate] = useState(initialDate)
-  const [viewMode, setViewMode] = useState('days') // 'days' | 'months' | 'years'
+  const [viewMode, setViewMode] = useState('days')
   const today = new Date(); today.setHours(0,0,0,0)
 
   const buildDays = (date) => {
@@ -56,14 +56,12 @@ function DatePickerModal({ value, onChange, onClose, min }) {
   }
 
   return createPortal(
-    // ✅ BACKDROP CLICK: klik area luar langsung tutup
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-[22rem] p-5">
 
-        {/* Navigation Header */}
         <div className="flex items-center justify-between mb-4">
           <button onClick={handlePrev} className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 transition-colors">
             <ChevronLeft size={16} />
@@ -88,7 +86,6 @@ function DatePickerModal({ value, onChange, onClose, min }) {
         </div>
 
         <div className="min-h-[220px]">
-          {/* DAYS VIEW */}
           {viewMode === 'days' && (
             <>
               <div className="grid grid-cols-7 mb-2">
@@ -122,7 +119,6 @@ function DatePickerModal({ value, onChange, onClose, min }) {
             </>
           )}
 
-          {/* MONTHS VIEW */}
           {viewMode === 'months' && (
             <div className="grid grid-cols-3 gap-2">
               {months.map((m, i) => (
@@ -136,7 +132,6 @@ function DatePickerModal({ value, onChange, onClose, min }) {
             </div>
           )}
 
-          {/* YEARS VIEW */}
           {viewMode === 'years' && (
             <div className="grid grid-cols-3 gap-2">
               {years.map((y) => (
@@ -166,7 +161,6 @@ function DropdownModal({ title, items, itemKey, itemLabel, selected, onSelect, o
   const filtered = q ? items.filter(i => itemLabel(i).toLowerCase().includes(q.toLowerCase())) : items
 
   return createPortal(
-    // ✅ BACKDROP CLICK: klik area gelap (luar kotak putih) langsung tutup
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -211,7 +205,7 @@ export default function RecruitmentFormPage() {
   const { data: holidaysData = [] } = useQuery({
     queryKey: ['holidays'],
     queryFn: () => masterApi.holidays().then(r => r.data.data ?? []),
-    staleTime: 24 * 60 * 60 * 1000, // cache 24 jam, data libur jarang berubah
+    staleTime: 24 * 60 * 60 * 1000,
   })
 
   const { data: jabatanList = [] } = useQuery({
@@ -455,12 +449,18 @@ export default function RecruitmentFormPage() {
           locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowAlasan(true)} />
       </Section>
 
-      <Section title="Keterangan Pekerjaan (Opsional)">
+      {/* ✅ RENAMED: "Keterangan Pekerjaan" → "Jobdesk" */}
+      <Section title="Jobdesk (Opsional)">
         <div className="space-y-2">
           {ketList.slice(0, visKet).map((v, i) => (
-            <input key={i} className="input" placeholder={`Keterangan ${i + 1}`} value={v}
+            <input
+              key={i}
+              className="input"
+              placeholder={`Jobdesk ${i + 1}`}
+              value={v}
               disabled={isReSchedule || isLocked}
-              onChange={e => { const n = [...ketList]; n[i] = e.target.value; setKetList(n) }} />
+              onChange={e => { const n = [...ketList]; n[i] = e.target.value; setKetList(n) }}
+            />
           ))}
           {visKet < 10 && !isLocked && !isReSchedule && (
             <button className="btn-ghost text-xs" onClick={() => setVisKet(v => v + 1)}>
