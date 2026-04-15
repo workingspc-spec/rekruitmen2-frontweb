@@ -28,9 +28,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         )}
       </div>
 
-      {/* FIX: Tampilkan chip tanggal approval — identik Android ApprovalListScreen
-          Android: if (statusApprovalAtasan == 1) ApprovalChip("Atasan ✓", tglApproveAtasan)
-                   if (statusApprovalHRD == 1) ApprovalChip("HRD ✓", tglApproveHrd) */}
+      {/* Chip tanggal approval */}
       {(approvedByAtasan || approvedByHrd) && (
         <div className="flex flex-wrap gap-2 mb-3">
           {approvedByAtasan && item.tgl_approve_atasan && (
@@ -47,11 +45,18 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
           <Eye size={13} /> Detail
         </button>
         <div className="flex-1" />
-        {pending && !isHrd && (
-          <button className="btn-ghost text-xs px-3 py-1.5 text-red-500 hover:bg-red-50" onClick={onReject}>
+
+        {/* Tombol Tolak — untuk atasan dan HRD saat pending */}
+        {pending && (
+          <button
+            className="btn-ghost text-xs px-3 py-1.5 text-red-500 hover:bg-red-50"
+            onClick={onReject}
+          >
             <XCircle size={13} /> Tolak
           </button>
         )}
+
+        {/* Tombol Setujui */}
         {pending && (
           <button
             className="text-xs px-3 py-1.5 rounded-xl font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1.5"
@@ -65,10 +70,6 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
   )
 }
 
-/**
- * Chip yang menampilkan label approval + tanggal kapan disetujui.
- * Identik dengan ApprovalChip di Android RecruitmentListScreen.kt
- */
 function ApprovalChip({ label, date }) {
   return (
     <div className="flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-2.5 py-1">
@@ -80,10 +81,11 @@ function ApprovalChip({ label, date }) {
 }
 
 function StatusPill({ atasan, hrd, isHrd }) {
-  if (atasan === 2 || hrd === 2) return <Pill label="Ditolak"        color="bg-red-100 text-red-700" />
-  if (isHrd  && hrd === 1)       return <Pill label="Disetujui HRD"  color="bg-green-100 text-green-700" />
-  if (isHrd  && hrd === 0)       return <Pill label="Perlu Disetujui" color="bg-amber-100 text-amber-700" />
-  if (!isHrd && atasan === 1)    return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
+  if (atasan === 2)         return <Pill label="Ditolak Atasan"   color="bg-red-100 text-red-700" />
+  if (hrd === 2)            return <Pill label="Ditolak HRD"      color="bg-red-100 text-red-700" />
+  if (isHrd  && hrd === 1)  return <Pill label="Disetujui HRD"    color="bg-green-100 text-green-700" />
+  if (isHrd  && hrd === 0)  return <Pill label="Perlu Disetujui"  color="bg-amber-100 text-amber-700" />
+  if (!isHrd && atasan === 1) return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
   return <Pill label="Pending" color="bg-amber-100 text-amber-700" />
 }
 

@@ -1,14 +1,11 @@
 // src/pages/approval/HrdConfirmDialog.jsx
+// Dialog konfirmasi APPROVE oleh HRD (tidak berubah dari sebelumnya kecuali pesan)
 import { createPortal } from 'react-dom'
 import { formatDate } from '../../utils/helpers'
 import { Spinner } from '../../components/ui'
 import { CheckCircle2, AlertTriangle, Flag, Building2, Users, Calendar, CheckSquare } from 'lucide-react'
 import { DetailRow } from './ApprovalCard'
 
-/**
- * FIX #4: Menggunakan createPortal agar dialog selalu terpusat
- * di tengah viewport, tidak terpengaruh posisi scroll halaman.
- */
 export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
   return createPortal(
     <div
@@ -19,9 +16,9 @@ export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
         <div className="flex items-start gap-3 mb-4">
           <AlertTriangle size={24} className="text-amber-500 shrink-0" />
           <div>
-            <h3 className="font-display font-bold text-navy text-lg">Setujui & Buka Lowongan?</h3>
+            <h3 className="font-display font-bold text-navy text-lg">Setujui & Buka Rekrutmen?</h3>
             <p className="text-sm text-slate-500 mt-1">
-              Setelah disetujui, lowongan akan dibuka untuk proses shortlist kandidat.
+              Setelah disetujui, rekrutmen akan dibuka dan <strong>penghitungan SLA dimulai</strong>.
             </p>
           </div>
         </div>
@@ -44,7 +41,7 @@ export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
             disabled={loading}
           >
             {loading ? <Spinner size={16} /> : <CheckCircle2 size={16} />}
-            {loading ? 'Memproses...' : 'Ya, Setujui & Buka'}
+            {loading ? 'Memproses...' : 'Ya, Setujui & Mulai SLA'}
           </button>
         </div>
       </div>

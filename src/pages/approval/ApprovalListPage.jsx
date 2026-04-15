@@ -7,10 +7,11 @@ import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
   matchesPeriodFilter,
   periodToLabel,
-} from '../../utils/periodFilter'   // ✅ FIX: was '../../src/utils/periodFilter' (wrong path)
+} from '../../utils/periodFilter'
 import { CheckSquare, Calendar, X, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { ApprovalCard } from './ApprovalCard'
 import { HrdConfirmDialog } from './HrdConfirmDialog'
+import { HrdRejectDialog } from './HrdRejectDialog'
 import { formatDate } from '../../utils/helpers'
 
 function SlaResultDialog({ slaInfo, onClose }) {
@@ -29,10 +30,10 @@ function SlaResultDialog({ slaInfo, onClose }) {
           {isSystem
             ? <AlertTriangle size={24} className="text-amber-500 shrink-0" />
             : <CheckCircle2  size={24} className="text-green-600 shrink-0" />}
-          <h3 className="font-display font-bold text-navy text-lg">Approval Berhasil</h3>
+          <h3 className="font-display font-bold text-navy text-lg">Rekrutmen Dibuka!</h3>
         </div>
         <p className={`text-xs font-bold uppercase tracking-wide ${isSystem ? 'text-amber-600' : 'text-green-700'}`}>
-          {isSystem ? '⚠️ Catatan Sistem:' : '✅ Konfirmasi:'}
+          {isSystem ? '⚠️ Catatan Sistem:' : '✅ SLA Mulai Berjalan:'}
         </p>
         <p className="text-sm text-slate-600 leading-relaxed">{explanation}</p>
         {slaInfo?.final_target_date && (
@@ -49,7 +50,6 @@ function SlaResultDialog({ slaInfo, onClose }) {
   )
 }
 
-// ── Status tab definitions ─────────────────────────────────────────────────────
 const STATUS_TABS = [
   { key: 'all',      label: 'Semua' },
   { key: 'pending',  label: 'Belum Approve' },
@@ -68,8 +68,12 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     list, loading, error, refetch, isHrd,
     confirmItem, setConfirmItem,
     isHrdDialogItem, setIsHrdDialogItem,
+    isHrdRejectItem, setIsHrdRejectItem,
     slaResultInfo, setSlaResultInfo,
-    atasanMut, hrdMut, isPending,
+    atasanMut,
+    hrdApproveMut,
+    hrdRejectMut,
+    isPending,
   } = useApprovalList()
 
   const pendingCount  = list.filter(item =>  isPending(item)).length
@@ -79,11 +83,9 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const filteredList = useMemo(() => {
     let items = list
 
-    // Status filter (client-side) — identik dengan Android ApprovalFilter
     if (tab === 'pending')  items = items.filter(item =>  isPending(item))
     if (tab === 'approved') items = items.filter(item => !isPending(item))
 
-    // Search filter
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(item =>
@@ -93,7 +95,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       )
     }
 
-    // Period filter (client-side) — menggunakan shared utility
     if (activePeriodFilter) {
       items = items.filter(item =>
         matchesPeriodFilter(item.tpk_tanggal, activePeriodFilter)
@@ -124,7 +125,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
 
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Approval</h1>
@@ -134,9 +135,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       </div>
 
-      {/* ── Filter Row ── */}
+      {/* Filter Row */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Status Tabs */}
         <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
           {STATUS_TABS.map(t => {
             const isActive = tab === t.key
@@ -169,7 +169,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
           })}
         </div>
 
-        {/* Period filter */}
         <button
           onClick={() => setShowPeriodPicker(true)}
           className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-colors ${
@@ -181,22 +180,15 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
           <Calendar size={13} />
           <span className="max-w-[120px] truncate">{periodToLabel(activePeriodFilter)}</span>
           {activePeriodFilter && (
-            <X
-              size={12}
-              onClick={(e) => { e.stopPropagation(); setActivePeriodFilter(null) }}
-            />
+            <X size={12} onClick={(e) => { e.stopPropagation(); setActivePeriodFilter(null) }} />
           )}
         </button>
       </div>
 
-      {/* Hint dari Dashboard */}
       {activePeriodFilter && activePeriodFilter === initialPeriodFilter && (
-        <p className="text-xs text-sapphire">
-          Difilter dari Dashboard · Tap tanggal untuk ubah
-        </p>
+        <p className="text-xs text-sapphire">Difilter dari Dashboard · Tap tanggal untuk ubah</p>
       )}
 
-      {/* Search */}
       {!loading && !error && list.length > 0 && (
         <SearchInput
           value={search}
@@ -221,18 +213,27 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
               item={item}
               isHrd={isHrd}
               pending={isPending(item)}
-              onApprove={() => isHrd
-                ? setIsHrdDialogItem(item)
-                : setConfirmItem({ item, action: 'APPROVE' })
-              }
-              onReject={() => setConfirmItem({ item, action: 'REJECT' })}
+              onApprove={() => {
+                if (isHrd) {
+                  setIsHrdDialogItem(item)
+                } else {
+                  setConfirmItem({ item, action: 'APPROVE' })
+                }
+              }}
+              onReject={() => {
+                if (isHrd) {
+                  setIsHrdRejectItem(item)
+                } else {
+                  setConfirmItem({ item, action: 'REJECT' })
+                }
+              }}
               onDetail={() => navigate(`/recruitment/${encodeURIComponent(item.tpk_nomor)}`)}
             />
           ))}
         </div>
       )}
 
-      {/* Period Picker Modal */}
+      {/* Period Picker */}
       {showPeriodPicker && (
         <PeriodPickerModal
           current={activePeriodFilter}
@@ -241,7 +242,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* Confirm Dialog (Atasan) */}
+      {/* Atasan Confirm Dialog */}
       {confirmItem && (
         <ConfirmDialog
           open
@@ -258,17 +259,30 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         />
       )}
 
-      {/* HRD Confirm Dialog */}
+      {/* HRD Approve Dialog */}
       {isHrdDialogItem && (
         <HrdConfirmDialog
           item={isHrdDialogItem}
-          loading={hrdMut.isPending}
-          onConfirm={() => hrdMut.mutate({ tpk_nomor: isHrdDialogItem.tpk_nomor })}
+          loading={hrdApproveMut.isPending}
+          onConfirm={() => hrdApproveMut.mutate({ tpk_nomor: isHrdDialogItem.tpk_nomor })}
           onClose={() => setIsHrdDialogItem(null)}
         />
       )}
 
-      {/* Dialog Hasil SLA */}
+      {/* HRD Reject Dialog — dengan alasan */}
+      {isHrdRejectItem && (
+        <HrdRejectDialog
+          item={isHrdRejectItem}
+          loading={hrdRejectMut.isPending}
+          onConfirm={(alasan_tolak) => hrdRejectMut.mutate({
+            tpk_nomor: isHrdRejectItem.tpk_nomor,
+            alasan_tolak,
+          })}
+          onClose={() => setIsHrdRejectItem(null)}
+        />
+      )}
+
+      {/* Dialog Hasil SLA (dari HRD approve) */}
       {slaResultInfo && (
         <SlaResultDialog
           slaInfo={slaResultInfo}

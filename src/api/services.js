@@ -1,3 +1,4 @@
+// src/api/services.js
 import api from './axios'
 
 // ── AUTH ─────────────────────────────────────────────────────────────────────
@@ -18,10 +19,6 @@ export const masterApi = {
     jabatan:      (search) => api.get('/master/jabatan',       { params: { search } }),
     bagian:       (search) => api.get('/master/bagian',        { params: { search } }),
     jabatanRules: ()       => api.get('/recruitment/jabatan-rules'),
-    /**
-     * Ambil daftar tanggal libur dari hrd2.tharilibur.
-     * @param {number} [year] - Tahun spesifik. Jika kosong, backend kirim tahun ini + depan.
-     */
     holidays:     (year)   => api.get('/master/holidays', year ? { params: { year } } : {}),
 }
 
@@ -42,13 +39,16 @@ export const recruitmentApi = {
 export const approvalApi = {
     listAtasan:   (status) => api.get('/recruitment/approval/atasan', { params: { status } }),
     actionAtasan: (body)   => api.post('/recruitment/approval/atasan/action', body),
+    // body: { tpk_nomor, action: 'APPROVE' | 'REJECT' }
+
     listHrd:      (status) => api.get('/recruitment/approval/hrd', { params: { status } }),
     actionHrd:    (body)   => api.post('/recruitment/approval/hrd/action', body),
+    // body: { tpk_nomor, action: 'APPROVE' | 'REJECT', alasan_tolak? }
 }
 
 // ── MONITORING ────────────────────────────────────────────────────────────────
 export const monitoringApi = {
-    slaStatus:   () => api.get('/monitoring/sla-status'),   // filter dilakukan client-side
+    slaStatus:   () => api.get('/monitoring/sla-status'),
     slaDetail:   (nomor)  => api.get(`/monitoring/sla-detail/${encodeURIComponent(nomor)}`),
     kpiHrd:      (period) => api.get('/monitoring/kpi-hrd',      { params: { period } }),
     kpiApprover: (period) => api.get('/monitoring/kpi-approver', { params: { period } }),
