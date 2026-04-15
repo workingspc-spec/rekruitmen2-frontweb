@@ -1,5 +1,6 @@
 // src/pages/approval/ApprovalListPage.jsx
 import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
 import { PageLoader, ErrorBox, EmptyState, ConfirmDialog, SearchInput } from '../../components/ui'
@@ -20,7 +21,7 @@ function SlaResultDialog({ slaInfo, onClose }) {
     ? 'Tanggal disesuaikan otomatis untuk memenuhi standar waktu layanan rekrutmen.'
     : (slaInfo?.explanation ?? 'Permintaan telah disetujui.')
 
-  return (
+  return createPortal(                                          // ← tambahkan ini
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
@@ -46,7 +47,8 @@ function SlaResultDialog({ slaInfo, onClose }) {
         )}
         <button onClick={onClose} className="btn-primary w-full justify-center">Mengerti</button>
       </div>
-    </div>
+    </div>,
+    document.body                                              // ← dan ini
   )
 }
 

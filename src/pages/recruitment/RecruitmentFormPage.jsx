@@ -254,11 +254,11 @@ export default function RecruitmentFormPage() {
     setAlasan(detail.tpk_alasan || '')
 
     const kets = Array(10).fill('')
-    for (let i = 0; i < 10; i++) kets[i] = detail[`tpk_keterangan${i === 0 ? '' : i + ''}`] || ''
+    for (let i = 0; i < 10; i++) kets[i] = detail[`tpk_keterangan${i === 0 ? '' : (i + 1)}`] || ''
     setKetList(kets)
 
     const specs = Array(10).fill('')
-    for (let i = 0; i < 10; i++) specs[i] = detail[`tpk_spesifikasi${i === 0 ? '' : i + ''}`] || ''
+    for (let i = 0; i < 10; i++) specs[i] = detail[`tpk_spesifikasi${i === 0 ? '' : (i + 1)}`] || ''
     setSpecList(specs)
 
     const filledKet  = kets.filter(Boolean).length

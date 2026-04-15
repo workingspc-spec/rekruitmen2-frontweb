@@ -71,7 +71,11 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
     let list = raw
 
     // Status filter
-    if (status === 'pending')  list = list.filter(r => r.tpk_approveatasan === 0 || (r.tpk_approveatasan === 1 && r.tpk_approveHRD === 0))
+    if (status === 'pending') list = list.filter(r =>
+      r.tpk_approveatasan !== 2 &&
+      r.tpk_approveHRD !== 2 &&
+      r.tpk_approveHRD !== 1
+    )
     if (status === 'approved') list = list.filter(r => r.tpk_approveatasan === 1 && r.tpk_approveHRD === 1)
     if (status === 'rejected') list = list.filter(r => r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2)
 

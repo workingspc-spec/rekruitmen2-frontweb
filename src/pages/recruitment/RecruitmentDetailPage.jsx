@@ -92,6 +92,18 @@ export default function RecruitmentDetailPage() {
         <span className={`font-semibold text-sm ${status.color}`}>{status.label}</span>
       </div>
 
+      {/* TAMPILKAN CATATAN / ALASAN PENOLAKAN DI SINI */}
+      {data.sla_notes && (
+        <div className={`card ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'border-red-200 bg-red-50' : ''}`}>
+          <h3 className={`font-display font-bold text-sm mb-3 flex items-center gap-2 ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-800' : 'text-navy'}`}>
+            <Info size={15} /> Catatan Proses & Penolakan
+          </h3>
+          <div className={`text-sm whitespace-pre-wrap leading-relaxed ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
+            {data.sla_notes}
+          </div>
+        </div>
+      )}
+
       {/* Main Info */}
       <div className="card">
         <div className="mb-4">
@@ -374,7 +386,7 @@ function ApprovalItem({ title, status, date }) {
       <div className="flex items-center gap-1.5">
         <span className={meta.color}>{meta.icon}</span>
         <span className={`text-sm font-semibold ${meta.color}`}>{meta.label}</span>
-        {status === 1 && date && (
+        {(status === 1 || status === 9) && date && (
           <span className="text-xs text-slate-400 ml-1">{formatDate(date)}</span>
         )}
       </div>
