@@ -360,11 +360,13 @@ function SlaRow({ label, value, bold }) {
 }
 
 function ApprovalItem({ title, status, date }) {
-  const meta = {
-    0: { label: 'Menunggu',  icon: <Clock size={16} />,        color: 'text-amber-500' },
-    1: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
-    2: { label: 'Ditolak',   icon: <XCircle size={16} />,      color: 'text-red-500' },
-  }[status] ?? { label: 'Unknown', icon: null, color: 'text-slate-400' }
+  const meta = {
+    0: { label: 'Menunggu',  icon: <Clock size={16} />,        color: 'text-amber-500' },
+    1: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
+    // Tambahkan baris di bawah ini untuk merespons status 9
+    9: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
+    2: { label: 'Ditolak',   icon: <XCircle size={16} />,      color: 'text-red-500' },
+  }[status] ?? { label: 'Unknown', icon: null, color: 'text-slate-400' }
 
   return (
     <div className="flex items-center justify-between">

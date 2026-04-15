@@ -3,7 +3,7 @@ import { formatDate } from '../../utils/helpers'
 import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare, Clock } from 'lucide-react'
 
 export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail }) {
-  const approvedByAtasan = item.tpk_approveatasan === 1
+  const approvedByAtasan = item.tpk_approveatasan === 1 || item.tpk_approveatasan === 9
   const approvedByHrd    = item.tpk_approveHRD === 1
 
   return (
@@ -80,12 +80,20 @@ function ApprovalChip({ label, date }) {
   )
 }
 
+/**
+ * StatusPill — label dan warna berdasarkan status approval.
+ *
+ * ✅ STATUS BAYANGAN (tpk_approveatasan = 9):
+ *   - HRD view  : tpk_approveatasan = 9, hrd = 0 → "Perlu Disetujui" (terpenuhi oleh isHrd && hrd === 0)
+ *   - Atasan view: tpk_approveatasan = 9          → "Sudah Disetujui" (tambahkan cek atasan === 9)
+ */
 function StatusPill({ atasan, hrd, isHrd }) {
-  if (atasan === 2)         return <Pill label="Ditolak Atasan"   color="bg-red-100 text-red-700" />
-  if (hrd === 2)            return <Pill label="Ditolak HRD"      color="bg-red-100 text-red-700" />
-  if (isHrd  && hrd === 1)  return <Pill label="Disetujui HRD"    color="bg-green-100 text-green-700" />
-  if (isHrd  && hrd === 0)  return <Pill label="Perlu Disetujui"  color="bg-amber-100 text-amber-700" />
-  if (!isHrd && atasan === 1) return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
+  if (atasan === 2)             return <Pill label="Ditolak Atasan"   color="bg-red-100 text-red-700" />
+  if (hrd === 2)                return <Pill label="Ditolak HRD"      color="bg-red-100 text-red-700" />
+  if (isHrd  && hrd === 1)      return <Pill label="Disetujui HRD"    color="bg-green-100 text-green-700" />
+  if (isHrd  && hrd === 0)      return <Pill label="Perlu Disetujui"  color="bg-amber-100 text-amber-700" />
+  // ✅ STATUS BAYANGAN: atasan = 9 (bayangan) atau 1 (final) → "Sudah Disetujui" dari view atasan
+  if (!isHrd && (atasan === 1 || atasan === 9)) return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
   return <Pill label="Pending" color="bg-amber-100 text-amber-700" />
 }
 

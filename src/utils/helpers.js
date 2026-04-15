@@ -40,9 +40,19 @@ export function toApiDate(millis) {
 }
 
 // ── STATUS ────────────────────────────────────────────────────────────────────
+
+/**
+ * getApprovalStatus — konversi angka tpk_approveatasan & tpk_approveHRD ke label + warna.
+ *
+ * ✅ STATUS BAYANGAN:
+ *   tpk_approveatasan = 9 → Disetujui Atasan, menunggu HRD
+ *   Tampilkan sebagai "Pending HRD" (sama dengan kondisi hrd === 0 setelah atasan approve)
+ */
 export function getApprovalStatus(atasan, hrd) {
   if (atasan === 2 || hrd === 2) return { label: 'Ditolak',       color: 'badge-red'    }
   if (atasan === 0)              return { label: 'Pending Atasan', color: 'badge-yellow' }
+  // ✅ STATUS BAYANGAN: angka 9 = disetujui atasan, menunggu HRD
+  if (atasan === 9 && hrd === 0) return { label: 'Pending HRD',   color: 'badge-orange' }
   if (hrd === 0)                 return { label: 'Pending HRD',   color: 'badge-orange' }
   return                                { label: 'Disetujui',     color: 'badge-green'  }
 }
@@ -61,8 +71,6 @@ export function getSlaStatusMeta(tag) {
 
 /**
  * getSlaSourceMeta — utility terpusat untuk pewarnaan badge sla_source.
- * Digunakan di RecruitmentListPage, RecruitmentDetailPage, SlaStatusListPage.
- * Warna SYSTEM=amber, USER=green, FLEXIBLE=blue — konsisten di seluruh aplikasi.
  */
 export function getSlaSourceMeta(source) {
   const map = {

@@ -95,10 +95,16 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       )
     }
 
+    // ✅ FIX: Logika filter tanggal yang benar
     if (activePeriodFilter) {
-      items = items.filter(item =>
-        matchesPeriodFilter(item.tpk_tanggal, activePeriodFilter)
-      )
+      items = items.filter(item => {
+        // Gunakan tanggal aksi terakhir sebagai referensi
+        const dateToCheck = item.tpk_approveHRD !== 0 ? item.tgl_approve_hrd 
+                          : item.tpk_approveatasan !== 0 ? item.tgl_approve_atasan 
+                          : item.tpk_tanggal;
+                          
+        return matchesPeriodFilter(dateToCheck, activePeriodFilter);
+      });
     }
 
     return items
