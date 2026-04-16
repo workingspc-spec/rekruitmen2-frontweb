@@ -1,20 +1,18 @@
-// src/hooks/useApprovalList.js
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { approvalApi } from '../api/services'
+import { approvalApi, recruitmentApi } from '../api/services'   // ← tambah recruitmentApi
 import toast from 'react-hot-toast'
 
 export function useApprovalList() {
     const { isHrd } = useAuth()
     const qc = useQueryClient()
 
-    const [confirmItem, setConfirmItem]             = useState(null) // { item, action: 'APPROVE'|'REJECT' } — Atasan
-    const [isHrdDialogItem, setIsHrdDialogItem]     = useState(null) // HRD Approve confirm
-    const [isHrdRejectItem, setIsHrdRejectItem]     = useState(null) // HRD Reject dengan alasan
-    const [slaResultInfo, setSlaResultInfo]         = useState(null) // Dialog hasil SLA (dari HRD approve)
+    const [confirmItem, setConfirmItem]             = useState(null)
+    const [isHrdDialogItem, setIsHrdDialogItem]     = useState(null)
+    const [isHrdRejectItem, setIsHrdRejectItem]     = useState(null)
+    const [slaResultInfo, setSlaResultInfo]         = useState(null)
 
-    // Selalu muat semua data tanpa filter status — filter dilakukan client-side
     const atasanQ = useQuery({
         queryKey: ['approval-atasan'],
         queryFn: () => approvalApi.listAtasan(undefined).then(r => r.data.data ?? []),
@@ -27,7 +25,16 @@ export function useApprovalList() {
         enabled: isHrd,
     })
 
-    // Mutation Atasan (APPROVE / REJECT) — tidak lagi mengembalikan sla_info
+    // ↓ DIUBAH: refetch sekarang sync terlebih dulu sebelum menarik data baru
+    const refetch = async () => {
+        await recruitmentApi.syncManual()   // best-effort, tidak pernah gagal
+        if (isHrd) {
+            hrdQ.refetch()
+        } else {
+            atasanQ.refetch()
+        }
+    }
+
     const atasanMut = useMutation({
         mutationFn: ({ tpk_nomor, action }) =>
             approvalApi.actionAtasan({ tpk_nomor, action }),
@@ -45,7 +52,6 @@ export function useApprovalList() {
         onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal memproses.'),
     })
 
-    // Mutation HRD APPROVE — sekarang mengembalikan sla_info seperti atasan dulu
     const hrdApproveMut = useMutation({
         mutationFn: ({ tpk_nomor }) =>
             approvalApi.actionHrd({ tpk_nomor, action: 'APPROVE' }),
@@ -64,7 +70,6 @@ export function useApprovalList() {
         onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal memproses.'),
     })
 
-    // Mutation HRD REJECT — dengan alasan
     const hrdRejectMut = useMutation({
         mutationFn: ({ tpk_nomor, alasan_tolak }) =>
             approvalApi.actionHrd({ tpk_nomor, action: 'REJECT', alasan_tolak }),
@@ -81,14 +86,15 @@ export function useApprovalList() {
     const list    = isHrd ? (hrdQ.data ?? [])    : (atasanQ.data ?? [])
     const loading = isHrd ? hrdQ.isLoading        : atasanQ.isLoading
     const error   = isHrd ? hrdQ.error            : atasanQ.error
-    const refetch = isHrd ? hrdQ.refetch          : atasanQ.refetch
 
     const isPending = (item) => isHrd
         ? item.tpk_approveHRD === 0
         : item.tpk_approveatasan === 0
 
     return {
-        list, loading, error, refetch, isHrd,
+        list, loading, error,
+        refetch,                     // ← sudah wrapped dengan syncManual
+        isHrd,
         confirmItem, setConfirmItem,
         isHrdDialogItem, setIsHrdDialogItem,
         isHrdRejectItem, setIsHrdRejectItem,

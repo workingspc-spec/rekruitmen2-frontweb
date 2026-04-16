@@ -1,8 +1,9 @@
 // src/pages/approval/ApprovalListPage.jsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'  
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
+import { recruitmentApi } from '../../api/services'
 import { PageLoader, ErrorBox, EmptyState, ConfirmDialog, SearchInput } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import {
@@ -77,6 +78,14 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     hrdRejectMut,
     isPending,
   } = useApprovalList()
+
+  // 👇 --- TAMBAHKAN KODE INI DI SINI --- 👇
+  useEffect(() => {
+      // Sync shadow table saat halaman approval dibuka
+      // Penting: bos mungkin baru saja diberitahu bawahannya sudah submit
+      recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
+  }, [])
+  // 👆 --------------------------------- 👆
 
   const pendingCount  = list.filter(item =>  isPending(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length

@@ -33,6 +33,8 @@ export const recruitmentApi = {
     hiredCandidates: (nomor)      => api.get(`/recruitment/${encodeURIComponent(nomor)}/hired-candidates`),
     cancelCandidate: (nomor, body) => api.post(`/recruitment/${encodeURIComponent(nomor)}/cancel-candidate`, body),
     setEditable:     (nomor, body) => api.patch(`/recruitment/${encodeURIComponent(nomor)}/editable`, body),
+    // ↓ BARU: manual sync shadow table (best-effort, tidak pernah throw ke caller)
+    syncManual:      ()           => api.post('/recruitment/sync-manual').catch(() => null),
 }
 
 // ── APPROVAL ──────────────────────────────────────────────────────────────────

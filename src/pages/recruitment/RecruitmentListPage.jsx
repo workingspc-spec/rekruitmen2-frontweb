@@ -1,5 +1,5 @@
 // src/pages/recruitment/RecruitmentListPage.jsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
@@ -48,22 +48,31 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
   const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
 
+  useEffect(() => {
+        // Sync shadow table saat halaman dibuka — best effort, silent
+        // Menggunakan .catch agar jika gagal tidak memecah tampilan (silent fail)
+        recruitmentApi.syncManual().catch(err => console.warn('Background sync failed:', err))
+    }, [])
+  // 👆 --------------------------------- 👆
+
   const { data: raw, isLoading, isError, refetch } = useQuery({
     queryKey: ['my-requests'],
     queryFn:  () => recruitmentApi.list().then(r => r.data.data ?? []),
   })
 
+  // Ubah batchDeleteMut onSuccess untuk sync sebelum invalidate:
   const batchDeleteMut = useMutation({
-    mutationFn: (nomors) => recruitmentApi.batchDelete({ tpkNomors: nomors }),
-    onSuccess: () => {
-      toast.success(`${selected.size} permintaan berhasil dihapus.`)
-      setSelected(new Set())
-      setShowDeleteConfirm(false)
-      qc.invalidateQueries({ queryKey: ['my-requests'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
-      qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
-    },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus.'),
+      mutationFn: (nomors) => recruitmentApi.batchDelete({ tpkNomors: nomors }),
+      onSuccess: async () => {
+          await recruitmentApi.syncManual()   // ← TAMBAH INI
+          toast.success(`${selected.size} permintaan berhasil dihapus.`)
+          setSelected(new Set())
+          setShowDeleteConfirm(false)
+          qc.invalidateQueries({ queryKey: ['my-requests'] })
+          qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
+          qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
+      },
+      onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus.'),
   })
 
   const filtered = useMemo(() => {

@@ -1,9 +1,9 @@
 // src/pages/DashboardPage.jsx
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
-import { dashboardApi } from '../api/services'
+import { dashboardApi, recruitmentApi } from '../api/services'
 import { formatDate } from '../utils/helpers'
 import { StatCard, AlertBanner, PageLoader, ErrorBox } from '../components/ui'
 import { PeriodPickerModal } from '../components/PeriodPickerModal'
@@ -56,6 +56,14 @@ export default function DashboardPage() {
 
   const [period, setPeriod]         = useState('All Time')
   const [showPicker, setShowPicker] = useState(false)
+
+  // 👇 --- TAMBAHKAN KODE INI DI SINI --- 👇
+  useEffect(() => {
+      // Sync saat dashboard dibuka dan saat period berubah
+      // shadow table mungkin stale dari legacy app
+      recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
+  }, [period]) // ← Masukkan 'period' agar trigger saat dropdown waktu diubah
+  // 👆 --------------------------------- 👆
 
   const apiParam = periodToApiParam(period)
   const label    = periodToLabel(period)
