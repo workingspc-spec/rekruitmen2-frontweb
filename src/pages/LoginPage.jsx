@@ -176,7 +176,7 @@ function useRightPanelParticles(canvasRef, rightPanelRef) {
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      panel.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousemove', onMouseMove);
       panel.removeEventListener('mouseleave', onMouseLeave);
       cancelAnimationFrame(rafId);
     };
