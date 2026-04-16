@@ -283,9 +283,22 @@ export default function RecruitmentFormPage() {
   }, [jabatan, tglButuh, jabatanRules, jumlah, isReSchedule, holidaysData])
 
   const vlResult = validation()
-  const minDate  = jabatan
+
+  // ── FIX: minDate harus TODAY saat re-schedule, bukan dihitung dari aturan jabatan ──
+  // Sebelumnya: minDate selalu dihitung dari jabatan.min_days (misal 10 hari kerja = Apr 28)
+  // sehingga Apr 23 terkunci padahal backend mengizinkan tanggal >= hari ini saat re-schedule.
+  const minDate = (() => {
+    if (isReSchedule) {
+      // Re-schedule: min = hari ini. User boleh memilih tanggal hari ini atau setelahnya.
+      const t = new Date()
+      t.setHours(0, 0, 0, 0)
+      return t
+    }
+    // Mode normal: hitung dari aturan jabatan (lead time enforcement)
+    return jabatan
       ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah, holidaysData) ?? null)
       : null
+  })()
 
   const handleJumlahChange = (delta) => {
     setJumlah(prev => Math.max(1, prev + delta))
@@ -426,18 +439,21 @@ export default function RecruitmentFormPage() {
               {isLocked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
 
+            {/* Validasi feedback */}
             {jabatan && tglButuh && vlResult && (
               <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
                 {vlResult.valid
-                  ? <><CheckCircle2 size={13} className="mt-0.5 shrink-0" /> Sesuai target lead time HRD</>
+                  ? <><CheckCircle2 size={13} className="mt-0.5 shrink-0" />
+                    {isReSchedule ? 'Tanggal re-schedule valid.' : 'Sesuai target lead time HRD.'}</>
                   : <><AlertTriangle size={13} className="mt-0.5 shrink-0" /> {vlResult.message}</>
                 }
               </div>
             )}
 
-            {jabatan && !tglButuh && minDate && !isReSchedule && (
+            {/* FIX: Hint minimal tanggal — sekarang menampilkan "hari ini" untuk re-schedule */}
+            {jabatan && !tglButuh && minDate && (
               <p className="mt-1 text-xs text-slate-400">
-                Minimal: {formatDate(toApiDate(minDate.getTime()))}
+                Minimal: {isReSchedule ? 'hari ini' : formatDate(toApiDate(minDate.getTime()))}
               </p>
             )}
           </div>
@@ -449,7 +465,7 @@ export default function RecruitmentFormPage() {
           locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowAlasan(true)} />
       </Section>
 
-      {/* ✅ RENAMED: "Keterangan Pekerjaan" → "Jobdesk" */}
+      {/* Jobdesk */}
       <Section title="Jobdesk (Opsional)">
         <div className="space-y-2">
           {ketList.slice(0, visKet).map((v, i) => (
