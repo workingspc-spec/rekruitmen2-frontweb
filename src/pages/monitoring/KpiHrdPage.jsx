@@ -5,46 +5,12 @@ import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+
+// [FIX-MINOR-1] Hapus duplikasi lokal: periodToApiParam & periodToLabel dipindahkan
+// ke src/utils/periodFilter.js (shared utility). Import dari sana.
+import { periodToLabel, periodToApiParam } from '../../utils/periodFilter'
+
 import { BarChart3, Calendar, ChevronDown, Users, Info, Shield, X } from 'lucide-react'
-
-// ─── Helper: konversi period ke param API ─────────────────────────────────────
-function periodToApiParam(period) {
-  if (!period || period === 'All Time') return undefined
-  if (period.startsWith('Custom:')) {
-    return period.replace('Custom:', '').trim().replace(' - ', ',')
-  }
-  return period
-}
-
-// ─── Helper: label display ────────────────────────────────────────────────────
-const PRESET_LABELS = {
-  'All Time':   'Semua Waktu',
-  'Today':      'Hari Ini',
-  'Yesterday':  'Kemarin',
-  'This week':  'Minggu Ini',
-  'Last week':  'Minggu Lalu',
-  'This month': 'Bulan Ini',
-  'Last month': 'Bulan Lalu',
-  'This year':  'Tahun Ini',
-  'Last year':  'Tahun Lalu',
-}
-
-function periodToLabel(period) {
-  if (!period || period === 'All Time') return 'Semua Waktu'
-  if (PRESET_LABELS[period]) return PRESET_LABELS[period]
-  if (period.startsWith('Custom:')) {
-    try {
-      const rangeStr = period.replace('Custom:', '').trim()
-      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
-      if (parts.length >= 2) {
-        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
-          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-        return `${fmt(parts[0])} – ${fmt(parts[1])}`
-      }
-    } catch { return 'Rentang Kustom' }
-  }
-  return period
-}
 
 export default function KpiHrdPage() {
   const [period, setPeriod]         = useState('All Time')
@@ -113,10 +79,8 @@ export default function KpiHrdPage() {
       </div>
 
       {/*
-       * FIX #3: Rata-rata Penyelesaian + Catatan Performa side-by-side
+       * Rata-rata Penyelesaian + Catatan Performa side-by-side
        * ✅ items-stretch agar kedua card sama tinggi
-       * ✅ DurationCard diberi border agar seragam dengan kanan
-       * ✅ Catatan Performa: p-5, flex-col, warna seragam bg-blue-50/50 border border-blue-100
        */}
       <div className="flex gap-3 items-stretch">
         {/* Rata-rata Penyelesaian (kiri) */}
@@ -129,8 +93,7 @@ export default function KpiHrdPage() {
           />
         </div>
 
-        {/* Catatan Performa (kanan) — sejajar dengan kiri */}
-        {/* ✅ p-5 (sama dengan DurationCard), flex-col, warna seragam */}
+        {/* Catatan Performa (kanan) */}
         <div className="flex-1 flex flex-col bg-blue-50/50 border border-blue-100 rounded-2xl p-5">
           <div className="flex items-center gap-2 mb-2">
             <Shield size={16} className="text-sapphire shrink-0" />
@@ -203,7 +166,6 @@ function BigStat({ label, value, color }) {
   )
 }
 
-// ✅ DurationCard: terima border dari color prop — h-full agar bisa stretch dengan parent
 function DurationCard({ title, days, sub, color, className = '' }) {
   return (
     <div className={`rounded-2xl p-5 h-full ${color} ${className}`}>

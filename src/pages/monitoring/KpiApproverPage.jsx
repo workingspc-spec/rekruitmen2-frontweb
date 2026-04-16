@@ -5,46 +5,12 @@ import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
+
+// [FIX-MINOR-1] Hapus duplikasi lokal: periodToApiParam & periodToLabel dipindahkan
+// ke src/utils/periodFilter.js (shared utility). Import dari sana.
+import { periodToLabel, periodToApiParam } from '../../utils/periodFilter'
+
 import { Gauge, Calendar, ChevronDown, ChevronRight, Clock, Trophy, X } from 'lucide-react'
-
-// ─── Helper: konversi period ke param API ─────────────────────────────────────
-function periodToApiParam(period) {
-  if (!period || period === 'All Time') return undefined
-  if (period.startsWith('Custom:')) {
-    return period.replace('Custom:', '').trim().replace(' - ', ',')
-  }
-  return period
-}
-
-// ─── Helper: label display ────────────────────────────────────────────────────
-const PRESET_LABELS = {
-  'All Time':   'Semua Waktu',
-  'Today':      'Hari Ini',
-  'Yesterday':  'Kemarin',
-  'This week':  'Minggu Ini',
-  'Last week':  'Minggu Lalu',
-  'This month': 'Bulan Ini',
-  'Last month': 'Bulan Lalu',
-  'This year':  'Tahun Ini',
-  'Last year':  'Tahun Lalu',
-}
-
-function periodToLabel(period) {
-  if (!period || period === 'All Time') return 'Semua Waktu'
-  if (PRESET_LABELS[period]) return PRESET_LABELS[period]
-  if (period.startsWith('Custom:')) {
-    try {
-      const rangeStr = period.replace('Custom:', '').trim()
-      const parts = rangeStr.includes(',') ? rangeStr.split(',') : rangeStr.split(' - ')
-      if (parts.length >= 2) {
-        const fmt = (s) => new Date(s.trim() + 'T00:00:00')
-          .toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })
-        return `${fmt(parts[0])} – ${fmt(parts[1])}`
-      }
-    } catch { return 'Rentang Kustom' }
-  }
-  return period
-}
 
 function getDelayColor(days) {
   if (days <= 1) return '#00C853'
@@ -86,7 +52,7 @@ export default function KpiApproverPage() {
           <p className="text-sm text-slate-500 mt-0.5">Approval Performance — {periodToLabel(period)}</p>
         </div>
 
-        {/* ── Period Button (sama persis dengan DashboardPage & KpiHrdPage) ── */}
+        {/* ── Period Button ── */}
         <button
           onClick={() => setShowPicker(true)}
           className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
@@ -173,7 +139,7 @@ export default function KpiApproverPage() {
         </div>
       )}
 
-      {/* ── Period Picker Modal (sama dengan halaman lain) ── */}
+      {/* ── Period Picker Modal ── */}
       {showPicker && (
         <PeriodPickerModal
           current={period === 'All Time' ? null : period}
