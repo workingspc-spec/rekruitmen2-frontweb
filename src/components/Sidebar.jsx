@@ -44,8 +44,8 @@ export default function Sidebar({ isCollapsed, onToggle }) {
     overdue:  (summary?.overdueRequests ?? 0) + (summary?.needUserUpdate ?? 0),
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
     navigate('/login')
   }
 

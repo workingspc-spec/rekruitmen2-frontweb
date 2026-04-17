@@ -137,10 +137,12 @@ export default function DashboardPage() {
           message={
             isHrd
               ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
-              : 'HRD meminta Anda memperbarui tanggal target pada permintaan Anda.'
+              // ✅ PERUBAHAN: pesan lebih netral dan supervisory untuk non-HRD (bisa Peminta atau Atasan)
+              : `${summary.needUserUpdate} permintaan perlu update tanggal target. Pastikan peminta segera memperbarui.`
           }
-          onAction={() => navigate(isHrd ? '/monitoring' : '/recruitment')}
-          actionLabel="Lihat"
+          // ✅ PERUBAHAN: non-HRD sekarang juga ke monitoring agar Atasan bisa pantau bawahan
+          onAction={() => navigate('/monitoring')}
+          actionLabel={isHrd ? 'Lihat' : 'Pantau'}
         />
       )}
       {summary?.overdueRequests > 0 && (

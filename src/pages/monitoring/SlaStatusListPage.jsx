@@ -356,20 +356,36 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         >
           {meta.label}
         </span>
+
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           {!isCompleted && item.sla_is_editable === 1 && (
-            <button
-              className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors ${
-                canEdit
-                  ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100'
-                  : 'bg-orange-50 text-orange-500 border-orange-200 cursor-default'
-              }`}
-              onClick={canEdit ? onEdit : undefined}
-            >
-              <Edit2 size={12} />
-              {canEdit ? 'Tap untuk Update' : 'Update Required'}
-            </button>
+            item.is_bawahan === 1 ? (
+              // ✅ BARU: Badge supervisory untuk Atasan
+              <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-300 rounded-full px-2.5 py-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FF8F00" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+                <span className="text-xs font-bold text-amber-700">
+                  Ingatkan {item.nama_peminta}
+                </span>
+              </div>
+            ) : (
+              // Badge edit untuk Peminta (existing)
+              <button
+                className={`text-xs font-semibold px-2.5 py-1 rounded-full border flex items-center gap-1 transition-colors ${
+                  canEdit
+                    ? 'bg-orange-50 text-orange-600 border-orange-200 hover:bg-orange-100'
+                    : 'bg-orange-50 text-orange-500 border-orange-200 cursor-default'
+                }`}
+                onClick={canEdit ? onEdit : undefined}
+              >
+                <Edit2 size={12} />
+                {canEdit ? 'Tap untuk Update' : 'Menunggu Update'}
+              </button>
+            )
           )}
+
           {!isCompleted && item.sla_is_editable !== 1 && (
             <span className="text-xs font-bold" style={{ color: daysColor }}>
               {item.days_remaining < 0
@@ -391,6 +407,22 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
           <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-sapphire">Bawahan</span>
         )}
       </div>
+
+      {/* ✅ BARU: Banner supervisory detail di badan card (untuk Atasan) */}
+      {!isCompleted && item.sla_is_editable === 1 && item.is_bawahan === 1 && (
+        <div className="mt-3 flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF8F00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <div>
+            <p className="text-xs font-bold text-amber-800">HRD meminta peminta update tanggal</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              Ingatkan <strong>{item.nama_peminta}</strong> untuk segera memperbarui tanggal target rekrutmen ini.
+            </p>
+          </div>
+        </div>
+      )}
 
       {item.approval_flag === 'APPROVAL_DELAYED' && (
         <div className="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
@@ -416,7 +448,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         />
       </div>
 
-      {/* Target date */}
       <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-slate-100">
         <Calendar size={13} className="text-slate-400" />
         <span className="text-xs text-slate-400">Target: {formatDate(item.sla_final_target_date)}</span>
