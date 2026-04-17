@@ -111,7 +111,7 @@ export default function RecruitmentDetailPage() {
           <p className="text-sm text-slate-400 mt-0.5">{data.tpk_bagian}</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <InfoItem icon={<User size={15} />}      label="Peminta"        value={data.tpk_peminta} />
+          <InfoItem icon={<User size={15} />} label="Peminta" value={data.peminta_nama || data.tpk_peminta} />
           <InfoItem icon={<Users size={15} />}     label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
           <InfoItem icon={<Calendar size={15} />}  label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
           <InfoItem icon={<Calendar size={15} />}  label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
