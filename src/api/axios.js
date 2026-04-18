@@ -15,7 +15,10 @@ const api = axios.create({
   baseURL:         '/api',
   timeout:         30_000,
   withCredentials: true, // [FIX-KRITIS] Kirim httpOnly cookie otomatis di setiap request
-  headers: { 'Content-Type': 'application/json' },
+  headers: {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',  // ← tambahkan baris ini
+  },
 })
 
 // [HAPUS] Interceptor lama yang mengambil token dari localStorage:
