@@ -617,33 +617,52 @@ export default function LoginPage() {
     }
 
     /* WRAPPER HALAMAN: Pasang background di sini agar full screen */
-/* WRAPPER HALAMAN: Pasang background di sini agar full screen */
+/* 1. CONTAINER UTAMA HANYA BERWARNA PUTIH */
     .login-page-container {
       display: flex;
       min-height: 100vh;
       width: 100vw;
       position: relative;
+      background-color: #ffffff; 
       
-      /* Gradasi diperlebar ke kanan agar gambar lebih terlihat: */
-      background: linear-gradient(
-          to right, 
-          rgba(255, 255, 255, 0.15) 0%,   /* Kiri sangat transparan agar gambar jelas */
-          rgba(255, 255, 255, 0.45) 45%,  /* Tengah masih transparan (gambar tembus) */
-          rgba(255, 255, 255, 0.85) 75%,  /* Baru mulai memudar putih mendekati area form */
-          rgba(255, 255, 255, 1) 100%     /* Putih penuh hanya di ujung paling kanan layar */
-        ),
-        url('/office-bg.jpeg') center/cover no-repeat; /* Ubah 'left center' jadi 'center' */
+      /* PENTING: Sembunyikan tumpahan gambar yang kita dorong ke kiri */
+      overflow: hidden; 
     }
 
-    /* ── PANEL KIRI ── */
+    /* 2. LAYER KHUSUS GAMBAR BACKGROUND */
+/* 2. LAYER KHUSUS GAMBAR BACKGROUND */
+    .login-page-container::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;       /* Kembalikan ke 0 karena gambar sudah rapi */
+      bottom: 0;
+      width: 100%;   /* Bentangkan 100% layar agar tidak ada batas terpotong */
+      
+      background-image: 
+        linear-gradient(to right, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.8) 100%),
+        url('/office-bg3.png'); 
+      
+      background-size: cover;
+      background-position: left center;
+      background-repeat: no-repeat;
+      z-index: 1; 
+      
+      /* --- GRADASI MEMUDAR (FADE OUT) YANG HALUS --- */
+      /* Gambar 100% terlihat hingga batas 35% layar, lalu perlahan menghilang total di 65% layar */
+      -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%);
+      mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%);
+    }
+
+    /* 3. PANEL KIRI (Teks Judul) */
     .left-panel {
       display: none;
       width: 35%;
       height: 100vh;
-      background: transparent; /* Pastikan transparan karena background sudah di container */
       position: relative;
       z-index: 10;
       flex-shrink: 0;
+      background: transparent;
     }
     @media (min-width: 900px) { .left-panel { display: flex; flex-direction: column; } }
 
