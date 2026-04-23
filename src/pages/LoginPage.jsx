@@ -38,7 +38,7 @@ const SYSTEM_CONFIG = {
     darkBg: '#ffffff',      // ← UBAH DI SINI: Background panel kiri jadi putih
     grayBg: '#ffffff',    // ← background panel kanan
     textMain: '#18181b',
-    textMuted: '#9CA3AF',
+    textMuted: '#4B5563',
     borderLight: '#D1D5DB',
     white: '#ffffff',
   },
@@ -500,7 +500,13 @@ function Checkbox({ checked, onChange, label }) {
           </svg>
         )}
       </div>
-      <span style={{ fontSize: 12, color: '#6B7280' }}>{label}</span>
+      <span style={{ 
+        fontSize: 12, 
+        color: '#374151', /* Sebelumnya '#6B7280', sekarang dihitamkan sedikit */
+        fontWeight: 500   /* Tambahkan ini agar teks menonjol di atas kaca */
+      }}>
+        {label}
+      </span>
     </label>
   );
 }
@@ -630,28 +636,23 @@ export default function LoginPage() {
     }
 
     /* 2. LAYER KHUSUS GAMBAR BACKGROUND */
-/* 2. LAYER KHUSUS GAMBAR BACKGROUND */
     .login-page-container::before {
       content: "";
       position: absolute;
       top: 0;
-      left: 0;       /* Kembalikan ke 0 karena gambar sudah rapi */
+      left: 0;
       bottom: 0;
-      width: 100%;   /* Bentangkan 100% layar agar tidak ada batas terpotong */
+      width: 100%; 
       
+      /* PERUBAHAN: Opasitas ujung kanan diturunkan dari 0.85 ke 0.40 agar gambar tembus ke form */
       background-image: 
-        linear-gradient(to right, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0.8) 100%),
-        url('/office-bg3.png'); 
+        linear-gradient(to right, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.40) 100%),
+        url('/office-bg1.jpeg'); /* Pastikan nama file sesuai dengan yang Anda pakai sekarang */
       
       background-size: cover;
-      background-position: left center;
+      background-position: center; 
       background-repeat: no-repeat;
       z-index: 1; 
-      
-      /* --- GRADASI MEMUDAR (FADE OUT) YANG HALUS --- */
-      /* Gambar 100% terlihat hingga batas 35% layar, lalu perlahan menghilang total di 65% layar */
-      -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%);
-      mask-image: linear-gradient(to right, rgba(0,0,0,1) 35%, rgba(0,0,0,0) 65%);
     }
 
     /* 3. PANEL KIRI (Teks Judul) */
@@ -687,12 +688,23 @@ export default function LoginPage() {
       padding: 2.2rem 3rem;
       position: relative;
       z-index: 30;
-      background: rgba(255,255,255,0.92);
-      backdrop-filter: blur(16px);
+      
+      /* --- EFEK KACA MELAYANG (GLASSMORPHISM) --- */
+      /* 1. Transparansi diturunkan (0.45) agar background gedung terlihat membayang */
+      background: rgba(255, 255, 255, 0.45); 
+      
+      /* 2. Blur diturunkan sedikit agar tekstur gedung terlihat, tapi teks form tetap mudah dibaca */
+      backdrop-filter: blur(16px);         
       -webkit-backdrop-filter: blur(16px);
+      
+      /* 3. Border putih solid inilah yang menahan bentuk form agar tetap terlihat melayang (JANGAN DIHAPUS) */
+      border: 1.5px solid rgba(255, 255, 255, 0.85); 
+      
+      /* 4. Shadow sedikit ditebalkan agar form pop-out dari background */
+      box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+      /* ------------------------------------------ */
+      
       border-radius: 26px;
-      border: 1px solid rgba(255,255,255,0.65);
-      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
       animation: slideInFromRight 0.6s cubic-bezier(0.16,1,0.3,1);
     }
 
@@ -795,7 +807,7 @@ return (
               <h2 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: SYSTEM_CONFIG.colors.sapphire, letterSpacing: '-0.02em' }}>
                 Welcome back !
               </h2>
-              <p style={{ fontSize: 13, color: SYSTEM_CONFIG.colors.textMuted, margin: 0 }}>
+              <p style={{ fontSize: 13, color: SYSTEM_CONFIG.colors.textMuted, fontWeight: 500, margin: 0 }}>
                 Please enter your details
               </p>
             </div>
