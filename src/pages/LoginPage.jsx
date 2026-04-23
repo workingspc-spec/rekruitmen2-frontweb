@@ -246,10 +246,16 @@ function LeftPanelContent() {
 
       {/* SUBTITLE diperbesar */}
       <p style={{
-        color: SYSTEM_CONFIG.colors.textMuted,
-        fontSize: 'clamp(20px, 1.8vw, 26px)', // Ukuran diperbesar
+        // 1. UBAH WARNA DI SINI (Pilih salah satu)
+        color: '#374151', // <-- Opsi 1: Abu-abu gelap pekat
+        // color: SYSTEM_CONFIG.colors.sapphire, // <-- Opsi 2: Biru tema aplikasi (hapus tanda // untuk memakai ini)
+        
+        // 2. TAMBAHKAN KETEBALAN INI
+        fontWeight: 500, 
+        
+        fontSize: 'clamp(20px, 1.8vw, 26px)',
         lineHeight: 1.6,
-        maxWidth: '580px', // Diperlebar menyesuaikan teks yang lebih besar
+        maxWidth: '580px',
         margin: 0,
       }}>
         Pantau proses rekruitmen, SLA, approval,
@@ -610,13 +616,23 @@ export default function LoginPage() {
       overflow: hidden;
     }
 
-    /* WRAPPER HALAMAN: Pindahkan background putih full ke sini */
+    /* WRAPPER HALAMAN: Pasang background di sini agar full screen */
+/* WRAPPER HALAMAN: Pasang background di sini agar full screen */
     .login-page-container {
       display: flex;
       min-height: 100vh;
       width: 100vw;
-      background: #ffffff;  /* ← Background putih penuh di sini */
-      position: relative;   /* ← Tambahkan ini agar canvas bisa full cover */
+      position: relative;
+      
+      /* Gradasi diperlebar ke kanan agar gambar lebih terlihat: */
+      background: linear-gradient(
+          to right, 
+          rgba(255, 255, 255, 0.15) 0%,   /* Kiri sangat transparan agar gambar jelas */
+          rgba(255, 255, 255, 0.45) 45%,  /* Tengah masih transparan (gambar tembus) */
+          rgba(255, 255, 255, 0.85) 75%,  /* Baru mulai memudar putih mendekati area form */
+          rgba(255, 255, 255, 1) 100%     /* Putih penuh hanya di ujung paling kanan layar */
+        ),
+        url('/office-bg.jpeg') center/cover no-repeat; /* Ubah 'left center' jadi 'center' */
     }
 
     /* ── PANEL KIRI ── */
@@ -624,9 +640,9 @@ export default function LoginPage() {
       display: none;
       width: 35%;
       height: 100vh;
-      background: transparent; /* ← Jadikan transparan */
+      background: transparent; /* Pastikan transparan karena background sudah di container */
       position: relative;
-      z-index: 10;             /* ← Samakan z-index */
+      z-index: 10;
       flex-shrink: 0;
     }
     @media (min-width: 900px) { .left-panel { display: flex; flex-direction: column; } }

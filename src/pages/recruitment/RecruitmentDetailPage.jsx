@@ -1,5 +1,6 @@
 // src/pages/recruitment/RecruitmentDetailPage.jsx
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { recruitmentApi } from '../../api/services'
@@ -16,9 +17,23 @@ export default function RecruitmentDetailPage() {
   const navigate        = useNavigate()
   const { user, isHrd } = useAuth()
 
+  // ── State ─────────────────────────────────────────────────────────────────
   const [showSlaTooltip, setShowSlaTooltip] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
 
+  // ── Scroll Lock — WAJIB di atas semua early return ────────────────────────
+  useEffect(() => {
+    if (showSlaTooltip) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showSlaTooltip])
+
+  // ── Queries ───────────────────────────────────────────────────────────────
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['recruitment-detail', nomor],
     queryFn: () => recruitmentApi.detail(nomor).then(r => r.data.data),
@@ -30,6 +45,7 @@ export default function RecruitmentDetailPage() {
     enabled: Boolean(nomor),
   })
 
+  // ── Early returns — setelah SEMUA hooks ───────────────────────────────────
   if (isLoading) return (
     <div className="flex items-center justify-center h-64">
       <Loader2 size={32} className="animate-spin text-sapphire" />
@@ -47,7 +63,7 @@ export default function RecruitmentDetailPage() {
   const isOwner = data.tpk_peminta?.trim() === user?.kode
   const canEdit = !isHrd && isOwner && (isDraft || data.sla_is_editable === 1)
 
-  // ── Jobdesk fields (renamed from keterangan) ──────────────────────────────
+  // ── Jobdesk fields ────────────────────────────────────────────────────────
   const jobdesks = [1,2,3,4,5,6,7,8,9,10]
     .map(i => data[`tpk_keterangan${i === 1 ? '' : i}`])
     .filter(Boolean)
@@ -92,7 +108,7 @@ export default function RecruitmentDetailPage() {
         <span className={`font-semibold text-sm ${status.color}`}>{status.label}</span>
       </div>
 
-      {/* TAMPILKAN CATATAN / ALASAN PENOLAKAN DI SINI */}
+      {/* Catatan / Alasan Penolakan */}
       {data.sla_notes && (
         <div className={`card ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'border-red-200 bg-red-50' : ''}`}>
           <h3 className={`font-display font-bold text-sm mb-3 flex items-center gap-2 ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-800' : 'text-navy'}`}>
@@ -111,11 +127,11 @@ export default function RecruitmentDetailPage() {
           <p className="text-sm text-slate-400 mt-0.5">{data.tpk_bagian}</p>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <InfoItem icon={<User size={15} />} label="Peminta" value={data.peminta_nama || data.tpk_peminta} />
-          <InfoItem icon={<Users size={15} />}     label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
-          <InfoItem icon={<Calendar size={15} />}  label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
-          <InfoItem icon={<Calendar size={15} />}  label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
-          <InfoItem icon={<Building2 size={15} />} label="Jabatan Kode"   value={data.jab_kode || data.tpk_jab_kode} />
+          <InfoItem icon={<User size={15} />}       label="Peminta"        value={data.peminta_nama || data.tpk_peminta} />
+          <InfoItem icon={<Users size={15} />}      label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
+          <InfoItem icon={<Calendar size={15} />}   label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
+          <InfoItem icon={<Calendar size={15} />}   label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
+          <InfoItem icon={<Building2 size={15} />}  label="Jabatan Kode"   value={data.jab_kode || data.tpk_jab_kode} />
         </div>
       </div>
 
@@ -184,7 +200,7 @@ export default function RecruitmentDetailPage() {
         </div>
       )}
 
-      {/* Jobdesk (renamed from Keterangan Pekerjaan) */}
+      {/* Jobdesk */}
       {jobdesks.length > 0 && (
         <div className="card">
           <h3 className="font-display font-bold text-navy text-sm mb-3">Jobdesk</h3>
@@ -261,13 +277,13 @@ export default function RecruitmentDetailPage() {
         </div>
       )}
 
-      {/* SLA Tooltip Dialog */}
-      {showSlaTooltip && (
+      {/* SLA Tooltip Dialog — menggunakan createPortal agar presisi di tengah */}
+      {showSlaTooltip && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
           onClick={(e) => e.target === e.currentTarget && setShowSlaTooltip(false)}
         >
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4 modal-content">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                 <Info size={20} className="text-amber-600" />
@@ -275,9 +291,9 @@ export default function RecruitmentDetailPage() {
               <h3 className="font-display font-bold text-navy text-lg">Informasi Penyesuaian</h3>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Tanggal kebutuhan telah disesuaikan otomatis untuk memastikan ketersediaan waktu
-              proses yang cukup sejak persetujuan terakhir. Penyesuaian ini dilakukan oleh
-              sistem mengikuti standar lead time rekrutmen yang berlaku.
+              Sistem telah menyesuaikan tanggal kebutuhan secara otomatis berdasarkan persetujuan
+              terakhir. Hal ini untuk memastikan waktu proses rekrutmen mencukupi sesuai standar{' '}
+              <em>lead time</em> yang berlaku.
             </p>
             <button
               onClick={() => setShowSlaTooltip(false)}
@@ -286,7 +302,8 @@ export default function RecruitmentDetailPage() {
               Mengerti
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
@@ -296,7 +313,6 @@ export default function RecruitmentDetailPage() {
 function LogEntry({ entry }) {
   const displayName = entry.user_nama || entry.user_kode || '–'
 
-  // Updated: tpk_keterangan* → Jobdesk *
   const fieldLabel = (name) => {
     const map = {
       tpk_tgl_butuh:     'Tanggal Butuh',
@@ -372,13 +388,12 @@ function SlaRow({ label, value, bold }) {
 }
 
 function ApprovalItem({ title, status, date }) {
-  const meta = {
-    0: { label: 'Menunggu',  icon: <Clock size={16} />,        color: 'text-amber-500' },
-    1: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
-    // Tambahkan baris di bawah ini untuk merespons status 9
-    9: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
-    2: { label: 'Ditolak',   icon: <XCircle size={16} />,      color: 'text-red-500' },
-  }[status] ?? { label: 'Unknown', icon: null, color: 'text-slate-400' }
+  const meta = {
+    0: { label: 'Menunggu',  icon: <Clock size={16} />,        color: 'text-amber-500' },
+    1: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
+    9: { label: 'Disetujui', icon: <CheckCircle2 size={16} />, color: 'text-green-600' },
+    2: { label: 'Ditolak',   icon: <XCircle size={16} />,      color: 'text-red-500' },
+  }[status] ?? { label: 'Unknown', icon: null, color: 'text-slate-400' }
 
   return (
     <div className="flex items-center justify-between">
