@@ -94,8 +94,13 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const filteredList = useMemo(() => {
     let items = list
 
-    if (tab === 'pending')  items = items.filter(item =>  isPending(item))
-    if (tab === 'approved') items = items.filter(item => !isPending(item))
+    // ✅ FIX: Paksa semua data legacy (is_legacy === 1) masuk ke tab "Sudah Approve"
+    if (tab === 'pending')  {
+      items = items.filter(item => isPending(item) && item.is_legacy !== 1)
+    }
+    if (tab === 'approved') {
+      items = items.filter(item => !isPending(item) || item.is_legacy === 1)
+    }
 
     if (search) {
       const q = search.toLowerCase()
@@ -106,10 +111,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       )
     }
 
-    // ✅ FIX: Logika filter tanggal yang benar
     if (activePeriodFilter) {
       items = items.filter(item => {
-        // Gunakan tanggal aksi terakhir sebagai referensi
         const dateToCheck = item.tpk_approveHRD !== 0 ? item.tgl_approve_hrd 
                           : item.tpk_approveatasan !== 0 ? item.tgl_approve_atasan 
                           : item.tpk_tanggal;
