@@ -87,23 +87,19 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   }, [])
   // 👆 --------------------------------- 👆
 
-  // 👇 1. UPDATE PENGHITUNGAN BADGE 👇
   const pendingCount  = list.filter(item => isPending(item) && item.is_legacy !== 1).length
-  const approvedCount = list.filter(item => !isPending(item)).length
-  
-  // Hitung 'Semua' tanpa menyertakan data legacy yang masih pending
-  const allCount = list.filter(item => !(isPending(item) && item.is_legacy === 1)).length
+  const approvedCount = list.filter(item => !isPending(item) || item.is_legacy === 1).length
+  const allCount      = list.length
 
   const filteredList = useMemo(() => {
     let items = list
 
-    // 👇 2. CEGATAN UTAMA: Buang semua data "Sistem Lama" yang statusnya masih 0 (Belum Approve)
-    // Dengan begini, data kotor otomatis menguap dari halaman Approval
-    items = items.filter(item => !(isPending(item) && item.is_legacy === 1))
-
-    // Logika tab kembali normal seperti semula
-    if (tab === 'pending')  items = items.filter(item =>  isPending(item))
-    if (tab === 'approved') items = items.filter(item => !isPending(item))
+    if (tab === 'pending')  {
+        items = items.filter(item => isPending(item) && item.is_legacy !== 1)
+    }
+    if (tab === 'approved') {
+        items = items.filter(item => !isPending(item) || item.is_legacy === 1)
+    }
 
     if (search) {
       const q = search.toLowerCase()
