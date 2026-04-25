@@ -272,7 +272,7 @@ function BagianFormModal({ title, initialValue, loading, onConfirm, onClose }) {
           <label className="label">Nama Bagian / Departemen <span className="text-red-500">*</span></label>
           <input
             className={`input ${error ? 'border-red-400' : ''}`}
-            placeholder="Contoh: IT dev Remote Worker, Sales Online"
+            placeholder="Contoh: Remote Software Developer, Sales Online"
             value={value}
             onChange={e => { setValue(e.target.value); setError('') }}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
