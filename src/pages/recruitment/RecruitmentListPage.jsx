@@ -236,8 +236,8 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
             <tbody>
               {filtered.map(r => {
                 const statusMeta = getApprovalStatus(r.tpk_approveatasan, r.tpk_approveHRD)
-                const canSelect  = isPending(r) && isOwner(r)
-                const canEdit    = isOwner(r) && (isPending(r) || r.sla_is_editable)
+                const canSelect = isPending(r) && isOwner(r) && !r.is_legacy;
+                const canEdit = isOwner(r) && !r.is_legacy && (isPending(r) || r.sla_is_editable);
                 const isSelected = selected.has(r.tpk_nomor)
 
                 const showAtasanChip = r.tpk_approveatasan === 1 && r.tgl_approve_atasan
@@ -272,6 +272,17 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                       >
                         {statusMeta.label}
                       </span>
+
+                      {/* --- TAMBAHKAN KODE INI DI SINI --- */}
+                      {r.is_legacy === 1 && (
+                        <div className="mt-1">
+                          <span className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{ background: '#f1f5f9', color: '#64748b' }}>
+                            📁 Sistem Lama
+                          </span>
+                        </div>
+                      )}
+                      {/* --------------------------------- */}
 
                       {(showAtasanChip || showHrdChip) && (
                         <div className="flex flex-wrap gap-1 mt-1.5">

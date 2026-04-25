@@ -174,51 +174,67 @@ export default function DashboardPage() {
       {/* ── Stats Grid ── */}
       {statsQ.isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => <div key={i} className="card"><div className="skeleton h-16 w-full" /></div>)}
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="card">
+              <div className="skeleton h-16 w-full" />
+            </div>
+          ))}
         </div>
       ) : statsQ.isError ? (
-        <ErrorBox message="Gagal memuat statistik." onRetry={() => statsQ.refetch()} />
+        <ErrorBox
+          message="Gagal memuat statistik."
+          onRetry={() => statsQ.refetch()}
+        />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Kartu Permintaan */}
-          <StatCard
-            label="Permintaan"
-            value={stats?.totalPermintaan ?? 0}
-            icon={ClipboardList}
-            color="#0F52BA"
-            onClick={() => navigateWithPeriod('/recruitment')}
-          />
-          {/* Kartu Persetujuan */}
-          <StatCard
-            label="Pending Approval"
-            value={stats?.pendingApproval ?? 0}
-            icon={CheckSquare}
-            color="#F57C00"
-            alert={stats?.pendingApproval > 0}
-            onClick={() => navigateWithPeriod('/approval')}
-          />
-          {/* Kartu SLA Aktif — navigasi ke monitoring tanpa filter khusus */}
-          <StatCard
-            label="SLA Aktif"
-            value={summary?.activeRequests ?? 0}
-            icon={Activity}
-            color="#0F52BA"
-            onClick={() => navigate('/monitoring')}
-          />
-          {/*
-           * ✅ FIX: Kartu "Selesai Bulan Ini" harus menavigasi ke monitoring
-           * dengan filter status=COMPLETED dan period=This month agar
-           * jumlah yang ditampilkan selaras dengan data yang difilter.
-           * Identik Android: navigate ke SlaStatusList dengan filter COMPLETED + This month.
-           */}
-          <StatCard
-            label="Selesai Bulan Ini"
-            value={summary?.completedThisMonth ?? 0}
-            icon={CheckCircle2}
-            color="#2E7D32"
-            onClick={() => navigateToMonitoring('COMPLETED', 'This month')}
-          />
-        </div>
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Kartu Permintaan */}
+            <StatCard
+              label="Permintaan"
+              value={stats?.totalPermintaan ?? 0}
+              icon={ClipboardList}
+              color="#0F52BA"
+              onClick={() => navigateWithPeriod('/recruitment')}
+            />
+
+            {/* Kartu Persetujuan */}
+            <StatCard
+              label="Pending Approval"
+              value={stats?.pendingApproval ?? 0}
+              icon={CheckSquare}
+              color="#F57C00"
+              alert={stats?.pendingApproval > 0}
+              onClick={() => navigateWithPeriod('/approval')}
+            />
+
+            {/* Kartu SLA Aktif */}
+            <StatCard
+              label="SLA Aktif"
+              value={summary?.activeRequests ?? 0}
+              icon={Activity}
+              color="#0F52BA"
+              onClick={() => navigate('/monitoring')}
+            />
+
+            {/* Kartu Selesai Bulan Ini */}
+            <StatCard
+              label="Selesai Bulan Ini"
+              value={summary?.completedThisMonth ?? 0}
+              icon={CheckCircle2}
+              color="#2E7D32"
+              onClick={() => navigateToMonitoring('COMPLETED', 'This month')}
+            />
+          </div>
+
+          {/* Note Legacy Count */}
+          {stats?.legacyCount > 0 && (
+            <p className="text-xs text-slate-400 mt-2 px-1">
+              * Termasuk{' '}
+              <span className="font-semibold">{stats.legacyCount}</span>{' '}
+              data dari sistem lama (read-only)
+            </p>
+          )}
+        </>
       )}
 
       {/* ── SLA Summary Cards ── */}
