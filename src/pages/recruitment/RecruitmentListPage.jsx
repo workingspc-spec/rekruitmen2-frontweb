@@ -174,7 +174,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
 
         {hasPendingItems && (
           <p className="w-full text-xs text-slate-400 flex items-center gap-1">
-            <span>☝️</span> Centang permintaan Pending Atasan untuk menghapus. <span className="italic opacity-80">(Permintaan yang dibuat dengan sistem lama tidak dapat dihapus)</span>
+            <span>☝️</span> Centang permintaan Pending Atasan untuk menghapus. <span className="italic opacity-80">(Permintaan yang dibuat di sistem lama tidak dapat dihapus)</span>
           </p>
         )}
 
