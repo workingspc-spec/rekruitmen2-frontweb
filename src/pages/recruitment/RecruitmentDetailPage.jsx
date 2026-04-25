@@ -61,7 +61,7 @@ export default function RecruitmentDetailPage() {
 
   const isDraft = data.tpk_approveatasan === 0 && data.tpk_approveHRD === 0
   const isOwner = data.tpk_peminta?.trim() === user?.kode
-  const canEdit = !isHrd && isOwner && (isDraft || data.sla_is_editable === 1)
+  const canEdit = !isHrd && isOwner && data.is_legacy !== 1 && (isDraft || data.sla_is_editable === 1)
 
   // ── Jobdesk fields ────────────────────────────────────────────────────────
   const jobdesks = [1,2,3,4,5,6,7,8,9,10]
