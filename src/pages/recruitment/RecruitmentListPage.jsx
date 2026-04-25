@@ -216,7 +216,8 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                     className="accent-sapphire"
                     onChange={(e) => {
                       if (e.target.checked) {
-                        setSelected(new Set(filtered.filter(r => isPending(r) && isOwner(r)).map(r => r.tpk_nomor)))
+                        // 👇 HANYA MEMILIH YANG BUKAN LEGACY 👇
+                        setSelected(new Set(filtered.filter(r => isPending(r) && isOwner(r) && !r.is_legacy).map(r => r.tpk_nomor)))
                       } else {
                         setSelected(new Set())
                       }
