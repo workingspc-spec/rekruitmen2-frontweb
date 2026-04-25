@@ -1,5 +1,6 @@
 // src/pages/master/BypassUserPage.jsx
 import { useState, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi } from '../../api/services'
 import { PageLoader, ErrorBox, EmptyState, Spinner, ConfirmDialog } from '../../components/ui'
@@ -274,12 +275,12 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
 
   const canSubmit = lookupState?.ok && !loading
 
-  return (
+return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 modal-overlay"
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-xl bg-sapphire/10 flex items-center justify-center">
@@ -378,6 +379,7 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // Target portal
   )
 }
