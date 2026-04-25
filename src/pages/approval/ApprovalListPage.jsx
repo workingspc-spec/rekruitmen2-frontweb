@@ -229,7 +229,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
               key={item.tpk_nomor}
               item={item}
               isHrd={isHrd}
-              pending={isPending(item)}
+              pending={isPending(item) && !item.is_legacy}
               onApprove={() => {
                 if (isHrd) {
                   setIsHrdDialogItem(item)
