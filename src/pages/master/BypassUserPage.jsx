@@ -1,0 +1,383 @@
+// src/pages/master/BypassUserPage.jsx
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { masterApi } from '../../api/services'
+import { PageLoader, ErrorBox, EmptyState, Spinner, ConfirmDialog } from '../../components/ui'
+import { formatDate } from '../../utils/helpers'
+import {
+  ShieldCheck, UserPlus, Trash2, PauseCircle, PlayCircle,
+  Badge, Building2, StickyNote, Search, AlertTriangle,
+} from 'lucide-react'
+import toast from 'react-hot-toast'
+
+export default function BypassUserPage() {
+  const qc = useQueryClient()
+
+  const [filterActive, setFilterActive] = useState(null)
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  const { data: raw = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['bypass-users'],
+    queryFn:  () => masterApi.getBypassUsers().then(r => r.data.data ?? []),
+  })
+
+  const addMut = useMutation({
+    mutationFn: ({ nik, keterangan }) => masterApi.addBypassUser({ bu_nik: nik, bu_keterangan: keterangan || undefined }),
+    onSuccess: () => {
+      toast.success('Bypass user berhasil didaftarkan')
+      qc.invalidateQueries({ queryKey: ['bypass-users'] })
+      setShowAddModal(false)
+    },
+    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mendaftarkan'),
+  })
+
+  const toggleMut = useMutation({
+    mutationFn: ({ nik, active }) => masterApi.updateBypassUser(nik, { bu_active: active }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bypass-users'] })
+    },
+    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mengubah status'),
+  })
+
+  const deleteMut = useMutation({
+    mutationFn: (nik) => masterApi.deleteBypassUser(nik),
+    onSuccess: () => {
+      toast.success('Bypass user berhasil dihapus')
+      qc.invalidateQueries({ queryKey: ['bypass-users'] })
+      setDeleteTarget(null)
+    },
+    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus'),
+  })
+
+  const filteredList = useMemo(() => {
+    let list = [...raw]
+    if (filterActive !== null) list = list.filter(u => u.bu_active === filterActive)
+    return list.sort((a, b) => b.bu_active - a.bu_active || (a.kar_nama ?? a.bu_nik).localeCompare(b.kar_nama ?? b.bu_nik))
+  }, [raw, filterActive])
+
+  const aktifCount    = raw.filter(u => u.bu_active === 1).length
+  const nonAktifCount = raw.filter(u => u.bu_active === 0).length
+
+  if (isLoading) return <PageLoader />
+  if (isError)   return <ErrorBox message="Gagal memuat bypass users." onRetry={refetch} />
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Kelola Bypass Users</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Pengguna yang dapat mengajukan rekruitmen tanpa persetujuan atasan
+          </p>
+        </div>
+        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+          <UserPlus size={16} /> Tambah Bypass User
+        </button>
+      </div>
+
+      {/* Info Banner */}
+      <div className="flex items-start gap-3 bg-sapphire/5 border border-sapphire/15 rounded-2xl px-4 py-3">
+        <ShieldCheck size={18} className="text-sapphire shrink-0 mt-0.5" />
+        <p className="text-sm text-sapphire leading-relaxed">
+          Bypass user dapat mengajukan permintaan rekruitmen langsung ke HRD tanpa perlu persetujuan atasan terlebih dahulu.
+        </p>
+      </div>
+
+      {/* Summary */}
+      <div className="flex items-center gap-6 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3">
+        <SummaryChip label="Aktif"    value={aktifCount}    color="text-green-600" />
+        <SummaryChip label="Nonaktif" value={nonAktifCount} color="text-slate-400" />
+      </div>
+
+      {/* Filter */}
+      <div className="flex gap-2">
+        {[
+          { label: 'Semua',    value: null },
+          { label: 'Aktif',    value: 1    },
+          { label: 'Nonaktif', value: 0    },
+        ].map(opt => (
+          <button
+            key={String(opt.value)}
+            onClick={() => setFilterActive(opt.value)}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+              filterActive === opt.value
+                ? 'bg-sapphire text-white border-sapphire'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-sapphire'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {/* List */}
+      {filteredList.length === 0 ? (
+        <EmptyState
+          message={filterActive !== null ? 'Tidak ada bypass user dengan filter ini.' : 'Belum ada bypass user terdaftar.'}
+          icon={ShieldCheck}
+          action={filterActive === null ? () => setShowAddModal(true) : undefined}
+          actionLabel="Tambah Bypass User"
+        />
+      ) : (
+        <div className="space-y-4">
+          {filteredList.map(item => (
+            <BypassUserCard
+              key={item.bu_nik}
+              item={item}
+              onToggle={() => toggleMut.mutate({ nik: item.bu_nik, active: item.bu_active === 1 ? 0 : 1 })}
+              onDelete={() => setDeleteTarget(item)}
+              isToggling={toggleMut.isPending}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Add Modal */}
+      {showAddModal && (
+        <AddBypassUserModal
+          loading={addMut.isPending}
+          onConfirm={(nik, keterangan) => addMut.mutate({ nik, keterangan })}
+          onClose={() => setShowAddModal(false)}
+        />
+      )}
+
+      {/* Delete Confirm */}
+      {deleteTarget && (
+        <ConfirmDialog
+          open
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={() => deleteMut.mutate(deleteTarget.bu_nik)}
+          title="Hapus Permanen?"
+          message={`Hapus bypass user ${deleteTarget.kar_nama ?? deleteTarget.bu_nik} (NIK: ${deleteTarget.bu_nik}) secara permanen? Tindakan ini tidak dapat dibatalkan.`}
+          confirmText="Hapus Permanen"
+          danger
+          loading={deleteMut.isPending}
+        />
+      )}
+    </div>
+  )
+}
+
+function SummaryChip({ label, value, color }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-2xl font-black ${color}`}>{value}</span>
+      <span className="text-xs text-slate-400 font-semibold">{label}</span>
+    </div>
+  )
+}
+
+function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
+  const isActive = item.bu_active === 1
+  const initial  = (item.kar_nama ?? item.bu_nik).charAt(0).toUpperCase()
+
+  return (
+    <div className={`card transition-all ${!isActive ? 'opacity-60' : ''}`}>
+      {/* Top row */}
+      <div className="flex items-start gap-4">
+        {/* Avatar */}
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-black text-lg ${
+          isActive ? 'bg-sapphire/10 text-sapphire' : 'bg-slate-100 text-slate-400'
+        }`}>
+          {initial}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-bold text-navy">{item.kar_nama ?? item.bu_nik}</p>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
+            }`}>
+              {isActive ? 'Aktif' : 'Nonaktif'}
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">NIK: {item.bu_nik}</p>
+          {item.jab_nama && (
+            <p className="text-xs text-sapphire mt-0.5">{item.jab_nama}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Detail rows */}
+      {(item.kar_bagian || item.bu_keterangan) && (
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+          {item.kar_bagian && (
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Building2 size={13} className="text-slate-400 shrink-0" />
+              {item.kar_bagian}
+            </div>
+          )}
+          {item.bu_keterangan && (
+            <div className="flex items-start gap-2 text-xs text-slate-500">
+              <StickyNote size={13} className="text-slate-400 shrink-0 mt-0.5" />
+              {item.bu_keterangan}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Action row */}
+      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
+        <button
+          onClick={onToggle}
+          disabled={isToggling}
+          className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold border transition-colors disabled:opacity-40 ${
+            isActive
+              ? 'border-amber-300 text-amber-700 hover:bg-amber-50'
+              : 'border-green-300 text-green-700 hover:bg-green-50'
+          }`}
+        >
+          {isToggling ? <Spinner size={14} /> : isActive ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+          {isActive ? 'Nonaktifkan' : 'Aktifkan'}
+        </button>
+        <button
+          onClick={onDelete}
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <Trash2 size={14} />
+          Hapus
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function AddBypassUserModal({ loading, onConfirm, onClose }) {
+  const [nik, setNik]         = useState('')
+  const [ket, setKet]         = useState('')
+  const [nikError, setNikError] = useState('')
+  const [lookupState, setLookupState] = useState(null)
+  const [isLooking, setIsLooking]     = useState(false)
+
+  const handleLookup = async () => {
+    const trimmed = nik.trim()
+    if (!trimmed) { setNikError('NIK tidak boleh kosong'); return }
+    setNikError('')
+    setIsLooking(true)
+    setLookupState(null)
+    try {
+      const res = await masterApi.getKaryawanByNik(trimmed)
+      if (res.data?.success && res.data?.data) {
+        setLookupState({ ok: true, data: res.data.data })
+      } else {
+        setLookupState({ ok: false, message: res.data?.message ?? 'NIK tidak ditemukan' })
+      }
+    } catch (e) {
+      setLookupState({ ok: false, message: e.response?.data?.message ?? 'NIK tidak ditemukan' })
+    } finally {
+      setIsLooking(false)
+    }
+  }
+
+  const canSubmit = lookupState?.ok && !loading
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-10 h-10 rounded-xl bg-sapphire/10 flex items-center justify-center">
+            <UserPlus size={20} className="text-sapphire" />
+          </div>
+          <div>
+            <h3 className="font-display font-bold text-navy text-lg">Tambah Bypass User</h3>
+            <p className="text-xs text-slate-400">Cek NIK terlebih dahulu sebelum mendaftarkan</p>
+          </div>
+        </div>
+
+        {/* NIK Input + Lookup */}
+        <div className="mb-4">
+          <label className="label">NIK Karyawan <span className="text-red-500">*</span></label>
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <input
+                className={`input ${nikError || lookupState?.ok === false ? 'border-red-400' : ''}`}
+                placeholder="Masukkan NIK"
+                value={nik}
+                onChange={e => { setNik(e.target.value); setNikError(''); setLookupState(null) }}
+                onKeyDown={e => e.key === 'Enter' && handleLookup()}
+                disabled={loading || isLooking}
+              />
+              {nikError && <p className="text-xs text-red-500 mt-1">{nikError}</p>}
+              {lookupState?.ok === false && <p className="text-xs text-red-500 mt-1">{lookupState.message}</p>}
+            </div>
+            <button
+              onClick={handleLookup}
+              disabled={!nik.trim() || loading || isLooking}
+              className="btn-secondary px-4 shrink-0 disabled:opacity-40"
+            >
+              {isLooking ? <Spinner size={15} /> : <Search size={15} />}
+              Cek
+            </button>
+          </div>
+        </div>
+
+        {/* Karyawan Preview */}
+        {lookupState?.ok && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center font-black text-green-700">
+                {lookupState.data.kar_nama.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-navy truncate">{lookupState.data.kar_nama}</p>
+                <p className="text-xs text-slate-400">NIK: {lookupState.data.kar_Nik}</p>
+                {lookupState.data.jab_nama && (
+                  <p className="text-xs text-green-700">
+                    {lookupState.data.jab_nama}
+                    {lookupState.data.kar_bagian ? ` · ${lookupState.data.kar_bagian}` : ''}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Keterangan */}
+        {lookupState?.ok && (
+          <div className="mb-4">
+            <label className="label">Keterangan (Opsional)</label>
+            <textarea
+              className="input resize-none"
+              rows={3}
+              placeholder="Contoh: Direktur Operasional — bypass by kebijakan BOD"
+              value={ket}
+              onChange={e => setKet(e.target.value)}
+              disabled={loading}
+            />
+            <p className="text-xs text-slate-400 mt-1">{ket.length} karakter</p>
+          </div>
+        )}
+
+        {/* Warning */}
+        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
+          <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 leading-relaxed">
+            Bypass user dapat mengajukan permintaan rekruitmen tanpa perlu persetujuan atasan.
+          </p>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <button className="btn-ghost flex-1 justify-center" onClick={onClose} disabled={loading}>
+            Batal
+          </button>
+          <button
+            className="btn-primary flex-1 justify-center disabled:opacity-40"
+            onClick={() => onConfirm(nik.trim(), ket.trim() || null)}
+            disabled={!canSubmit}
+          >
+            {loading ? <Spinner size={16} /> : <UserPlus size={16} />}
+            {loading ? 'Mendaftarkan...' : 'Daftarkan'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

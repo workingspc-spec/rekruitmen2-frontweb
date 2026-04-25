@@ -20,6 +20,18 @@ export const masterApi = {
     bagian:       (search) => api.get('/master/bagian',        { params: { search } }),
     jabatanRules: ()       => api.get('/recruitment/jabatan-rules'),
     holidays:     (year)   => api.get('/master/holidays', year ? { params: { year } } : {}),
+
+    // ── Bagian Master (HRD Management) ────────────────────────────────────────
+    getBagianList:    ()           => api.get('/master/bagian/list'),
+    createBagian:     (body)       => api.post('/master/bagian', body),
+    updateBagian:     (id, body)   => api.patch(`/master/bagian/${id}`, body),
+
+    // ── Bypass Users (HRD Management) ────────────────────────────────────────
+    getBypassUsers:      ()          => api.get('/master/bypass-users'),
+    addBypassUser:       (body)      => api.post('/master/bypass-users', body),
+    updateBypassUser:    (nik, body) => api.patch(`/master/bypass-users/${nik}`, body),
+    deleteBypassUser:    (nik)       => api.delete(`/master/bypass-users/${nik}`),
+    getKaryawanByNik:    (nik)       => api.get(`/master/karyawan/${nik}`),
 }
 
 // ── RECRUITMENT ───────────────────────────────────────────────────────────────
@@ -33,7 +45,6 @@ export const recruitmentApi = {
     hiredCandidates: (nomor)      => api.get(`/recruitment/${encodeURIComponent(nomor)}/hired-candidates`),
     cancelCandidate: (nomor, body) => api.post(`/recruitment/${encodeURIComponent(nomor)}/cancel-candidate`, body),
     setEditable:     (nomor, body) => api.patch(`/recruitment/${encodeURIComponent(nomor)}/editable`, body),
-    // ↓ BARU: manual sync shadow table (best-effort, tidak pernah throw ke caller)
     syncManual:      ()           => api.post('/recruitment/sync-manual').catch(() => null),
 }
 
@@ -41,11 +52,8 @@ export const recruitmentApi = {
 export const approvalApi = {
     listAtasan:   (status) => api.get('/recruitment/approval/atasan', { params: { status } }),
     actionAtasan: (body)   => api.post('/recruitment/approval/atasan/action', body),
-    // body: { tpk_nomor, action: 'APPROVE' | 'REJECT' }
-
     listHrd:      (status) => api.get('/recruitment/approval/hrd', { params: { status } }),
     actionHrd:    (body)   => api.post('/recruitment/approval/hrd/action', body),
-    // body: { tpk_nomor, action: 'APPROVE' | 'REJECT', alasan_tolak? }
 }
 
 // ── MONITORING ────────────────────────────────────────────────────────────────

@@ -6,18 +6,23 @@ import { dashboardApi } from '../api/services'
 import {
   LayoutDashboard, ClipboardList, CheckSquare,
   Activity, BarChart3, LogOut, TrendingUp,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Building2, ShieldCheck,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 
 const getNavItems = (isHrd) => [
-  { to: '/',            label: 'Dashboard',      Icon: LayoutDashboard, badgeKey: null        },
-  { to: '/recruitment', label: 'Rekruitmen',     Icon: ClipboardList,   badgeKey: null        },
-  { to: '/approval',    label: 'Approval',       Icon: CheckSquare,     badgeKey: 'approval'  },
-  { to: '/monitoring',  label: 'SLA Monitoring', Icon: Activity,        badgeKey: 'overdue'   },
+  { to: '/',            label: 'Dashboard',      Icon: LayoutDashboard, badgeKey: null       },
+  { to: '/recruitment', label: 'Rekruitmen',     Icon: ClipboardList,   badgeKey: null       },
+  { to: '/approval',    label: 'Approval',       Icon: CheckSquare,     badgeKey: 'approval' },
+  { to: '/monitoring',  label: 'SLA Monitoring', Icon: Activity,        badgeKey: 'overdue'  },
   isHrd
     ? { to: '/kpi-hrd',      label: 'KPI HRD',      Icon: BarChart3,   badgeKey: null }
     : { to: '/kpi-approver', label: 'KPI Approval',  Icon: TrendingUp, badgeKey: null },
+]
+
+const getMasterItems = () => [
+  { to: '/master/bagian',        label: 'Kelola Bagian',       Icon: Building2   },
+  { to: '/master/bypass-users',  label: 'Kelola Bypass Users', Icon: ShieldCheck },
 ]
 
 export default function Sidebar({ isCollapsed, onToggle }) {
@@ -25,7 +30,6 @@ export default function Sidebar({ isCollapsed, onToggle }) {
   const navigate  = useNavigate()
   const initial   = user?.nama?.charAt(0)?.toUpperCase() ?? '?'
 
-  // Fetch badge counts — lightweight, refetch every 2 minutes
   const { data: stats } = useQuery({
     queryKey: ['sidebar-stats'],
     queryFn:  () => dashboardApi.stats().then(r => r.data.data),
@@ -49,7 +53,37 @@ export default function Sidebar({ isCollapsed, onToggle }) {
     navigate('/login')
   }
 
-  const navItems = getNavItems(isHrd)
+  const navItems    = getNavItems(isHrd)
+  const masterItems = getMasterItems()
+
+  const NavItem = ({ to, label, Icon, badgeKey }) => {
+    const badgeCount = badgeKey ? (badges[badgeKey] ?? 0) : 0
+    return (
+      <NavLink
+        to={to}
+        end={to === '/'}
+        title={isCollapsed ? label : undefined}
+        className={({ isActive }) =>
+          clsx(
+            'flex items-center gap-3 rounded-xl text-sm font-medium text-slate-600',
+            'hover:bg-ice-blue hover:text-sapphire transition-all duration-150 cursor-pointer select-none relative',
+            isCollapsed ? 'justify-center px-0 py-2.5 mx-1' : 'px-4 py-2.5',
+            isActive && 'bg-sapphire text-white hover:bg-sapphire hover:text-white shadow-md'
+          )
+        }
+      >
+        <div className="relative shrink-0">
+          <Icon size={18} />
+          {badgeCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full ring-1 ring-white px-0.5 leading-none">
+              {badgeCount > 99 ? '99+' : badgeCount}
+            </span>
+          )}
+        </div>
+        {!isCollapsed && <span className="flex-1 truncate">{label}</span>}
+      </NavLink>
+    )
+  }
 
   return (
     <aside
@@ -58,7 +92,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
         isCollapsed ? 'w-[64px]' : 'w-60'
       )}
     >
-      {/* Logo + Toggle button */}
+      {/* Logo + Toggle */}
       <div
         className={clsx(
           'py-4 border-b border-slate-100 shrink-0 flex items-center',
@@ -67,26 +101,16 @@ export default function Sidebar({ isCollapsed, onToggle }) {
       >
         {!isCollapsed && (
           <div className="flex items-center gap-3 min-w-0">
-            <img
-              src="/logo_app.png"
-              alt="Logo PKAR"
-              className="w-9 h-9 object-contain drop-shadow-sm shrink-0"
-            />
+            <img src="/logo_app.png" alt="Logo PKAR" className="w-9 h-9 object-contain drop-shadow-sm shrink-0" />
             <div className="min-w-0">
               <p className="font-display font-extrabold text-slate-800 text-base leading-tight tracking-tight">PKAR</p>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Rekruitmen</p>
             </div>
           </div>
         )}
-
         {isCollapsed && (
-          <img
-            src="/logo_app.png"
-            alt="Logo PKAR"
-            className="w-8 h-8 object-contain"
-          />
+          <img src="/logo_app.png" alt="Logo PKAR" className="w-8 h-8 object-contain" />
         )}
-
         <button
           onClick={onToggle}
           className={clsx(
@@ -101,41 +125,24 @@ export default function Sidebar({ isCollapsed, onToggle }) {
 
       {/* Navigation */}
       <nav className="flex-1 px-2 py-4 space-y-0.5 overflow-y-auto overflow-x-hidden">
-        {navItems.map(({ to, label, Icon, badgeKey }) => {
-          const badgeCount = badgeKey ? (badges[badgeKey] ?? 0) : 0
+        {navItems.map(item => (
+          <NavItem key={item.to} {...item} />
+        ))}
 
-          return (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/'}
-              title={isCollapsed ? label : undefined}
-              className={({ isActive }) =>
-                clsx(
-                  'flex items-center gap-3 rounded-xl text-sm font-medium text-slate-600',
-                  'hover:bg-ice-blue hover:text-sapphire transition-all duration-150 cursor-pointer select-none relative',
-                  isCollapsed
-                    ? 'justify-center px-0 py-2.5 mx-1'
-                    : 'px-4 py-2.5',
-                  isActive && 'bg-sapphire text-white hover:bg-sapphire hover:text-white shadow-md'
-                )
-              }
-            >
-              {/* Icon with badge */}
-              <div className="relative shrink-0">
-                <Icon size={18} />
-                {badgeCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full ring-1 ring-white px-0.5 leading-none">
-                    {badgeCount > 99 ? '99+' : badgeCount}
-                  </span>
-                )}
-              </div>
-
-              {/* Label — hidden when collapsed */}
-              {!isCollapsed && <span className="flex-1 truncate">{label}</span>}
-            </NavLink>
-          )
-        })}
+        {/* Master Data Section — HRD only */}
+        {isHrd && (
+          <>
+            {!isCollapsed && (
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 pt-4 pb-1">
+                Master Data
+              </p>
+            )}
+            {isCollapsed && <div className="border-t border-slate-100 my-2 mx-1" />}
+            {masterItems.map(item => (
+              <NavItem key={item.to} {...item} badgeKey={null} />
+            ))}
+          </>
+        )}
       </nav>
 
       {/* User profile */}
@@ -161,10 +168,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
           </>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full bg-ice-blue flex items-center justify-center"
-              title={user?.nama}
-            >
+            <div className="w-8 h-8 rounded-full bg-ice-blue flex items-center justify-center" title={user?.nama}>
               <span className="text-sapphire font-bold text-sm">{initial}</span>
             </div>
             <button

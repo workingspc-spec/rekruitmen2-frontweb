@@ -119,7 +119,7 @@ export function getMinAllowedDate(jabKode, jabatanRules, jumlah = 1, holidays = 
  
   // Hitung dari besok; karena besok sudah dihitung sebagai hari pertama,
   // tambahkan (minDays - 1) hari kerja.
-  return addWorkdays(tomorrow, minDays - 1, holidays)
+  return addWorkdays(today, minDays, holidays)
 }
  
 /**

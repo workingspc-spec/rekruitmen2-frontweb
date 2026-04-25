@@ -10,6 +10,7 @@ import { PeriodPickerModal } from '../components/PeriodPickerModal'
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
+  Building2, ShieldCheck // <--- TAMBAHAN INI
 } from 'lucide-react'
 
 const PERIOD_OPTIONS = [
@@ -109,6 +110,22 @@ export default function DashboardPage() {
   }
 
   const pickerCurrent = period === 'All Time' ? null : period
+  const menuItem = (to, label, sub, Icon) => (
+    <button
+      key={to}
+      onClick={() => navigate(to)}
+      className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+    >
+      <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
+        <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-slate-800 text-[15px]">{label}</p>
+        <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>
+      </div>
+      <ChevronRight size={20} className="text-slate-300 group-hover:text-sapphire group-hover:translate-x-1 transition-all" />
+    </button>
+  )
 
   return (
     <div className="space-y-6">
@@ -271,6 +288,17 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Master Data Management — HRD only */}
+      {isHrd && (
+        <div>
+          <p className="text-lg font-bold text-slate-800 mb-3">Manajemen Master Data</p>
+          <div className="space-y-3">
+            {menuItem('/master/bagian',       'Kelola Bagian / Departemen', 'Tambah, ubah, aktifkan bagian',      Building2)}
+            {menuItem('/master/bypass-users', 'Kelola Bypass Users',        'Daftarkan pengguna bypass approval', ShieldCheck)}
+          </div>
+        </div>
+      )}
 
       {/* ── Period Picker Modal ── */}
       {showPicker && (

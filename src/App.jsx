@@ -15,11 +15,21 @@ import SlaStatusListPage      from './pages/monitoring/SlaStatusListPage'
 import SlaDetailPage          from './pages/monitoring/SlaDetailPage'
 import KpiHrdPage             from './pages/monitoring/KpiHrdPage'
 import KpiApproverPage        from './pages/monitoring/KpiApproverPage'
+import BagianMasterPage       from './pages/master/BagianMasterPage'
+import BypassUserPage         from './pages/master/BypassUserPage'
 
 function ProtectedRoute({ children }) {
   const { token, loading } = useAuth()
   if (loading) return <PageLoader message="Menyiapkan sesi..." />
   if (!token)  return <Navigate to="/login" replace />
+  return <MainLayout>{children}</MainLayout>
+}
+
+function HrdRoute({ children }) {
+  const { token, loading, isHrd } = useAuth()
+  if (loading) return <PageLoader />
+  if (!token)  return <Navigate to="/login" replace />
+  if (!isHrd)  return <Navigate to="/" replace />
   return <MainLayout>{children}</MainLayout>
 }
 
@@ -30,31 +40,18 @@ function PublicRoute({ children }) {
   return children
 }
 
-/**
- * Wrapper untuk RecruitmentListPage agar membaca ?period= dari URL
- * Identik Android: Screen.RecruitmentList.route = "recruitment_list?period={period}"
- */
 function RecruitmentListWrapper() {
   const [searchParams] = useSearchParams()
   const period = searchParams.get('period') || undefined
   return <RecruitmentListPage initialPeriodFilter={period} />
 }
 
-/**
- * Wrapper untuk ApprovalListPage agar membaca ?period= dari URL
- * Identik Android: Screen.ApprovalList.route = "approval_list?period={period}"
- */
 function ApprovalListWrapper() {
   const [searchParams] = useSearchParams()
   const period = searchParams.get('period') || undefined
   return <ApprovalListPage initialPeriodFilter={period} />
 }
 
-/**
- * ✅ BARU: Wrapper untuk SlaStatusListPage agar membaca ?status= dan ?period= dari URL.
- * Dipakai saat navigasi dari Dashboard (mis. klik kartu "Selesai Bulan Ini").
- * Identik dengan pola RecruitmentListWrapper & ApprovalListWrapper.
- */
 function MonitoringListWrapper() {
   const [searchParams] = useSearchParams()
   const status = searchParams.get('status') || undefined
@@ -75,7 +72,7 @@ function AppRoutes() {
         <ProtectedRoute><DashboardPage /></ProtectedRoute>
       } />
 
-      {/* Recruitment — mendukung ?period= query param dari Dashboard */}
+      {/* Recruitment */}
       <Route path="/recruitment" element={
         <ProtectedRoute><RecruitmentListWrapper /></ProtectedRoute>
       } />
@@ -89,12 +86,12 @@ function AppRoutes() {
         <ProtectedRoute><RecruitmentDetailPage /></ProtectedRoute>
       } />
 
-      {/* Approval — mendukung ?period= query param dari Dashboard */}
+      {/* Approval */}
       <Route path="/approval" element={
         <ProtectedRoute><ApprovalListWrapper /></ProtectedRoute>
       } />
 
-      {/* ✅ FIX: Monitoring sekarang pakai Wrapper agar bisa terima ?status= dan ?period= dari Dashboard */}
+      {/* Monitoring */}
       <Route path="/monitoring" element={
         <ProtectedRoute><MonitoringListWrapper /></ProtectedRoute>
       } />
@@ -102,11 +99,20 @@ function AppRoutes() {
         <ProtectedRoute><SlaDetailPage /></ProtectedRoute>
       } />
 
+      {/* KPI */}
       <Route path="/kpi-hrd" element={
         <ProtectedRoute><KpiHrdPage /></ProtectedRoute>
       } />
       <Route path="/kpi-approver" element={
         <ProtectedRoute><KpiApproverPage /></ProtectedRoute>
+      } />
+
+      {/* Master Data — HRD only */}
+      <Route path="/master/bagian" element={
+        <HrdRoute><BagianMasterPage /></HrdRoute>
+      } />
+      <Route path="/master/bypass-users" element={
+        <HrdRoute><BypassUserPage /></HrdRoute>
       } />
 
       {/* Fallback */}
