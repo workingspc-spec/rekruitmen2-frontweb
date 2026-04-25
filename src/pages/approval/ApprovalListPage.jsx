@@ -87,19 +87,18 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   }, [])
   // 👆 --------------------------------- 👆
 
-  const pendingCount  = list.filter(item =>  isPending(item)).length
-  const approvedCount = list.filter(item => !isPending(item)).length
+  const pendingCount  = list.filter(item => isPending(item) && item.is_legacy !== 1).length
+  const approvedCount = list.filter(item => !isPending(item) || item.is_legacy === 1).length
   const allCount      = list.length
 
   const filteredList = useMemo(() => {
     let items = list
 
-    // ✅ FIX: Paksa semua data legacy (is_legacy === 1) masuk ke tab "Sudah Approve"
     if (tab === 'pending')  {
-      items = items.filter(item => isPending(item) && item.is_legacy !== 1)
+        items = items.filter(item => isPending(item) && item.is_legacy !== 1)
     }
     if (tab === 'approved') {
-      items = items.filter(item => !isPending(item) || item.is_legacy === 1)
+        items = items.filter(item => !isPending(item) || item.is_legacy === 1)
     }
 
     if (search) {
