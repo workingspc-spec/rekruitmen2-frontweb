@@ -93,9 +93,11 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
   }, [])
 
-  const pendingCount  = list.filter(item => isPending(item) && item.is_legacy !== 1).length
-  const approvedCount = list.filter(item => !isPending(item) || item.is_legacy === 1).length
+  const pendingCount  = list.filter(item => isPending(item)).length
+  const approvedCount = list.filter(item => !isPending(item)).length
   const allCount      = list.length
+  
+  // (Baris ini biarkan saja, sudah benar untuk titik merah notifikasi)
   const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
   const filteredList = useMemo(() => {
     let items = list
