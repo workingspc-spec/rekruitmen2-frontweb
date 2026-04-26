@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi, recruitmentApi } from '../../api/services'
 import { validateTglButuh, getMinAllowedDate } from '../../utils/workday'
 import { formatDate, toApiDate } from '../../utils/helpers'
+import { FormPageSkeleton } from '../../components/ui'
 import {
   Save, Lock, Info, Calendar, ChevronDown,
   Plus, Minus, AlertTriangle, CheckCircle2, Loader2,
@@ -286,16 +287,12 @@ export default function RecruitmentFormPage() {
   const vlResult = validation()
 
   // ── FIX: minDate harus TODAY saat re-schedule, bukan dihitung dari aturan jabatan ──
-  // Sebelumnya: minDate selalu dihitung dari jabatan.min_days (misal 10 hari kerja = Apr 28)
-  // sehingga Apr 23 terkunci padahal backend mengizinkan tanggal >= hari ini saat re-schedule.
   const minDate = (() => {
     if (isReSchedule) {
-      // Re-schedule: min = hari ini. User boleh memilih tanggal hari ini atau setelahnya.
       const t = new Date()
       t.setHours(0, 0, 0, 0)
       return t
     }
-    // Mode normal: hitung dari aturan jabatan (lead time enforcement)
     return jabatan
       ? (getMinAllowedDate(jabatan.jab_kode, jabatanRules, jumlah, holidaysData) ?? null)
       : null
@@ -344,11 +341,8 @@ export default function RecruitmentFormPage() {
     })
   }
 
-  if (isEdit && detailLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 size={32} className="animate-spin text-sapphire" />
-    </div>
-  )
+  // ── Replaced Loader2 spinner with FormPageSkeleton ────────────────────────
+  if (isEdit && detailLoading) return <FormPageSkeleton />
 
   const ALASAN_OPTS = ['Penambahan Karyawan', 'Penggantian Karyawan Keluar', 'Resign', 'Ekspansi', 'Lainnya']
 
@@ -467,7 +461,7 @@ export default function RecruitmentFormPage() {
               </div>
             )}
 
-            {/* FIX: Hint minimal tanggal — sekarang menampilkan "hari ini" untuk re-schedule */}
+            {/* Hint minimal tanggal */}
             {jabatan && !tglButuh && minDate && (
               <p className="mt-1 text-xs text-slate-400">
                 Minimal: {isReSchedule ? 'hari ini' : formatDate(toApiDate(minDate.getTime()))}

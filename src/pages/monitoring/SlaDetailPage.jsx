@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi, monitoringApi } from '../../api/services'
 import { formatDate, getDaysColor } from '../../utils/helpers'
-import { PageLoader, ErrorBox } from '../../components/ui'
+import { ErrorBox, SlaDetailSkeleton } from '../../components/ui'
 import { getSlaStatusMeta } from '../../utils/helpers'
 import {
   CheckCircle2, LockOpen, Lock, AlertTriangle, User,
@@ -70,7 +70,7 @@ export default function SlaDetailPage() {
     onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal.'),
   })
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) return <SlaDetailSkeleton />
   if (isError || !data) return <ErrorBox message="Gagal memuat detail SLA." onRetry={refetch} />
 
   const sla      = data.sla_info

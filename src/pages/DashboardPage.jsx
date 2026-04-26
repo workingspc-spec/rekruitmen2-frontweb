@@ -13,7 +13,14 @@ import {
   Building2, ShieldCheck, Edit2, AlertTriangle
 } from 'lucide-react'
 import { useRef } from 'react' // Tambahkan ini
+// Import 4 Icon Animasi Baru
 import { DashboardIcon } from '../components/icons/DashboardIcon'
+import { ClipboardListIcon } from '../components/icons/ClipboardListIcon'
+import { CheckSquareIcon } from '../components/icons/CheckSquareIcon'
+import { ActivityIcon } from '../components/icons/ActivityIcon'
+
+import { BarChart3Icon } from '../components/icons/BarChart3Icon' // (Pakai '../components/icons/...' di DashboardPage)
+import { TrendingUpIcon } from '../components/icons/TrendingUpIcon'
 
 import { AnimatedIcon } from '../components/AnimatedIcon'
 
@@ -81,6 +88,29 @@ function MenuItemSkeleton() {
       </div>
       <div className="skeleton w-5 h-5 rounded shrink-0" />
     </div>
+  )
+}
+
+function QuickMenuButton({ label, sub, Icon, onClick }) {
+  const iconRef = useRef(null)
+  
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => iconRef.current?.startAnimation?.()}
+      onMouseLeave={() => iconRef.current?.stopAnimation?.()}
+      className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+    >
+      <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+        {/* Render icon dengan ref, hapus efek paksa warna dari Lucide agar tidak menghilang */}
+        <Icon ref={iconRef} size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
+      </div>
+      <div className="flex-1">
+        <p className="font-bold text-slate-800 text-[15px]">{label}</p>
+        <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>
+      </div>
+      <ChevronRight size={20} className="text-slate-300 group-hover:text-sapphire group-hover:translate-x-1 transition-all" />
+    </button>
   )
 }
 

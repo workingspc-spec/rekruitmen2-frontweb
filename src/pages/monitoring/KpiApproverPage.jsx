@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
-import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
+import { ErrorBox, EmptyState, ProgressBar, KpiDistributionSkeleton, KpiItemCardSkeleton } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import { periodToLabel, periodToApiParam } from '../../utils/periodFilter'
 import PaginationControls from '../../components/PaginationControls'
@@ -20,6 +20,67 @@ function getDelayColor(days) {
   if (days <= 3) return '#2E7D32'
   if (days <= 5) return '#F57C00'
   return '#D32F2F'
+}
+
+// ── Full-page skeleton matching KpiApproverPage layout ─────────────────────
+function KpiApproverSkeleton() {
+  return (
+    <div className="space-y-5">
+      {/* Sticky header skeleton */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
+        <div className="page-header mb-4">
+          <div className="space-y-2">
+            <div className="skeleton h-8 w-44 rounded" />
+            <div className="skeleton h-4 w-52 rounded" />
+          </div>
+        </div>
+        <div className="flex flex-col xl:flex-row gap-8 items-stretch w-full pl-5">
+          {/* Stats strip: TOTAL, FAST RATE, AVG DELAY */}
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="text-center py-1 px-2">
+              <div className="skeleton h-8 w-10 mx-auto rounded mb-1.5" />
+              <div className="skeleton h-3 w-12 mx-auto rounded" />
+            </div>
+            <div className="w-px h-8 bg-slate-200" />
+            <div className="text-center py-1 px-2">
+              <div className="skeleton h-8 w-16 mx-auto rounded mb-1.5" />
+              <div className="skeleton h-3 w-16 mx-auto rounded" />
+            </div>
+            <div className="w-px h-8 bg-slate-200" />
+            <div className="text-center py-1 px-2">
+              <div className="skeleton h-8 w-12 mx-auto rounded mb-1.5" />
+              <div className="skeleton h-3 w-16 mx-auto rounded" />
+            </div>
+          </div>
+          {/* Target Ideal */}
+          <div className="flex-1 flex items-center gap-3">
+            <div className="skeleton w-5 h-5 rounded shrink-0" />
+            <div className="space-y-1.5 flex-1">
+              <div className="skeleton h-3 w-24 rounded" />
+              <div className="skeleton h-3 w-full max-w-xs rounded" />
+            </div>
+          </div>
+          {/* Calendar filter */}
+          <div className="flex items-center shrink-0 justify-end">
+            <div className="skeleton h-9 w-36 rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      {/* Distribution card skeleton */}
+      <KpiDistributionSkeleton bars={3} />
+
+      {/* Approval log items skeleton */}
+      <div className="space-y-3 mt-4">
+        <div className="skeleton h-4 w-36 rounded" />
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <KpiItemCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function KpiApproverPage() {
@@ -46,7 +107,7 @@ export default function KpiApproverPage() {
     setShowPicker(false)
   }
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) return <KpiApproverSkeleton />
   if (isError)   return <ErrorBox message="Gagal memuat KPI Approver." onRetry={refetch} />
 
   return (

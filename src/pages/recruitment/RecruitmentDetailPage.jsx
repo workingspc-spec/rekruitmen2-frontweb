@@ -6,8 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { recruitmentApi } from '../../api/services'
 import { formatDate, getSlaStatusMeta, getSlaSourceMeta } from '../../utils/helpers'
 import { useAuth } from '../../context/AuthContext'
+import { RecruitmentDetailSkeleton } from '../../components/ui'
 import {
-  Edit2, Loader2, Flag, User, Building2, Calendar, Users,
+  Edit2, Flag, User, Building2, Calendar, Users,
   FileText, CheckCircle2, XCircle, Clock, Info,
   ChevronDown, ChevronUp, History, ArrowRight, ArrowLeft
 } from 'lucide-react'
@@ -46,11 +47,7 @@ export default function RecruitmentDetailPage() {
   })
 
   // ── Early returns — setelah SEMUA hooks ───────────────────────────────────
-  if (isLoading) return (
-    <div className="flex items-center justify-center h-64">
-      <Loader2 size={32} className="animate-spin text-sapphire" />
-    </div>
-  )
+  if (isLoading) return <RecruitmentDetailSkeleton />
 
   if (isError || !data) return (
     <div className="text-center py-16 text-slate-400">
