@@ -86,27 +86,26 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     atasanMut,
     hrdApproveMut,
     hrdRejectMut,
-    isPending,
+    isPending, // <--- BISA TETAP DIPAKAI DENGAN AMAN!
   } = useApprovalList()
 
-  useEffect(() => {
-    recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
-  }, [])
-
-  const pendingCount  = list.filter(item => isPending(item)).length
-  const approvedCount = list.filter(item => !isPending(item)).length
-  const allCount      = list.length
+  // 👇 PERBAIKAN: Hitung murni apa adanya menggunakan isPending dari hook
+  const pendingCount  = list.filter(item => isPending(item)).length;
+  const approvedCount = list.filter(item => !isPending(item)).length;
+  const allCount      = list.length;
   
-  // (Baris ini biarkan saja, sudah benar untuk titik merah notifikasi)
-  const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
+  // Titik merah notifikasi (Hanya muncul jika ada tiket BARU)
+  const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length;
+
   const filteredList = useMemo(() => {
     let items = list
 
+    // 👇 FILTER TAB JUGA MURNI APA ADANYA
     if (tab === 'pending') {
-      items = items.filter(item => isPending(item)) // Biarkan legacy pending masuk sini
+      items = items.filter(item => isPending(item)) 
     }
     if (tab === 'approved') {
-      items = items.filter(item => !isPending(item)) // Biarkan legacy approved masuk sini
+      items = items.filter(item => !isPending(item)) 
     }
 
     if (search) {
