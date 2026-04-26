@@ -116,7 +116,7 @@ function StatusPill({ atasan, hrd, isHrd, isLegacy }) {
 
   // 👇 JIKA LEGACY: Tambahkan teks (Lama) tapi pertahankan warna status aslinya
   if (isLegacy === 1) {
-    return <Pill label={`${label} (Lama)`} color={`${color} border border-current opacity-80`} />
+    return <Pill label={`${label} (Sistem Lama)`} color={`${color} border border-current opacity-80`} />
   }
 
   return <Pill label={label} color={color} />

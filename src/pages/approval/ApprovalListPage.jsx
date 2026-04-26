@@ -96,7 +96,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const pendingCount  = list.filter(item => isPending(item) && item.is_legacy !== 1).length
   const approvedCount = list.filter(item => !isPending(item) || item.is_legacy === 1).length
   const allCount      = list.length
-
+  const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
   const filteredList = useMemo(() => {
     let items = list
 
@@ -204,7 +204,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
                       {count}
                     </span>
                   )}
-                  {!isActive && t.key === 'pending' && pendingCount > 0 && (
+                  {!isActive && t.key === 'pending' && actionableCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
                   )}
                 </button>
