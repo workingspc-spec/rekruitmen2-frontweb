@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi } from '../../api/services'
-import { PageLoader, ErrorBox, EmptyState, Spinner, ConfirmDialog } from '../../components/ui'
+import { ErrorBox, EmptyState, Spinner, ConfirmDialog, BypassUserCardSkeleton } from '../../components/ui'
 import { formatDate } from '../../utils/helpers'
 import {
   ShieldCheck, UserPlus, Trash2, PauseCircle, PlayCircle,
@@ -13,12 +13,10 @@ import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
 
-// IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 10
 
-// Utilitas Class Filter
 const getFilterClasses = (color, isActive) => {
   if (isActive) {
     const map = {
@@ -98,16 +96,14 @@ export default function BypassUserPage() {
     { label: 'Nonaktif', value: 0,    color: 'slate',    count: nonAktifCount },
   ]
 
-  if (isLoading) return <PageLoader />
-  if (isError)   return <ErrorBox message="Gagal memuat bypass users." onRetry={refetch} />
+  if (isError) return <ErrorBox message="Gagal memuat bypass users." onRetry={refetch} />
 
   return (
     <div className="space-y-5 relative">
-      
-      {/* ── STICKY HEADER & GLASSMORPHISM ── */}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
-        {/* Title Section */}
+
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">Kelola Bypass Users</h1>
@@ -117,29 +113,34 @@ export default function BypassUserPage() {
           </div>
         </div>
 
-        {/* ── SATU BARIS: FILTER (Kiri) - INFO (Tengah) - TOMBOL (Kanan) ── */}
         <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between w-full">
-          
-          {/* KIRI: Filter Chips */}
+
+          {/* Filter Chips */}
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap shrink-0">
-            {FILTERS.map(opt => {
-              const isActive = filterActive === opt.value
-              return (
-                <button
-                  key={String(opt.value)}
-                  onClick={() => { setFilterActive(opt.value); setCurrentPage(1); }}
-                  className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
-                >
-                  {opt.label}
-                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
-                    {opt.count}
-                  </span>
-                </button>
-              )
-            })}
+            {isLoading ? (
+              [1, 2, 3].map(i => (
+                <div key={i} className="skeleton h-8 w-20 rounded-lg" />
+              ))
+            ) : (
+              FILTERS.map(opt => {
+                const isActive = filterActive === opt.value
+                return (
+                  <button
+                    key={String(opt.value)}
+                    onClick={() => { setFilterActive(opt.value); setCurrentPage(1) }}
+                    className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
+                  >
+                    {opt.label}
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
+                      {opt.count}
+                    </span>
+                  </button>
+                )
+              })
+            )}
           </div>
 
-          {/* TENGAH: Info Banner (Diselipkan & mengisi ruang kosong) */}
+          {/* Info Banner */}
           <div className="flex-1 flex items-center gap-2.5 min-h-[44px]">
             <AnimatedIcon variant="wiggle">
               <ShieldCheck size={16} className="text-sapphire shrink-0" />
@@ -149,19 +150,22 @@ export default function BypassUserPage() {
             </p>
           </div>
 
-          {/* KANAN: Action Button */}
+          {/* Action Button */}
           <button className="btn-primary flex items-center justify-center gap-2 shrink-0 min-h-[44px] px-5" onClick={() => setShowAddModal(true)}>
-            <AnimatedIcon variant="scale">
-              <UserPlus size={16} />
-            </AnimatedIcon>
+            <AnimatedIcon variant="scale"><UserPlus size={16} /></AnimatedIcon>
             Tambah Bypass User
           </button>
         </div>
-
       </div>
 
-      {/* List */}
-      {filteredList.length === 0 ? (
+      {/* ── CONTENT ── */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <BypassUserCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filteredList.length === 0 ? (
         <EmptyState
           message={filterActive !== null ? 'Tidak ada bypass user dengan filter ini.' : 'Belum ada bypass user terdaftar.'}
           icon={ShieldCheck}
@@ -192,7 +196,6 @@ export default function BypassUserPage() {
         </div>
       )}
 
-      {/* Add Modal */}
       {showAddModal && (
         <AddBypassUserModal
           loading={addMut.isPending}
@@ -201,7 +204,6 @@ export default function BypassUserPage() {
         />
       )}
 
-      {/* Delete Confirm */}
       {deleteTarget && (
         <ConfirmDialog
           open
@@ -224,7 +226,6 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
 
   return (
     <div className={`card group transition-all duration-300 hover:shadow-card-hover hover:border-[#A6C5D7] ${!isActive ? 'opacity-60 grayscale-[50%]' : ''}`}>
-      {/* Top row */}
       <div className="flex items-start gap-4">
         <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-black text-lg transition-colors ${
           isActive ? 'bg-sapphire/10 text-sapphire group-hover:bg-sapphire/20' : 'bg-slate-100 text-slate-400'
@@ -247,7 +248,6 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
         </div>
       </div>
 
-      {/* Detail rows */}
       {(item.kar_bagian || item.bu_keterangan) && (
         <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
           {item.kar_bagian && (
@@ -265,7 +265,6 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
         </div>
       )}
 
-      {/* Action row */}
       <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2">
         <button
           onClick={onToggle}
@@ -285,9 +284,7 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
           onClick={onDelete}
           className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
         >
-          <AnimatedIcon variant="wiggle">
-            <Trash2 size={14} />
-          </AnimatedIcon>
+          <AnimatedIcon variant="wiggle"><Trash2 size={14} /></AnimatedIcon>
           Hapus
         </button>
       </div>
@@ -330,7 +327,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-xl bg-sapphire/10 flex items-center justify-center">
             <UserPlus size={20} className="text-sapphire" />
@@ -341,7 +337,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </div>
         </div>
 
-        {/* NIK Input + Lookup */}
         <div className="mb-4">
           <label className="label">NIK Karyawan <span className="text-red-500">*</span></label>
           <div className="flex gap-2">
@@ -368,7 +363,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </div>
         </div>
 
-        {/* Karyawan Preview */}
         {lookupState?.ok && (
           <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
             <div className="flex items-center gap-3">
@@ -389,7 +383,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </div>
         )}
 
-        {/* Keterangan */}
         {lookupState?.ok && (
           <div className="mb-4">
             <label className="label">Keterangan (Opsional)</label>
@@ -405,7 +398,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </div>
         )}
 
-        {/* Warning */}
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
           <AnimatedIcon variant="wiggle">
             <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
@@ -415,7 +407,6 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
           </p>
         </div>
 
-        {/* Buttons */}
         <div className="flex gap-3">
           <button className="btn-ghost flex-1 justify-center" onClick={onClose} disabled={loading}>
             Batal

@@ -3,17 +3,72 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
-import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
+import { ErrorBox, EmptyState, ProgressBar, KpiDistributionSkeleton, KpiItemCardSkeleton } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import { periodToLabel, periodToApiParam } from '../../utils/periodFilter'
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import { BarChart3, Calendar, ChevronDown, Users, Info, Shield, X } from 'lucide-react'
 
-// IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 10
+
+// ── Full-page skeleton that matches KpiHrdPage layout ────────────────────────
+function KpiHrdSkeleton() {
+  return (
+    <div className="space-y-5">
+      {/* Sticky header skeleton */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
+        <div className="page-header mb-4">
+          <div className="space-y-2">
+            <div className="skeleton h-8 w-52 rounded" />
+            <div className="skeleton h-4 w-44 rounded" />
+          </div>
+        </div>
+        <div className="flex flex-col xl:flex-row gap-3 items-stretch w-full pl-5">
+          {/* Stats strip skeleton */}
+          <div className="flex items-center gap-6 shrink-0">
+            <div className="space-y-1.5 text-center py-1">
+              <div className="skeleton h-8 w-12 mx-auto rounded" />
+              <div className="skeleton h-3 w-12 mx-auto rounded" />
+            </div>
+            <div className="w-px h-8 bg-slate-200" />
+            <div className="space-y-1.5 text-center py-1">
+              <div className="skeleton h-8 w-16 mx-auto rounded" />
+              <div className="skeleton h-3 w-20 mx-auto rounded" />
+            </div>
+          </div>
+          {/* Notes skeleton */}
+          <div className="flex-1 flex items-center gap-3">
+            <div className="skeleton w-5 h-5 rounded shrink-0" />
+            <div className="space-y-1.5 flex-1">
+              <div className="skeleton h-3 w-32 rounded" />
+              <div className="skeleton h-3 w-full max-w-xs rounded" />
+            </div>
+          </div>
+          {/* Filter skeleton */}
+          <div className="flex items-center shrink-0 justify-end">
+            <div className="skeleton h-9 w-36 rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      {/* Distribution card skeleton */}
+      <KpiDistributionSkeleton bars={4} />
+
+      {/* Item card skeletons */}
+      <div className="space-y-3 mt-4">
+        <div className="skeleton h-4 w-40 rounded" />
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <KpiItemCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function KpiHrdPage() {
   const [period, setPeriod]         = useState('All Time')
@@ -39,16 +94,15 @@ export default function KpiHrdPage() {
     setShowPicker(false)
   }
 
-  if (isLoading) return <PageLoader />
+  if (isLoading) return <KpiHrdSkeleton />
   if (isError)   return <ErrorBox message="Gagal memuat KPI HRD." onRetry={refetch} />
 
   return (
     <div className="space-y-5 relative">
-      
-      {/* ── STICKY HEADER: JUDUL, SUMMARY & FILTER ── */}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
-        {/* Title Section */}
+
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">KPI Rekrutmen HRD</h1>
@@ -56,37 +110,30 @@ export default function KpiHrdPage() {
           </div>
         </div>
 
-        {/* ── SATU BARIS MENYAMPING: STATS, CATATAN, FILTER ── */}
         <div className="flex flex-col xl:flex-row gap-3 items-stretch w-full pl-5">
-          
-        {/* KIRI: Total & Success Rate */}
-        {/* Class bg, border, shadow dihapus. Jarak diatur menggunakan gap */}
-        <div className="flex items-center gap-6 shrink-0 xl:min-w-[200px]">
-          <CompactStat label="TOTAL" value={total.toString()} color="text-sapphire" />
-          {/* Garis pemisah vertikal opsional, jika ingin benar-benar polos, hapus saja <div> garis pemisah ini */}
-          <div className="w-px h-8 bg-slate-200" /> 
-          <CompactStat
-            label="SUCCESS RATE"
-            value={`${summary.success_rate ?? 0}%`}
-            color={(summary.success_rate ?? 0) >= 80 ? 'text-green-600' : 'text-amber-500'}
-          />
-        </div>
 
-        {/* TENGAH: Catatan Performa */}
-        {/* Class bg, border, p-3, shadow dihapus */}
-        <div className="flex-1 flex items-center gap-3">
-          <AnimatedIcon variant="wiggle">
-            <Shield size={20} className="text-sapphire shrink-0" />
-          </AnimatedIcon>
-          <div>
-            <p className="text-xs font-bold text-sapphire mb-0.5">Catatan Performa</p>
-            <p className="text-[11px] text-slate-600 leading-snug">
-              Tingkat sukses rekrutmen mencapai <strong className="text-navy">{summary.success_rate ?? 0}%</strong> dengan rata-rata waktu penyelesaian <strong className="text-navy">{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
-            </p>
+          <div className="flex items-center gap-6 shrink-0 xl:min-w-[200px]">
+            <CompactStat label="TOTAL" value={total.toString()} color="text-sapphire" />
+            <div className="w-px h-8 bg-slate-200" />
+            <CompactStat
+              label="SUCCESS RATE"
+              value={`${summary.success_rate ?? 0}%`}
+              color={(summary.success_rate ?? 0) >= 80 ? 'text-green-600' : 'text-amber-500'}
+            />
           </div>
-        </div>
 
-          {/* KANAN: Filter Kalender (Sama persis dengan KpiApproverPage) */}
+          <div className="flex-1 flex items-center gap-3">
+            <AnimatedIcon variant="wiggle">
+              <Shield size={20} className="text-sapphire shrink-0" />
+            </AnimatedIcon>
+            <div>
+              <p className="text-xs font-bold text-sapphire mb-0.5">Catatan Performa</p>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Tingkat sukses rekrutmen mencapai <strong className="text-navy">{summary.success_rate ?? 0}%</strong> dengan rata-rata waktu penyelesaian <strong className="text-navy">{Math.round(summary.avg_net_duration ?? 0)} hari kerja</strong>.
+              </p>
+            </div>
+          </div>
+
           <div className="flex items-center shrink-0 justify-end">
             <button
               onClick={() => setShowPicker(true)}
@@ -99,11 +146,7 @@ export default function KpiHrdPage() {
               <AnimatedIcon variant="scale">
                 <Calendar size={13} className={period !== 'All Time' ? 'text-sapphire' : 'text-slate-400'} />
               </AnimatedIcon>
-              
-              <span className="max-w-[120px] truncate text-left">
-                {periodToLabel(period)}
-              </span>
-              
+              <span className="max-w-[120px] truncate text-left">{periodToLabel(period)}</span>
               {period !== 'All Time' ? (
                 <X
                   size={12}
@@ -115,11 +158,10 @@ export default function KpiHrdPage() {
               )}
             </button>
           </div>
-
         </div>
       </div>
 
-      {/* ── Distribution ── */}
+      {/* Distribution */}
       <div className="card border border-slate-100 shadow-sm mt-2">
         <p className="font-display font-bold text-navy text-sm mb-4">Distribusi Kualitas Penempatan</p>
         <div className="space-y-4">
@@ -144,7 +186,7 @@ export default function KpiHrdPage() {
         </div>
       </div>
 
-      {/* ── Items dengan Pagination ── */}
+      {/* Items */}
       {items.length === 0 ? (
         <EmptyState message="Tidak ada data pada periode ini." icon={BarChart3} />
       ) : (
@@ -181,7 +223,6 @@ export default function KpiHrdPage() {
 
 // ── Sub Components ─────────────────────────────────────────────────────────────
 
-// Data Ringkas dengan text-2xl
 function CompactStat({ label, value, color }) {
   return (
     <div className="text-center py-1">

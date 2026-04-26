@@ -12,8 +12,9 @@ import {
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
   Building2, ShieldCheck, Edit2, AlertTriangle
 } from 'lucide-react'
+import { useRef } from 'react' // Tambahkan ini
+import { DashboardIcon } from '../components/icons/DashboardIcon'
 
-// IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../components/AnimatedIcon'
 
 const PERIOD_OPTIONS = [
@@ -54,6 +55,35 @@ function periodToApiParam(period) {
   return period
 }
 
+// ── Shimmer skeleton for a single StatCard ────────────────────────────────────
+function StatCardSkeleton() {
+  return (
+    <div className="card relative overflow-hidden">
+      <div className="flex items-start gap-3">
+        <div className="skeleton w-10 h-10 rounded-xl shrink-0" />
+        <div className="flex-1 space-y-2 pt-0.5">
+          <div className="skeleton h-3 w-24 rounded" />
+          <div className="skeleton h-8 w-16 rounded" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Shimmer skeleton for a single Quick Menu item ─────────────────────────────
+function MenuItemSkeleton() {
+  return (
+    <div className="w-full flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+      <div className="skeleton w-12 h-12 rounded-xl shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="skeleton h-4 w-40 rounded" />
+        <div className="skeleton h-3 w-56 rounded" />
+      </div>
+      <div className="skeleton w-5 h-5 rounded shrink-0" />
+    </div>
+  )
+}
+
 export default function DashboardPage() {
   const { user, isHrd } = useAuth()
   const navigate        = useNavigate()
@@ -62,8 +92,7 @@ export default function DashboardPage() {
   const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
-      // Sync saat dashboard dibuka dan saat period berubah
-      recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
+    recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
   }, [period])
 
   const apiParam = periodToApiParam(period)
@@ -123,8 +152,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      
-      {/* ── HEADER & KONTROL (COMPACT ALERTS) ── */}
+
+      {/* ── HEADER ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="text-slate-500 text-sm font-medium">Selamat datang,</p>
@@ -132,31 +161,28 @@ export default function DashboardPage() {
           <p className="text-xs text-sapphire font-bold mt-1.5 uppercase tracking-wider">{user?.bagian ?? ''}</p>
         </div>
 
-        {/* Baris Kontrol di Kanan */}
         <div className="flex flex-wrap items-center gap-2">
-          
+
           {/* ALERT 1: Perlu Update */}
-          {summary?.needUserUpdate > 0 && (
+          {summaryQ.isLoading ? (
+            <div className="skeleton h-9 w-36 rounded-xl" />
+          ) : summary?.needUserUpdate > 0 ? (
             <button
               onClick={() => navigateToMonitoring('NEED_USER_UPDATE')}
               className="flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-100 hover:shadow-sm hover:-translate-y-0.5 transition-all"
             >
-              <AnimatedIcon variant="wiggle">
-                <Edit2 size={14} />
-              </AnimatedIcon>
+              <AnimatedIcon variant="wiggle"><Edit2 size={14} /></AnimatedIcon>
               <span>{summary.needUserUpdate} Perlu Update</span>
             </button>
-          )}
+          ) : null}
 
-          {/* ALERT 2: Overdue / Terlambat */}
-          {summary?.overdueRequests > 0 && (
+          {/* ALERT 2: Overdue */}
+          {!summaryQ.isLoading && summary?.overdueRequests > 0 && (
             <button
               onClick={() => navigateToMonitoring('OVERDUE')}
               className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-100 hover:shadow-sm hover:-translate-y-0.5 transition-all"
             >
-              <AnimatedIcon variant="wiggle">
-                <AlertTriangle size={14} />
-              </AnimatedIcon>
+              <AnimatedIcon variant="wiggle"><AlertTriangle size={14} /></AnimatedIcon>
               <span>{summary.overdueRequests} Terlambat</span>
             </button>
           )}
@@ -176,17 +202,10 @@ export default function DashboardPage() {
       {/* ── Stats Grid ── */}
       {statsQ.isLoading ? (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="card">
-              <div className="skeleton h-16 w-full" />
-            </div>
-          ))}
+          {[1, 2, 3, 4].map((i) => <StatCardSkeleton key={i} />)}
         </div>
       ) : statsQ.isError ? (
-        <ErrorBox
-          message="Gagal memuat statistik."
-          onRetry={() => statsQ.refetch()}
-        />
+        <ErrorBox message="Gagal memuat statistik." onRetry={() => statsQ.refetch()} />
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -197,7 +216,6 @@ export default function DashboardPage() {
               color="#0F52BA"
               onClick={() => navigateWithPeriod('/recruitment')}
             />
-
             <StatCard
               label="Pending Approval"
               value={stats?.pendingApproval ?? 0}
@@ -206,18 +224,16 @@ export default function DashboardPage() {
               alert={stats?.pendingApproval > 0}
               onClick={() => navigateWithPeriod('/approval')}
             />
-
             <StatCard
               label="SLA Aktif"
-              value={summary?.activeRequests ?? 0}
+              value={summaryQ.isLoading ? '–' : (summary?.activeRequests ?? 0)}
               icon={Activity}
               color="#0F52BA"
               onClick={() => navigate('/monitoring')}
             />
-
             <StatCard
               label="Selesai Bulan Ini"
-              value={summary?.completedThisMonth ?? 0}
+              value={summaryQ.isLoading ? '–' : (summary?.completedThisMonth ?? 0)}
               icon={CheckCircle2}
               color="#2E7D32"
               onClick={() => navigateToMonitoring('COMPLETED', 'This month')}
@@ -236,29 +252,36 @@ export default function DashboardPage() {
       <div>
         <p className="text-lg font-bold text-slate-800 mb-3">Menu Utama</p>
         <div className="space-y-3">
-          {[
-            { to: '/recruitment', label: 'Permintaan Rekruitmen', sub: 'Buat & kelola permintaan', Icon: ClipboardList },
-            { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan', Icon: CheckSquare },
-            { to: '/monitoring',  label: 'SLA Monitoring',        sub: 'Pantau progress rekruitmen', Icon: Activity },
-            isHrd
-              ? { to: '/kpi-hrd',      label: 'KPI HRD',      sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
-              : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
-          ].map(({ to, label, sub, Icon }) => (
-            <button
-              key={to}
-              onClick={() => navigate(to)}
-              className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
-            >
-              <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
-                <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-slate-800 text-[15px]">{label}</p>
-                <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>
-              </div>
-              <ChevronRight size={20} className="text-slate-300 group-hover:text-sapphire group-hover:translate-x-1 transition-all" />
-            </button>
-          ))}
+          {statsQ.isLoading ? (
+            [1, 2, 3, 4].map(i => <MenuItemSkeleton key={i} />)
+          ) : (
+            [
+              { to: '/recruitment', label: 'Permintaan Rekruitmen', sub: 'Buat & kelola permintaan', Icon: ClipboardList },
+              { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan', Icon: CheckSquare },
+              { to: '/monitoring',  label: 'SLA Monitoring',        sub: 'Pantau progress rekruitmen', Icon: Activity },
+              isHrd
+                ? { to: '/kpi-hrd',      label: 'KPI HRD',      sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
+                : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
+            ].map(({ to, label, sub, Icon }) => (
+              <button
+                key={to}
+                onClick={() => navigate(to)}
+                className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
+                  {/* 👇 BUNGKUS DENGAN ANIMATED ICON 👇 */}
+                  <AnimatedIcon variant="scale">
+                    <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
+                  </AnimatedIcon>
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 text-[15px]">{label}</p>
+                  <p className="text-[13px] text-slate-500 mt-0.5">{sub}</p>
+                </div>
+                <ChevronRight size={20} className="text-slate-300 group-hover:text-sapphire group-hover:translate-x-1 transition-all" />
+              </button>
+            ))
+          )}
         </div>
       </div>
 

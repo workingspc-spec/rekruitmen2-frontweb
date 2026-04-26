@@ -64,7 +64,7 @@ export default function KpiApproverPage() {
         </div>
 
         {/* ── SATU BARIS MENYAMPING: STATS, TARGET IDEAL, FILTER ── */}
-        <div className="flex flex-col xl:flex-row gap-3 items-stretch w-full">
+        <div className="flex flex-col xl:flex-row gap-8 items-stretch w-full pl-5">
           
           {/* KIRI: Total, Fast Rate, Avg Delay (Datar) */}
           <div className="flex items-center gap-6 shrink-0">

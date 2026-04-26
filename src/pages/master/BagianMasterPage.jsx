@@ -3,19 +3,17 @@ import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { masterApi } from '../../api/services'
-import { PageLoader, ErrorBox, EmptyState, Spinner } from '../../components/ui'
+import { ErrorBox, EmptyState, Spinner, BagianCardSkeleton } from '../../components/ui'
 import { formatDate } from '../../utils/helpers'
 import { Building2, Plus, Edit2, Check, X, ToggleLeft, ToggleRight, Save } from 'lucide-react'
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
 
-// 1. IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 15
 
-// Utilitas Class Filter agar selaras dengan Approval / Monitoring
 const getFilterClasses = (color, isActive) => {
   if (isActive) {
     const map = {
@@ -85,29 +83,26 @@ export default function BagianMasterPage() {
     return list.sort((a, b) => b.bag_active - a.bag_active || a.bag_nama.localeCompare(b.bag_nama))
   }, [raw, filterActive])
 
-  // ── Pagination ────────────────────────────────────────────────────────────
   const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
     usePagination(filteredList, ITEMS_PER_PAGE)
 
   const aktifCount    = raw.filter(b => b.bag_active === 1).length
   const nonAktifCount = raw.filter(b => b.bag_active === 0).length
 
-  // Filter Config
   const FILTERS = [
     { label: 'Semua',    value: null, color: 'sapphire', count: raw.length },
     { label: 'Aktif',    value: 1,    color: 'green',    count: aktifCount },
     { label: 'Nonaktif', value: 0,    color: 'slate',    count: nonAktifCount },
   ]
 
-  if (isLoading) return <PageLoader />
-  if (isError)   return <ErrorBox message="Gagal memuat data bagian." onRetry={refetch} />
+  if (isError) return <ErrorBox message="Gagal memuat data bagian." onRetry={refetch} />
 
   return (
     <div className="space-y-5 relative">
-      
-      {/* 2. STICKY HEADER & GLASSMORPHISM */}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
+
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">Kelola Bagian / Departemen</h1>
@@ -117,41 +112,50 @@ export default function BagianMasterPage() {
           </div>
         </div>
 
-        {/* 3. LAYOUT FILTER DAN TOMBOL (SEBARIS) */}
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
-          
-          {/* Filter Chips (Latar Putih, Clean Design) */}
+
+          {/* Filter Chips */}
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap">
-            {FILTERS.map(opt => {
-              const isActive = filterActive === opt.value
-              return (
-                <button
-                  key={String(opt.value)}
-                  onClick={() => { setFilterActive(opt.value); setCurrentPage(1); }}
-                  className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
-                >
-                  {opt.label}
-                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
-                    {opt.count}
-                  </span>
-                </button>
-              )
-            })}
+            {isLoading ? (
+              // Skeleton for filter tabs while loading
+              [1, 2, 3].map(i => (
+                <div key={i} className="skeleton h-8 w-20 rounded-lg" />
+              ))
+            ) : (
+              FILTERS.map(opt => {
+                const isActive = filterActive === opt.value
+                return (
+                  <button
+                    key={String(opt.value)}
+                    onClick={() => { setFilterActive(opt.value); setCurrentPage(1) }}
+                    className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
+                  >
+                    {opt.label}
+                    <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
+                      {opt.count}
+                    </span>
+                  </button>
+                )
+              })
+            )}
           </div>
 
           {/* Action Button */}
           <button className="btn-primary flex items-center gap-2 shrink-0" onClick={() => setShowAddModal(true)}>
-            <AnimatedIcon variant="scale">
-              <Plus size={16} />
-            </AnimatedIcon>
+            <AnimatedIcon variant="scale"><Plus size={16} /></AnimatedIcon>
             Tambah Bagian
           </button>
         </div>
-
       </div>
 
-      {/* List */}
-      {filteredList.length === 0 ? (
+      {/* ── CONTENT ── */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <BagianCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : filteredList.length === 0 ? (
         <EmptyState
           message={filterActive !== null ? 'Tidak ada bagian dengan filter ini.' : 'Belum ada bagian. Tap + untuk menambah.'}
           icon={Building2}
@@ -199,8 +203,6 @@ export default function BagianMasterPage() {
   )
 }
 
-// 4. SUMMARY CHIP DIHAPUS (Karena sudah masuk ke Filter Tabs)
-
 function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isSaving, isToggling }) {
   const isActive  = item.bag_active === 1
   const isEditing = editTarget?.bag_id === item.bag_id
@@ -217,14 +219,12 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
 
   return (
     <div className={`card group flex items-center gap-4 transition-all duration-300 hover:shadow-card-hover hover:border-[#A6C5D7] ${!isActive ? 'opacity-60 grayscale-[50%]' : ''}`}>
-      {/* Icon */}
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
         isActive ? 'bg-sapphire/10 group-hover:bg-sapphire/20' : 'bg-slate-100'
       }`}>
         <Building2 size={20} className={isActive ? 'text-sapphire' : 'text-slate-400'} />
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <input
@@ -248,7 +248,6 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         {isEditing ? (
           <>
@@ -272,9 +271,7 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
             className="w-8 h-8 flex items-center justify-center rounded-lg text-sapphire hover:bg-sapphire/10 transition-colors"
             title="Edit nama"
           >
-            <AnimatedIcon variant="scale">
-              <Edit2 size={14} />
-            </AnimatedIcon>
+            <AnimatedIcon variant="scale"><Edit2 size={14} /></AnimatedIcon>
           </button>
         )}
         <button

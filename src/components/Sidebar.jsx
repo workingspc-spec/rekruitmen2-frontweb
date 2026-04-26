@@ -4,14 +4,16 @@ import { useAuth } from '../context/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardApi } from '../api/services'
 import {
-  LayoutDashboard, ClipboardList, CheckSquare,
-  Activity, BarChart3, LogOut, TrendingUp,
-  ChevronLeft, ChevronRight, Building2, ShieldCheck,
+  ClipboardList, CheckSquare, Activity, BarChart3, 
+  LogOut, TrendingUp, ChevronLeft, ChevronRight, Building2, ShieldCheck,
 } from 'lucide-react'
 import { clsx } from 'clsx'
+import { useRef } from 'react' // Tambahkan useRef
+import { DashboardIcon } from './icons/DashboardIcon' // Import icon baru
 
 const getNavItems = (isHrd) => [
-  { to: '/',            label: 'Dashboard',      Icon: LayoutDashboard, badgeKey: null       },
+  // MENJADI:
+  { to: '/',      label: 'Dashboard',    Icon: DashboardIcon, badgeKey: null       },
   { to: '/recruitment', label: 'Rekruitmen',     Icon: ClipboardList,   badgeKey: null       },
   { to: '/approval',    label: 'Approval',       Icon: CheckSquare,     badgeKey: 'approval' },
   { to: '/monitoring',  label: 'SLA Monitoring', Icon: Activity,        badgeKey: 'overdue'  },
@@ -58,11 +60,15 @@ export default function Sidebar({ isCollapsed, onToggle }) {
 
   const NavItem = ({ to, label, Icon, badgeKey }) => {
     const badgeCount = badgeKey ? (badges[badgeKey] ?? 0) : 0
+    const iconRef = useRef(null) // Siapkan ref untuk trigger animasi icon
+
     return (
       <NavLink
         to={to}
         end={to === '/'}
         title={isCollapsed ? label : undefined}
+        onMouseEnter={() => iconRef.current?.startAnimation?.()} // Trigger animasi
+        onMouseLeave={() => iconRef.current?.stopAnimation?.()}  // Stop animasi
         className={({ isActive }) =>
           clsx(
             'flex items-center gap-3 rounded-xl text-sm font-medium text-slate-600',
@@ -72,10 +78,13 @@ export default function Sidebar({ isCollapsed, onToggle }) {
           )
         }
       >
-        <div className="relative shrink-0">
-          <Icon size={18} />
+        <div className="relative shrink-0 group">
+          {/* Komentar di JSX harus dibungkus kurung kurawal seperti ini */}
+          <Icon ref={iconRef} size={18} className="group-hover:text-sapphire transition-colors" />
+
           {badgeCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full ring-1 ring-white px-0.5 leading-none">
+            <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 flex items-center justify-center bg-red-500 text-white text-[9px] font-bold rounded-full ring-1 ring-white px-0.5 leading-none z-10">
+              {/* Saya kembalikan variabel angkanya agar badge merah muncul angkanya lagi */}
               {badgeCount > 99 ? '99+' : badgeCount}
             </span>
           )}
