@@ -1,8 +1,5 @@
-// src/pages/approval/ApprovalCard.jsx
 import { formatDate } from '../../utils/helpers'
 import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare, Clock } from 'lucide-react'
-
-// 1. IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail }) {
@@ -10,14 +7,14 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
   const approvedByHrd    = item.tpk_approveHRD === 1
 
   return (
-    // 2. TAMBAHKAN CLASS 'group' DAN 'hover:border-[#A6C5D7]' PADA CARD UTAMA
     <div className="card group hover:shadow-card-hover hover:border-[#A6C5D7] transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div>
           <p className="font-display font-bold text-navy group-hover:text-sapphire transition-colors duration-300">{item.jab_nama}</p>
           <p className="font-mono text-xs text-slate-400 mt-0.5">{item.tpk_nomor}</p>
         </div>
-        <StatusPill atasan={item.tpk_approveatasan} hrd={item.tpk_approveHRD} isHrd={isHrd} />
+        {/* 👇 PERUBAHAN: Lempar nilai isLegacy ke dalam StatusPill */}
+        <StatusPill atasan={item.tpk_approveatasan} hrd={item.tpk_approveHRD} isHrd={isHrd} isLegacy={item.is_legacy} />
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
@@ -31,6 +28,13 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
           <DetailRow icon={<Flag size={13} />} label="Target SLA" value={formatDate(item.sla_final_target_date)} />
         )}
       </div>
+
+      {/* 👇 PERUBAHAN: Menambahkan Banner Read-Only khusus Legacy */}
+      {item.is_legacy === 1 && (
+        <div className="mb-3 px-3 py-2 bg-slate-50 border border-slate-100 rounded-lg flex items-center gap-2">
+          <span className="text-xs font-semibold text-slate-500">📁 Data sistem lama · read-only</span>
+        </div>
+      )}
 
       {/* Chip tanggal approval */}
       {(approvedByAtasan || approvedByHrd) && (
@@ -46,7 +50,6 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
 
       <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
         <button className="btn-ghost text-xs px-3 py-1.5 flex items-center gap-1.5" onClick={onDetail}>
-          {/* IMPLEMENTASI ANIMATED ICON PADA TOMBOL DETAIL */}
           <AnimatedIcon variant="scale">
             <Eye size={13} />
           </AnimatedIcon>
@@ -54,13 +57,12 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         </button>
         <div className="flex-1" />
 
-        {/* Tombol Tolak — untuk atasan dan HRD saat pending */}
+        {/* Tombol Tolak — hanya muncul jika benar-benar pending (bukan legacy) */}
         {pending && (
           <button
             className="btn-ghost text-xs px-3 py-1.5 text-red-500 hover:bg-red-50 flex items-center gap-1.5"
             onClick={onReject}
           >
-            {/* IMPLEMENTASI ANIMATED ICON PADA TOMBOL TOLAK */}
             <AnimatedIcon variant="wiggle">
               <XCircle size={13} />
             </AnimatedIcon>
@@ -74,7 +76,6 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
             className="text-xs px-3 py-1.5 rounded-xl font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1.5"
             onClick={onApprove}
           >
-            {/* IMPLEMENTASI ANIMATED ICON PADA TOMBOL SETUJUI */}
             <AnimatedIcon variant="scale">
               <CheckCircle2 size={13} />
             </AnimatedIcon>
@@ -96,19 +97,14 @@ function ApprovalChip({ label, date }) {
   )
 }
 
-/**
- * StatusPill — label dan warna berdasarkan status approval.
- *
- * ✅ STATUS BAYANGAN (tpk_approveatasan = 9):
- * - HRD view  : tpk_approveatasan = 9, hrd = 0 → "Perlu Disetujui" (terpenuhi oleh isHrd && hrd === 0)
- * - Atasan view: tpk_approveatasan = 9          → "Sudah Disetujui" (tambahkan cek atasan === 9)
- */
-function StatusPill({ atasan, hrd, isHrd }) {
+// 👇 PERUBAHAN: Tangkap `isLegacy` dan berikan prioritas paling atas
+function StatusPill({ atasan, hrd, isHrd, isLegacy }) {
+  if (isLegacy === 1) return <Pill label="Selesai (Sistem Lama)" color="bg-slate-100 text-slate-600 border border-slate-200" />
+  
   if (atasan === 2)             return <Pill label="Ditolak Atasan"   color="bg-red-100 text-red-700" />
   if (hrd === 2)                return <Pill label="Ditolak HRD"      color="bg-red-100 text-red-700" />
   if (isHrd  && hrd === 1)      return <Pill label="Disetujui HRD"    color="bg-green-100 text-green-700" />
   if (isHrd  && hrd === 0)      return <Pill label="Perlu Disetujui"  color="bg-amber-100 text-amber-700" />
-  // ✅ STATUS BAYANGAN: atasan = 9 (bayangan) atau 1 (final) → "Sudah Disetujui" dari view atasan
   if (!isHrd && (atasan === 1 || atasan === 9)) return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
   return <Pill label="Pending" color="bg-amber-100 text-amber-700" />
 }
