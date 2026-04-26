@@ -99,14 +99,27 @@ function ApprovalChip({ label, date }) {
 
 // 👇 PERUBAHAN: Tangkap `isLegacy` dan berikan prioritas paling atas
 function StatusPill({ atasan, hrd, isHrd, isLegacy }) {
-  if (isLegacy === 1) return <Pill label="Selesai (Sistem Lama)" color="bg-slate-100 text-slate-600 border border-slate-200" />
-  
-  if (atasan === 2)             return <Pill label="Ditolak Atasan"   color="bg-red-100 text-red-700" />
-  if (hrd === 2)                return <Pill label="Ditolak HRD"      color="bg-red-100 text-red-700" />
-  if (isHrd  && hrd === 1)      return <Pill label="Disetujui HRD"    color="bg-green-100 text-green-700" />
-  if (isHrd  && hrd === 0)      return <Pill label="Perlu Disetujui"  color="bg-amber-100 text-amber-700" />
-  if (!isHrd && (atasan === 1 || atasan === 9)) return <Pill label="Sudah Disetujui" color="bg-green-100 text-green-700" />
-  return <Pill label="Pending" color="bg-amber-100 text-amber-700" />
+  let label = "Pending";
+  let color = "bg-amber-100 text-amber-700";
+
+  if (atasan === 2) { 
+    label = "Ditolak Atasan"; color = "bg-red-100 text-red-700"; 
+  } else if (hrd === 2) { 
+    label = "Ditolak HRD"; color = "bg-red-100 text-red-700"; 
+  } else if (isHrd && hrd === 1) { 
+    label = "Disetujui HRD"; color = "bg-green-100 text-green-700"; 
+  } else if (isHrd && hrd === 0) { 
+    label = "Perlu Disetujui"; color = "bg-amber-100 text-amber-700"; 
+  } else if (!isHrd && (atasan === 1 || atasan === 9)) { 
+    label = "Sudah Disetujui"; color = "bg-green-100 text-green-700"; 
+  }
+
+  // 👇 JIKA LEGACY: Tambahkan teks (Lama) tapi pertahankan warna status aslinya
+  if (isLegacy === 1) {
+    return <Pill label={`${label} (Lama)`} color={`${color} border border-current opacity-80`} />
+  }
+
+  return <Pill label={label} color={color} />
 }
 
 function Pill({ label, color }) {

@@ -101,10 +101,10 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     let items = list
 
     if (tab === 'pending') {
-      items = items.filter(item => isPending(item) && item.is_legacy !== 1)
+      items = items.filter(item => isPending(item)) // Biarkan legacy pending masuk sini
     }
     if (tab === 'approved') {
-      items = items.filter(item => !isPending(item) || item.is_legacy === 1)
+      items = items.filter(item => !isPending(item)) // Biarkan legacy approved masuk sini
     }
 
     if (search) {
