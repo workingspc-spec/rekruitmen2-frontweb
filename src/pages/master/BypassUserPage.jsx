@@ -7,9 +7,38 @@ import { PageLoader, ErrorBox, EmptyState, Spinner, ConfirmDialog } from '../../
 import { formatDate } from '../../utils/helpers'
 import {
   ShieldCheck, UserPlus, Trash2, PauseCircle, PlayCircle,
-  Badge, Building2, StickyNote, Search, AlertTriangle,
+  Building2, StickyNote, Search, AlertTriangle,
 } from 'lucide-react'
+import PaginationControls from '../../components/PaginationControls'
+import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
+
+// IMPORT ANIMATED ICON
+import { AnimatedIcon } from '../../components/AnimatedIcon'
+
+const ITEMS_PER_PAGE = 10
+
+// Utilitas Class Filter
+const getFilterClasses = (color, isActive) => {
+  if (isActive) {
+    const map = {
+      sapphire: 'bg-white shadow text-sapphire',
+      green:    'bg-white shadow text-green-600',
+      slate:    'bg-white shadow text-slate-700',
+    }
+    return map[color] || 'bg-white shadow text-sapphire'
+  }
+  return 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+}
+
+const getBadgeClasses = (color) => {
+  const map = {
+    sapphire: 'bg-sapphire/10 text-sapphire',
+    green:    'bg-green-100 text-green-700',
+    slate:    'bg-slate-200 text-slate-700',
+  }
+  return map[color] || 'bg-sapphire/10 text-sapphire'
+}
 
 export default function BypassUserPage() {
   const qc = useQueryClient()
@@ -57,60 +86,78 @@ export default function BypassUserPage() {
     return list.sort((a, b) => b.bu_active - a.bu_active || (a.kar_nama ?? a.bu_nik).localeCompare(b.kar_nama ?? b.bu_nik))
   }, [raw, filterActive])
 
+  const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
+    usePagination(filteredList, ITEMS_PER_PAGE)
+
   const aktifCount    = raw.filter(u => u.bu_active === 1).length
   const nonAktifCount = raw.filter(u => u.bu_active === 0).length
+
+  const FILTERS = [
+    { label: 'Semua',    value: null, color: 'sapphire', count: raw.length },
+    { label: 'Aktif',    value: 1,    color: 'green',    count: aktifCount },
+    { label: 'Nonaktif', value: 0,    color: 'slate',    count: nonAktifCount },
+  ]
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat bypass users." onRetry={refetch} />
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Kelola Bypass Users</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Pengguna yang dapat mengajukan rekruitmen tanpa persetujuan atasan
-          </p>
+    <div className="space-y-5 relative">
+      
+      {/* ── STICKY HEADER & GLASSMORPHISM ── */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
+        
+        {/* Title Section */}
+        <div className="page-header mb-4">
+          <div>
+            <h1 className="page-title">Kelola Bypass Users</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Pengguna yang dapat mengajukan rekruitmen tanpa persetujuan atasan
+            </p>
+          </div>
         </div>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <UserPlus size={16} /> Tambah Bypass User
-        </button>
-      </div>
 
-      {/* Info Banner */}
-      <div className="flex items-start gap-3 bg-sapphire/5 border border-sapphire/15 rounded-2xl px-4 py-3">
-        <ShieldCheck size={18} className="text-sapphire shrink-0 mt-0.5" />
-        <p className="text-sm text-sapphire leading-relaxed">
-          Bypass user dapat mengajukan permintaan rekruitmen langsung ke HRD tanpa perlu persetujuan atasan terlebih dahulu.
-        </p>
-      </div>
+        {/* ── SATU BARIS: FILTER (Kiri) - INFO (Tengah) - TOMBOL (Kanan) ── */}
+        <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center justify-between w-full">
+          
+          {/* KIRI: Filter Chips */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap shrink-0">
+            {FILTERS.map(opt => {
+              const isActive = filterActive === opt.value
+              return (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => { setFilterActive(opt.value); setCurrentPage(1); }}
+                  className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
+                >
+                  {opt.label}
+                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
+                    {opt.count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-      {/* Summary */}
-      <div className="flex items-center gap-6 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-3">
-        <SummaryChip label="Aktif"    value={aktifCount}    color="text-green-600" />
-        <SummaryChip label="Nonaktif" value={nonAktifCount} color="text-slate-400" />
-      </div>
+          {/* TENGAH: Info Banner (Diselipkan & mengisi ruang kosong) */}
+          <div className="flex-1 flex items-center gap-2.5 min-h-[44px]">
+            <AnimatedIcon variant="wiggle">
+              <ShieldCheck size={16} className="text-sapphire shrink-0" />
+            </AnimatedIcon>
+            <p className="text-[11px] font-medium text-slate-600 leading-snug">
+              Bypass user dapat mengajukan permintaan rekruitmen langsung ke HRD tanpa perlu persetujuan atasan terlebih dahulu.
+            </p>
+          </div>
 
-      {/* Filter */}
-      <div className="flex gap-2">
-        {[
-          { label: 'Semua',    value: null },
-          { label: 'Aktif',    value: 1    },
-          { label: 'Nonaktif', value: 0    },
-        ].map(opt => (
-          <button
-            key={String(opt.value)}
-            onClick={() => setFilterActive(opt.value)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-              filterActive === opt.value
-                ? 'bg-sapphire text-white border-sapphire'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-sapphire'
-            }`}
-          >
-            {opt.label}
+          {/* KANAN: Action Button */}
+          <button className="btn-primary flex items-center justify-center gap-2 shrink-0 min-h-[44px] px-5" onClick={() => setShowAddModal(true)}>
+            <AnimatedIcon variant="scale">
+              <UserPlus size={16} />
+            </AnimatedIcon>
+            Tambah Bypass User
           </button>
-        ))}
+        </div>
+
       </div>
 
       {/* List */}
@@ -122,16 +169,26 @@ export default function BypassUserPage() {
           actionLabel="Tambah Bypass User"
         />
       ) : (
-        <div className="space-y-4">
-          {filteredList.map(item => (
-            <BypassUserCard
-              key={item.bu_nik}
-              item={item}
-              onToggle={() => toggleMut.mutate({ nik: item.bu_nik, active: item.bu_active === 1 ? 0 : 1 })}
-              onDelete={() => setDeleteTarget(item)}
-              isToggling={toggleMut.isPending}
-            />
-          ))}
+        <div className="space-y-3">
+          <div className="space-y-4">
+            {paginatedData.map(item => (
+              <BypassUserCard
+                key={item.bu_nik}
+                item={item}
+                onToggle={() => toggleMut.mutate({ nik: item.bu_nik, active: item.bu_active === 1 ? 0 : 1 })}
+                onDelete={() => setDeleteTarget(item)}
+                isToggling={toggleMut.isPending}
+              />
+            ))}
+          </div>
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
         </div>
       )}
 
@@ -161,35 +218,23 @@ export default function BypassUserPage() {
   )
 }
 
-function SummaryChip({ label, value, color }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`text-2xl font-black ${color}`}>{value}</span>
-      <span className="text-xs text-slate-400 font-semibold">{label}</span>
-    </div>
-  )
-}
-
 function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
   const isActive = item.bu_active === 1
   const initial  = (item.kar_nama ?? item.bu_nik).charAt(0).toUpperCase()
 
   return (
-    <div className={`card transition-all ${!isActive ? 'opacity-60' : ''}`}>
+    <div className={`card group transition-all duration-300 hover:shadow-card-hover hover:border-[#A6C5D7] ${!isActive ? 'opacity-60 grayscale-[50%]' : ''}`}>
       {/* Top row */}
       <div className="flex items-start gap-4">
-        {/* Avatar */}
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-black text-lg ${
-          isActive ? 'bg-sapphire/10 text-sapphire' : 'bg-slate-100 text-slate-400'
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 font-black text-lg transition-colors ${
+          isActive ? 'bg-sapphire/10 text-sapphire group-hover:bg-sapphire/20' : 'bg-slate-100 text-slate-400'
         }`}>
           {initial}
         </div>
-
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-bold text-navy">{item.kar_nama ?? item.bu_nik}</p>
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+            <p className="font-bold text-navy truncate group-hover:text-sapphire transition-colors">{item.kar_nama ?? item.bu_nik}</p>
+            <span className={`text-[10px] uppercase tracking-wide font-bold px-2.5 py-0.5 rounded-full transition-colors ${
               isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'
             }`}>
               {isActive ? 'Aktif' : 'Nonaktif'}
@@ -197,14 +242,14 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
           </div>
           <p className="text-xs text-slate-400 mt-0.5">NIK: {item.bu_nik}</p>
           {item.jab_nama && (
-            <p className="text-xs text-sapphire mt-0.5">{item.jab_nama}</p>
+            <p className="text-xs text-sapphire mt-0.5 font-medium">{item.jab_nama}</p>
           )}
         </div>
       </div>
 
       {/* Detail rows */}
       {(item.kar_bagian || item.bu_keterangan) && (
-        <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
+        <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
           {item.kar_bagian && (
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Building2 size={13} className="text-slate-400 shrink-0" />
@@ -214,7 +259,7 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
           {item.bu_keterangan && (
             <div className="flex items-start gap-2 text-xs text-slate-500">
               <StickyNote size={13} className="text-slate-400 shrink-0 mt-0.5" />
-              {item.bu_keterangan}
+              <span className="leading-snug">{item.bu_keterangan}</span>
             </div>
           )}
         </div>
@@ -231,14 +276,18 @@ function BypassUserCard({ item, onToggle, onDelete, isToggling }) {
               : 'border-green-300 text-green-700 hover:bg-green-50'
           }`}
         >
-          {isToggling ? <Spinner size={14} /> : isActive ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+          <AnimatedIcon variant="scale">
+            {isToggling ? <Spinner size={14} /> : isActive ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+          </AnimatedIcon>
           {isActive ? 'Nonaktifkan' : 'Aktifkan'}
         </button>
         <button
           onClick={onDelete}
           className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
         >
-          <Trash2 size={14} />
+          <AnimatedIcon variant="wiggle">
+            <Trash2 size={14} />
+          </AnimatedIcon>
           Hapus
         </button>
       </div>
@@ -275,9 +324,9 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
 
   const canSubmit = lookupState?.ok && !loading
 
-return createPortal(
+  return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 modal-overlay backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content animate-in fade-in zoom-in-95 duration-200">
@@ -298,15 +347,15 @@ return createPortal(
           <div className="flex gap-2">
             <div className="flex-1">
               <input
-                className={`input ${nikError || lookupState?.ok === false ? 'border-red-400' : ''}`}
+                className={`input focus:border-sapphire focus:ring-sapphire/30 ${nikError || lookupState?.ok === false ? 'border-red-400' : ''}`}
                 placeholder="Masukkan NIK"
                 value={nik}
                 onChange={e => { setNik(e.target.value); setNikError(''); setLookupState(null) }}
                 onKeyDown={e => e.key === 'Enter' && handleLookup()}
                 disabled={loading || isLooking}
               />
-              {nikError && <p className="text-xs text-red-500 mt-1">{nikError}</p>}
-              {lookupState?.ok === false && <p className="text-xs text-red-500 mt-1">{lookupState.message}</p>}
+              {nikError && <p className="text-xs text-red-500 mt-1 font-medium">{nikError}</p>}
+              {lookupState?.ok === false && <p className="text-xs text-red-500 mt-1 font-medium">{lookupState.message}</p>}
             </div>
             <button
               onClick={handleLookup}
@@ -330,7 +379,7 @@ return createPortal(
                 <p className="font-bold text-navy truncate">{lookupState.data.kar_nama}</p>
                 <p className="text-xs text-slate-400">NIK: {lookupState.data.kar_Nik}</p>
                 {lookupState.data.jab_nama && (
-                  <p className="text-xs text-green-700">
+                  <p className="text-xs text-green-700 mt-0.5 font-medium">
                     {lookupState.data.jab_nama}
                     {lookupState.data.kar_bagian ? ` · ${lookupState.data.kar_bagian}` : ''}
                   </p>
@@ -345,7 +394,7 @@ return createPortal(
           <div className="mb-4">
             <label className="label">Keterangan (Opsional)</label>
             <textarea
-              className="input resize-none"
+              className="input resize-none focus:border-sapphire focus:ring-sapphire/30"
               rows={3}
               placeholder="Contoh: Direktur Operasional — bypass by kebijakan BOD"
               value={ket}
@@ -358,8 +407,10 @@ return createPortal(
 
         {/* Warning */}
         <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
-          <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 leading-relaxed">
+          <AnimatedIcon variant="wiggle">
+            <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+          </AnimatedIcon>
+          <p className="text-xs text-amber-700 leading-relaxed font-medium">
             Bypass user dapat mengajukan permintaan rekruitmen tanpa perlu persetujuan atasan.
           </p>
         </div>
@@ -380,6 +431,6 @@ return createPortal(
         </div>
       </div>
     </div>,
-    document.body // Target portal
+    document.body
   )
 }

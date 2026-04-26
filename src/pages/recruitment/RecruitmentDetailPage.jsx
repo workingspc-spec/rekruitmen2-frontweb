@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext'
 import {
   Edit2, Loader2, Flag, User, Building2, Calendar, Users,
   FileText, CheckCircle2, XCircle, Clock, Info,
-  ChevronDown, ChevronUp, History, ArrowRight,
+  ChevronDown, ChevronUp, History, ArrowRight, ArrowLeft
 } from 'lucide-react'
 
 export default function RecruitmentDetailPage() {
@@ -21,7 +21,7 @@ export default function RecruitmentDetailPage() {
   const [showSlaTooltip, setShowSlaTooltip] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
 
-  // ── Scroll Lock — WAJIB di atas semua early return ────────────────────────
+  // ── Scroll Lock ────────────────────────────────────────────────────────────
   useEffect(() => {
     if (showSlaTooltip) {
       document.body.style.overflow = 'hidden'
@@ -85,199 +85,221 @@ export default function RecruitmentDetailPage() {
   const status = approvalStatus()
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Detail Permintaan</h1>
-          <p className="font-mono text-xs text-slate-400 mt-0.5">{nomor}</p>
+    <div className="max-w-3xl mx-auto relative">
+
+      {/* ── AREA STICKY HEADER ── */}
+      <div className="sticky top-0 z-30 bg-[#F8FAFC]/90 backdrop-blur-md pb-4 pt-2 mb-5 space-y-4">
+
+        {/* Header */}
+        <div className="page-header">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-2 rounded-xl text-slate-400 hover:bg-slate-200 hover:text-navy transition-all duration-150 shrink-0"
+              title="Kembali"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="page-title">Detail Permintaan</h1>
+              <p className="font-mono text-xs text-slate-500 font-semibold mt-0.5">{nomor}</p>
+            </div>
+          </div>
+          {canEdit && (
+            <button
+              className="btn-primary"
+              onClick={() => navigate(`/recruitment/edit/${encodeURIComponent(nomor)}`)}
+            >
+              <Edit2 size={16} /> Edit
+            </button>
+          )}
         </div>
-        {canEdit && (
-          <button
-            className="btn-primary"
-            onClick={() => navigate(`/recruitment/edit/${encodeURIComponent(nomor)}`)}
-          >
-            <Edit2 size={16} /> Edit
-          </button>
+
+        {/* Status Banner (ikut menempel) */}
+        <div className={`flex items-center gap-3 border rounded-2xl p-4 shadow-sm ${status.bg}`}>
+          <div className={`w-2.5 h-2.5 rounded-full ${status.color.replace('text', 'bg')}`} />
+          <span className={`font-semibold text-sm ${status.color}`}>{status.label}</span>
+        </div>
+
+      </div>
+      {/* ── AKHIR AREA STICKY HEADER ── */}
+
+      {/* ── KONTEN BAWAH ── */}
+      <div className="space-y-5">
+
+        {/* Catatan / Alasan Penolakan */}
+        {data.sla_notes && (
+          <div className={`card ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'border-red-200 bg-red-50' : ''}`}>
+            <h3 className={`font-display font-bold text-sm mb-3 flex items-center gap-2 ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-800' : 'text-navy'}`}>
+              <Info size={15} /> Catatan Proses & Penolakan
+            </h3>
+            <div className={`text-sm whitespace-pre-wrap leading-relaxed ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
+              {data.sla_notes}
+            </div>
+          </div>
         )}
-      </div>
 
-      {/* Status Banner */}
-      <div className={`flex items-center gap-3 border rounded-2xl p-4 ${status.bg}`}>
-        <div className={`w-2.5 h-2.5 rounded-full ${status.color.replace('text','bg')}`} />
-        <span className={`font-semibold text-sm ${status.color}`}>{status.label}</span>
-      </div>
-
-      {/* Catatan / Alasan Penolakan */}
-      {data.sla_notes && (
-        <div className={`card ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'border-red-200 bg-red-50' : ''}`}>
-          <h3 className={`font-display font-bold text-sm mb-3 flex items-center gap-2 ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-800' : 'text-navy'}`}>
-            <Info size={15} /> Catatan Proses & Penolakan
-          </h3>
-          <div className={`text-sm whitespace-pre-wrap leading-relaxed ${data.tpk_approveHRD === 2 || data.tpk_approveatasan === 2 ? 'text-red-700 font-medium' : 'text-slate-600'}`}>
-            {data.sla_notes}
+        {/* Main Info */}
+        <div className="card">
+          <div className="mb-4">
+            <h2 className="font-display font-bold text-xl text-navy">{data.jab_nama}</h2>
+            <p className="text-sm text-slate-400 mt-0.5">{data.tpk_bagian}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <InfoItem icon={<User size={15} />}       label="Peminta"        value={data.peminta_nama || data.tpk_peminta} />
+            <InfoItem icon={<Users size={15} />}      label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
+            <InfoItem icon={<Calendar size={15} />}   label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
+            <InfoItem icon={<Calendar size={15} />}   label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
+            <InfoItem icon={<Building2 size={15} />}  label="Jabatan Kode"   value={data.jab_kode || data.tpk_jab_kode} />
           </div>
         </div>
-      )}
 
-      {/* Main Info */}
-      <div className="card">
-        <div className="mb-4">
-          <h2 className="font-display font-bold text-xl text-navy">{data.jab_nama}</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{data.tpk_bagian}</p>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <InfoItem icon={<User size={15} />}       label="Peminta"        value={data.peminta_nama || data.tpk_peminta} />
-          <InfoItem icon={<Users size={15} />}      label="Jumlah"         value={`${data.tpk_jumlah} orang`} />
-          <InfoItem icon={<Calendar size={15} />}   label="Tgl Permintaan" value={formatDate(data.tpk_tanggal)} />
-          <InfoItem icon={<Calendar size={15} />}   label="Tgl Butuh"      value={formatDate(data.tpk_tgl_butuh)} />
-          <InfoItem icon={<Building2 size={15} />}  label="Jabatan Kode"   value={data.jab_kode || data.tpk_jab_kode} />
-        </div>
-      </div>
-
-      {/* SLA Info */}
-      {data.sla_final_target_date && data.sla_status !== 'PENDING' && (
-        <div className={`card border-l-4 ${
-          data.sla_source === 'SYSTEM' ? 'border-l-amber-400' :
-          data.sla_source === 'USER'   ? 'border-l-green-500' : 'border-l-blue-400'
-        }`}>
-          <div className="flex items-center gap-2 mb-3">
-            <Flag size={16} className="text-sapphire" />
-            <h3 className="font-display font-bold text-navy text-sm">Informasi SLA Target</h3>
-          </div>
-          <div className="space-y-2">
-            {data.sla_original_requested_date && (
-              <SlaRow label="Tanggal Butuh User" value={formatDate(data.sla_original_requested_date)} />
-            )}
-            {data.sla_system_floor_date && data.sla_source === 'SYSTEM' && (
-              <SlaRow label="Estimasi Minimum Sistem" value={formatDate(data.sla_system_floor_date)} />
-            )}
-            <SlaRow label="Target Final HRD" value={formatDate(data.sla_final_target_date)} bold />
-            {data.sla_min_days && (
-              <SlaRow label="Lead Time Minimum" value={`${data.sla_min_days} hari kerja`} />
-            )}
-            <div className="pt-2 border-t border-slate-100 flex items-center gap-2 flex-wrap">
-              {(() => {
-                const meta = getSlaSourceMeta(data.sla_source)
-                return (
-                  <span
-                    className="text-xs font-semibold px-2 py-1 rounded-full"
-                    style={{ background: meta.bg, color: meta.text }}
-                  >
-                    {meta.label}
+        {/* SLA Info */}
+        {data.sla_final_target_date && data.sla_status !== 'PENDING' && (
+          <div className={`card border-l-4 ${
+            data.sla_source === 'SYSTEM' ? 'border-l-amber-400' :
+            data.sla_source === 'USER'   ? 'border-l-green-500' : 'border-l-blue-400'
+          }`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Flag size={16} className="text-sapphire" />
+              <h3 className="font-display font-bold text-navy text-sm">Informasi SLA Target</h3>
+            </div>
+            <div className="space-y-2">
+              {data.sla_original_requested_date && (
+                <SlaRow label="Tanggal Butuh User" value={formatDate(data.sla_original_requested_date)} />
+              )}
+              {data.sla_system_floor_date && data.sla_source === 'SYSTEM' && (
+                <SlaRow label="Estimasi Minimum Sistem" value={formatDate(data.sla_system_floor_date)} />
+              )}
+              <SlaRow label="Target Final HRD" value={formatDate(data.sla_final_target_date)} bold />
+              {data.sla_min_days && (
+                <SlaRow label="Lead Time Minimum" value={`${data.sla_min_days} hari kerja`} />
+              )}
+              <div className="pt-2 border-t border-slate-100 flex items-center gap-2 flex-wrap">
+                {(() => {
+                  const meta = getSlaSourceMeta(data.sla_source)
+                  return (
+                    <span
+                      className="text-xs font-semibold px-2 py-1 rounded-full"
+                      style={{ background: meta.bg, color: meta.text }}
+                    >
+                      {meta.label}
+                    </span>
+                  )
+                })()}
+                {data.sla_is_editable === 1 && (
+                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                    Perlu Update Tanggal
                   </span>
-                )
-              })()}
-              {data.sla_is_editable === 1 && (
-                <span className="text-xs font-semibold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
-                  Perlu Update Tanggal
-                </span>
-              )}
-              {data.sla_source === 'SYSTEM' && (
-                <button
-                  onClick={() => setShowSlaTooltip(true)}
-                  className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors"
-                >
-                  <Info size={14} />
-                  Info
-                </button>
-              )}
+                )}
+                {data.sla_source === 'SYSTEM' && (
+                  <button
+                    onClick={() => setShowSlaTooltip(true)}
+                    className="flex items-center gap-1 text-xs font-medium text-amber-600 hover:text-amber-700 transition-colors"
+                  >
+                    <Info size={14} />
+                    Info
+                  </button>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Alasan */}
-      {data.tpk_alasan && (
-        <div className="card">
-          <h3 className="font-display font-bold text-navy text-sm mb-3 flex items-center gap-2">
-            <FileText size={15} /> Alasan Permintaan
-          </h3>
-          <p className="text-sm text-slate-700 font-semibold">{data.tpk_alasan}</p>
-          {data.tpk_alasanlain && (
-            <p className="text-sm text-slate-600 mt-1">{data.tpk_alasanlain}</p>
-          )}
-        </div>
-      )}
+        {/* Alasan */}
+        {data.tpk_alasan && (
+          <div className="card">
+            <h3 className="font-display font-bold text-navy text-sm mb-3 flex items-center gap-2">
+              <FileText size={15} /> Alasan Permintaan
+            </h3>
+            <p className="text-sm text-slate-700 font-semibold">{data.tpk_alasan}</p>
+            {data.tpk_alasanlain && (
+              <p className="text-sm text-slate-600 mt-1">{data.tpk_alasanlain}</p>
+            )}
+          </div>
+        )}
 
-      {/* Jobdesk */}
-      {jobdesks.length > 0 && (
-        <div className="card">
-          <h3 className="font-display font-bold text-navy text-sm mb-3">Jobdesk</h3>
-          <ol className="space-y-2">
-            {jobdesks.map((k, i) => (
-              <li key={i} className="flex gap-3 text-sm">
-                <span className="text-sapphire font-bold w-5 shrink-0">{i + 1}.</span>
-                <span className="text-slate-700">{k}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {/* Spesifikasi */}
-      {specs.length > 0 && (
-        <div className="card">
-          <h3 className="font-display font-bold text-navy text-sm mb-3">Spesifikasi yang Dibutuhkan</h3>
-          <ul className="space-y-2">
-            {specs.map((s, i) => (
-              <li key={i} className="flex gap-2 text-sm">
-                <CheckCircle2 size={15} className="text-green-500 shrink-0 mt-0.5" />
-                <span className="text-slate-700">{s}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Approval Status */}
-      <div className="card">
-        <h3 className="font-display font-bold text-navy text-sm mb-4">Status Approval</h3>
-        <div className="space-y-4">
-          <ApprovalItem
-            title="Approval Atasan"
-            status={data.tpk_approveatasan}
-            date={data.tpk_tgl_approveatasan}
-          />
-          <div className="border-t border-slate-100" />
-          <ApprovalItem
-            title="Approval HRD"
-            status={data.tpk_approveHRD}
-            date={data.tpk_tgl_approveHRD}
-          />
-        </div>
-      </div>
-
-      {/* Log History */}
-      {logData.length > 0 && (
-        <div className="card">
-          <button
-            className="w-full flex items-center justify-between"
-            onClick={() => setLogOpen(o => !o)}
-          >
-            <div className="flex items-center gap-2">
-              <History size={15} className="text-sapphire" />
-              <span className="font-display font-bold text-navy text-sm">
-                Log Perubahan ({logData.length})
-              </span>
-            </div>
-            {logOpen
-              ? <ChevronUp size={16} className="text-slate-400" />
-              : <ChevronDown size={16} className="text-slate-400" />
-            }
-          </button>
-
-          {logOpen && (
-            <div className="mt-4 space-y-3">
-              {logData.map(entry => (
-                <LogEntry key={entry.log_id} entry={entry} />
+        {/* Jobdesk */}
+        {jobdesks.length > 0 && (
+          <div className="card">
+            <h3 className="font-display font-bold text-navy text-sm mb-3">Jobdesk</h3>
+            <ol className="space-y-2">
+              {jobdesks.map((k, i) => (
+                <li key={i} className="flex gap-3 text-sm">
+                  <span className="text-sapphire font-bold w-5 shrink-0">{i + 1}.</span>
+                  <span className="text-slate-700">{k}</span>
+                </li>
               ))}
-            </div>
-          )}
-        </div>
-      )}
+            </ol>
+          </div>
+        )}
 
-      {/* SLA Tooltip Dialog — menggunakan createPortal agar presisi di tengah */}
+        {/* Spesifikasi */}
+        {specs.length > 0 && (
+          <div className="card">
+            <h3 className="font-display font-bold text-navy text-sm mb-3">Spesifikasi yang Dibutuhkan</h3>
+            <ul className="space-y-2">
+              {specs.map((s, i) => (
+                <li key={i} className="flex gap-2 text-sm">
+                  <CheckCircle2 size={15} className="text-green-500 shrink-0 mt-0.5" />
+                  <span className="text-slate-700">{s}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Approval Status */}
+        <div className="card">
+          <h3 className="font-display font-bold text-navy text-sm mb-4">Status Approval</h3>
+          <div className="space-y-4">
+            <ApprovalItem
+              title="Approval Atasan"
+              status={data.tpk_approveatasan}
+              date={data.tpk_tgl_approveatasan}
+            />
+            <div className="border-t border-slate-100" />
+            <ApprovalItem
+              title="Approval HRD"
+              status={data.tpk_approveHRD}
+              date={data.tpk_tgl_approveHRD}
+            />
+          </div>
+        </div>
+
+        {/* Log History */}
+        {logData.length > 0 && (
+          <div className="card">
+            <button
+              className="w-full flex items-center justify-between"
+              onClick={() => setLogOpen(o => !o)}
+            >
+              <div className="flex items-center gap-2">
+                <History size={15} className="text-sapphire" />
+                <span className="font-display font-bold text-navy text-sm">
+                  Log Perubahan ({logData.length})
+                </span>
+              </div>
+              {logOpen
+                ? <ChevronUp size={16} className="text-slate-400" />
+                : <ChevronDown size={16} className="text-slate-400" />
+              }
+            </button>
+
+            {logOpen && (
+              <div className="mt-4 space-y-3">
+                {logData.map(entry => (
+                  <LogEntry key={entry.log_id} entry={entry} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+      </div>
+      {/* ── AKHIR KONTEN BAWAH ── */}
+
+      {/* SLA Tooltip Dialog */}
       {showSlaTooltip && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"

@@ -1,6 +1,6 @@
 // src/pages/monitoring/SlaDetailPage.jsx
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -11,13 +11,14 @@ import { getSlaStatusMeta } from '../../utils/helpers'
 import {
   CheckCircle2, LockOpen, Lock, AlertTriangle, User,
   Calendar, Clock, Edit3, Info, Loader2, ChevronDown, ChevronUp,
-  BellRing,
+  BellRing, ArrowLeft,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function SlaDetailPage() {
   const { nomor }  = useParams()
   const { isHrd, user } = useAuth()
+  const navigate        = useNavigate()
   const qc         = useQueryClient()
 
   const [showNoShow, setShowNoShow]     = useState(false)
@@ -77,9 +78,6 @@ export default function SlaDetailPage() {
   const history  = data.edit_history ?? []
   const approval = data.approval_info
 
-  // ✅ BARU: Deteksi apakah current user adalah Atasan
-  // tpk_peminta dari API = kode karyawan si peminta
-  // Jika user bukan HRD dan user.kode berbeda dari peminta → Atasan
   const isAtasan = !isHrd && sla?.tpk_peminta && user?.kode !== sla?.tpk_peminta
 
   const daysRem     = Number(sla?.days_remaining ?? 0)
@@ -96,196 +94,218 @@ export default function SlaDetailPage() {
   )
 
   return (
-    <div className="space-y-5 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Detail SLA</h1>
-          <p className="font-mono text-xs text-slate-400 mt-0.5">{nomor}</p>
+    <div className="max-w-3xl mx-auto relative">
+
+      {/* ── AREA STICKY HEADER ── */}
+      <div className="sticky top-0 z-30 bg-[#F8FAFC]/90 backdrop-blur-md pb-4 pt-2 mb-5 space-y-4">
+
+        {/* Header */}
+        <div className="page-header">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 -ml-2 rounded-xl text-slate-400 hover:bg-slate-200 hover:text-navy transition-all duration-150 shrink-0"
+              title="Kembali"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <div>
+              <h1 className="page-title">Detail SLA</h1>
+              <p className="font-mono text-xs text-slate-500 font-semibold mt-0.5">{nomor}</p>
+            </div>
+          </div>
         </div>
+
+        {/* Header Card (ikut menempel) */}
+        <div className="card bg-gradient-to-br from-sapphire to-blue-700 text-white shadow-md">
+          <p className="font-display font-bold text-xl">{sla?.jab_nama}</p>
+          <p className="text-blue-200 text-sm mt-0.5">{sla?.tpk_bagian} · {nomor}</p>
+          <div className="flex items-center gap-4 mt-4">
+            <Chip label={`${sla?.tpk_jumlah} Posisi`} />
+            <Chip label={`Min ${sla?.sla_min_days}–${sla?.sla_max_days} hari`} />
+          </div>
+        </div>
+
       </div>
+      {/* ── AKHIR AREA STICKY HEADER ── */}
 
-      {/* Header Card */}
-      <div className="card bg-gradient-to-br from-sapphire to-blue-700 text-white">
-        <p className="font-display font-bold text-xl">{sla?.jab_nama}</p>
-        <p className="text-blue-200 text-sm mt-0.5">{sla?.tpk_bagian} · {nomor}</p>
-        <div className="flex items-center gap-4 mt-4">
-          <Chip label={`${sla?.tpk_jumlah} Posisi`} />
-          <Chip label={`Min ${sla?.sla_min_days}–${sla?.sla_max_days} hari`} />
-        </div>
-      </div>
+      {/* ── KONTEN BAWAH ── */}
+      <div className="space-y-5">
 
-      {/* Status Box */}
-      <div className="card">
-        <div className="rounded-xl p-6 text-center mb-4" style={{ background: meta.bg }}>
-          <p className="text-5xl font-display font-black leading-none" style={{ color: meta.text }}>
-            {isCompleted ? 'SELESAI' : daysRem < 0 ? 'TERLAMBAT' : daysRem === 0 ? 'HARI INI' : `${daysRem}`}
-          </p>
-          {!isCompleted && daysRem >= 0 && daysRem !== 0 && (
-            <p className="text-sm mt-1" style={{ color: meta.text }}>hari tersisa</p>
+        {/* Status Box */}
+        <div className="card">
+          <div className="rounded-xl p-6 text-center mb-4" style={{ background: meta.bg }}>
+            <p className="text-5xl font-display font-black leading-none" style={{ color: meta.text }}>
+              {isCompleted ? 'SELESAI' : daysRem < 0 ? 'TERLAMBAT' : daysRem === 0 ? 'HARI INI' : `${daysRem}`}
+            </p>
+            {!isCompleted && daysRem >= 0 && daysRem !== 0 && (
+              <p className="text-sm mt-1" style={{ color: meta.text }}>hari tersisa</p>
+            )}
+            {daysRem < 0 && !isCompleted && (
+              <p className="text-sm mt-1" style={{ color: meta.text }}>{-daysRem} hari melewati batas</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <StatusRow label="Status SLA" value={sla?.sla_status} />
+            <StatusRow label="Sumber"     value={sla?.sla_source} />
+            <StatusRow
+              label="Editable"
+              value={isEditable ? 'Ya – Perlu Update User' : 'Tidak'}
+              valueColor={isEditable ? '#c2410c' : '#166534'}
+            />
+            {(sla?.sla_no_show_buffer_days ?? 0) > 0 && (
+              <StatusRow label="Buffer No-Show" value={`+${sla.sla_no_show_buffer_days} hari`} valueColor="#f57c00" />
+            )}
+          </div>
+
+          {approval?.approver_name && (
+            <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Approval</p>
+              <StatusRow label="Disetujui Oleh" value={approval.approver_name} />
+              <StatusRow label="Waktu Approval" value={`${approval.approval_delay_days} hari`} valueColor={getDaysColor(-(approval.approval_delay_days ?? 0))} />
+              {approval.approval_flag === 'APPROVAL_DELAYED' && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mt-2">
+                  <Clock size={13} className="text-amber-600" />
+                  <p className="text-xs text-amber-700 font-medium">Approval tertunda &gt;5 hari</p>
+                </div>
+              )}
+            </div>
           )}
-          {daysRem < 0 && !isCompleted && (
-            <p className="text-sm mt-1" style={{ color: meta.text }}>{-daysRem} hari melewati batas</p>
-          )}
         </div>
 
-        <div className="space-y-2">
-          <StatusRow label="Status SLA" value={sla?.sla_status} />
-          <StatusRow label="Sumber"     value={sla?.sla_source} />
-          <StatusRow
-            label="Editable"
-            value={isEditable ? 'Ya – Perlu Update User' : 'Tidak'}
-            valueColor={isEditable ? '#c2410c' : '#166534'}
-          />
-          {(sla?.sla_no_show_buffer_days ?? 0) > 0 && (
-            <StatusRow label="Buffer No-Show" value={`+${sla.sla_no_show_buffer_days} hari`} valueColor="#f57c00" />
-          )}
+        {/* Timeline */}
+        <div className="card">
+          <p className="font-display font-bold text-navy text-sm mb-4">Timeline Rekrutmen</p>
+          <div className="space-y-0">
+            {buildTimeline(timeline, sla).map((t, i, arr) => (
+              <TimelineItem key={i} label={t.label} date={t.date} isLast={i === arr.length - 1} color={t.color} />
+            ))}
+          </div>
         </div>
 
-        {approval?.approver_name && (
-          <div className="mt-4 pt-4 border-t border-slate-100 space-y-2">
-            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Approval</p>
-            <StatusRow label="Disetujui Oleh" value={approval.approver_name} />
-            <StatusRow label="Waktu Approval" value={`${approval.approval_delay_days} hari`} valueColor={getDaysColor(-(approval.approval_delay_days ?? 0))} />
-            {approval.approval_flag === 'APPROVAL_DELAYED' && (
-              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl p-2.5 mt-2">
-                <Clock size={13} className="text-amber-600" />
-                <p className="text-xs text-amber-700 font-medium">Approval tertunda &gt;5 hari</p>
+        {/* Card supervisory untuk Atasan */}
+        {isAtasan && !isCompleted && isEditable && (
+          <div className="card border-l-4 border-l-amber-400" style={{ background: '#FFFBEB' }}>
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,143,0,0.15)' }}>
+                <BellRing size={20} className="text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm text-amber-800">
+                  Tindakan Diperlukan dari Bawahan
+                </p>
+                <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+                  HRD telah membuka izin edit tanggal untuk permintaan ini.
+                  Ingatkan <strong>{sla?.nama_peminta}</strong> untuk segera membuka
+                  aplikasi dan memperbarui tanggal target rekrutmen.
+                </p>
+                <div className="mt-2 bg-amber-100 rounded-lg px-3 py-2">
+                  <p className="text-xs text-amber-800 font-medium">
+                    💡 Hubungi {sla?.nama_peminta} melalui pesan atau telepon agar update segera dilakukan sebelum batas waktu berakhir.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* HRD-only: Hired candidates */}
+        {isHrd && hiredData.length > 0 && (
+          <div className="card">
+            <p className="font-display font-bold text-navy text-sm mb-3">Kandidat Diterima</p>
+            <div className="space-y-2">
+              {hiredData.map(c => (
+                <div key={c.rkt_nomor} className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                      <User size={14} className="text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-navy">{c.nama}</p>
+                      <p className="text-xs text-slate-400 font-mono">{c.rkt_nomor}</p>
+                    </div>
+                  </div>
+                  <button
+                    className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-40"
+                    disabled={c.is_grouped}
+                    onClick={() => { setSelectedRkt(c); setShowNoShow(true) }}
+                  >
+                    Batalkan
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* HRD-only actions */}
+        {isHrd && !isCompleted && sla?.sla_status === 'CALCULATED' && (
+          <div className="space-y-3">
+            <div className={`card border-l-4 ${isEditable ? 'border-l-orange-400' : 'border-l-slate-300'}`}>
+              <div className="flex items-start gap-3 mb-3">
+                {isEditable ? <LockOpen size={18} className="text-orange-500 shrink-0" /> : <Lock size={18} className="text-slate-400 shrink-0" />}
+                <div>
+                  <p className={`font-semibold text-sm ${isEditable ? 'text-orange-600' : 'text-navy'}`}>
+                    {isEditable ? 'Izin Edit: Terbuka' : 'Izin Edit Tanggal'}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isEditable ? 'Peminta sedang dapat mengubah tanggal target' : 'Buka izin agar peminta dapat mengubah tanggal'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowEditable(true)}
+                className={`w-full text-sm font-semibold py-2 rounded-xl transition-colors ${
+                  isEditable ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-slate-700 text-white hover:bg-slate-800'
+                }`}
+              >
+                {isEditable ? 'Tutup Izin Edit' : 'Buka Izin Edit untuk Peminta'}
+              </button>
+            </div>
+
+            <div className="card border-l-4 border-l-green-500">
+              <div className="flex items-start gap-3 mb-3">
+                <CheckCircle2 size={18} className="text-green-600 shrink-0" />
+                <div>
+                  <p className="font-semibold text-sm text-green-700">Tutup Permintaan Manual</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Akhiri SLA jika rekrutmen sudah selesai</p>
+                </div>
+              </div>
+              <button onClick={() => setShowComplete(true)} className="w-full text-sm font-semibold py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors">
+                Tutup Manual
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Edit History */}
+        {history.length > 0 && (
+          <div className="card">
+            <button className="w-full flex items-center justify-between font-display font-bold text-navy text-sm" onClick={() => setHistoryOpen(h => !h)}>
+              Riwayat Perubahan ({history.length})
+              {historyOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+            {historyOpen && (
+              <div className="mt-4 space-y-3">
+                {history.map(h => <HistoryItem key={h.log_id} item={h} />)}
               </div>
             )}
           </div>
         )}
+
+        {sla?.sla_notes && (
+          <div className="card flex gap-3">
+            <Info size={16} className="text-sapphire shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-sm text-navy mb-1">Catatan</p>
+              <p className="text-xs text-slate-500 whitespace-pre-line leading-relaxed">{sla.sla_notes}</p>
+            </div>
+          </div>
+        )}
+
       </div>
-
-      {/* Timeline */}
-      <div className="card">
-        <p className="font-display font-bold text-navy text-sm mb-4">Timeline Rekrutmen</p>
-        <div className="space-y-0">
-          {buildTimeline(timeline, sla).map((t, i, arr) => (
-            <TimelineItem key={i} label={t.label} date={t.date} isLast={i === arr.length - 1} color={t.color} />
-          ))}
-        </div>
-      </div>
-
-      {/* ✅ BARU: Card supervisory untuk Atasan */}
-      {isAtasan && !isCompleted && isEditable && (
-        <div className="card border-l-4 border-l-amber-400" style={{ background: '#FFFBEB' }}>
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'rgba(255,143,0,0.15)' }}>
-              <BellRing size={20} className="text-amber-600" />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-sm text-amber-800">
-                Tindakan Diperlukan dari Bawahan
-              </p>
-              <p className="text-xs text-amber-700 mt-1 leading-relaxed">
-                HRD telah membuka izin edit tanggal untuk permintaan ini.
-                Ingatkan <strong>{sla?.nama_peminta}</strong> untuk segera membuka
-                aplikasi dan memperbarui tanggal target rekrutmen.
-              </p>
-              <div className="mt-2 bg-amber-100 rounded-lg px-3 py-2">
-                <p className="text-xs text-amber-800 font-medium">
-                  💡 Hubungi {sla?.nama_peminta} melalui pesan atau telepon agar update segera dilakukan sebelum batas waktu berakhir.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* HRD-only: Hired candidates */}
-      {isHrd && hiredData.length > 0 && (
-        <div className="card">
-          <p className="font-display font-bold text-navy text-sm mb-3">Kandidat Diterima</p>
-          <div className="space-y-2">
-            {hiredData.map(c => (
-              <div key={c.rkt_nomor} className="flex items-center justify-between bg-slate-50 rounded-xl p-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <User size={14} className="text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-navy">{c.nama}</p>
-                    <p className="text-xs text-slate-400 font-mono">{c.rkt_nomor}</p>
-                  </div>
-                </div>
-                <button
-                  className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-amber-300 text-amber-700 hover:bg-amber-50 transition-colors disabled:opacity-40"
-                  disabled={c.is_grouped}
-                  onClick={() => { setSelectedRkt(c); setShowNoShow(true) }}
-                >
-                  Batalkan
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* HRD-only actions */}
-      {isHrd && !isCompleted && sla?.sla_status === 'CALCULATED' && (
-        <div className="space-y-3">
-          <div className={`card border-l-4 ${isEditable ? 'border-l-orange-400' : 'border-l-slate-300'}`}>
-            <div className="flex items-start gap-3 mb-3">
-              {isEditable ? <LockOpen size={18} className="text-orange-500 shrink-0" /> : <Lock size={18} className="text-slate-400 shrink-0" />}
-              <div>
-                <p className={`font-semibold text-sm ${isEditable ? 'text-orange-600' : 'text-navy'}`}>
-                  {isEditable ? 'Izin Edit: Terbuka' : 'Izin Edit Tanggal'}
-                </p>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {isEditable ? 'Peminta sedang dapat mengubah tanggal target' : 'Buka izin agar peminta dapat mengubah tanggal'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setShowEditable(true)}
-              className={`w-full text-sm font-semibold py-2 rounded-xl transition-colors ${
-                isEditable ? 'bg-orange-500 text-white hover:bg-orange-600' : 'bg-slate-700 text-white hover:bg-slate-800'
-              }`}
-            >
-              {isEditable ? 'Tutup Izin Edit' : 'Buka Izin Edit untuk Peminta'}
-            </button>
-          </div>
-
-          <div className="card border-l-4 border-l-green-500">
-            <div className="flex items-start gap-3 mb-3">
-              <CheckCircle2 size={18} className="text-green-600 shrink-0" />
-              <div>
-                <p className="font-semibold text-sm text-green-700">Tutup Permintaan Manual</p>
-                <p className="text-xs text-slate-400 mt-0.5">Akhiri SLA jika rekrutmen sudah selesai</p>
-              </div>
-            </div>
-            <button onClick={() => setShowComplete(true)} className="w-full text-sm font-semibold py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors">
-              Tutup Manual
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Edit History */}
-      {history.length > 0 && (
-        <div className="card">
-          <button className="w-full flex items-center justify-between font-display font-bold text-navy text-sm" onClick={() => setHistoryOpen(h => !h)}>
-            Riwayat Perubahan ({history.length})
-            {historyOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-          {historyOpen && (
-            <div className="mt-4 space-y-3">
-              {history.map(h => <HistoryItem key={h.log_id} item={h} />)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {sla?.sla_notes && (
-        <div className="card flex gap-3">
-          <Info size={16} className="text-sapphire shrink-0 mt-0.5" />
-          <div>
-            <p className="font-semibold text-sm text-navy mb-1">Catatan</p>
-            <p className="text-xs text-slate-500 whitespace-pre-line leading-relaxed">{sla.sla_notes}</p>
-          </div>
-        </div>
-      )}
+      {/* ── AKHIR KONTEN BAWAH ── */}
 
       {/* Dialogs */}
       {showNoShow && selectedRkt && (
@@ -394,7 +414,7 @@ function HistoryItem({ item }) {
   )
 }
 
-// ── Dialogs — semua dengan backdrop click & createPortal ──────────────────────
+// ── Dialogs ───────────────────────────────────────────────────────────────────
 
 function NoShowDialog({ candidate, loading, onConfirm, onClose }) {
   const [days, setDays] = useState('')
@@ -496,11 +516,6 @@ function SimpleConfirmDialog({ title, message, confirmLabel, confirmColor, loadi
   )
 }
 
-/**
- * FIX #4: DialogWrapper menggunakan createPortal agar posisi fixed
- * selalu relatif ke viewport, bukan ke parent yang di-scroll.
- * Sebelumnya dialog muncul mengikuti scroll posisi halaman.
- */
 function DialogWrapper({ title, onClose, children }) {
   return createPortal(
     <div

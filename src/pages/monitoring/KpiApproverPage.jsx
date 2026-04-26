@@ -5,12 +5,15 @@ import { monitoringApi } from '../../api/services'
 import { formatDate, getPerformanceMeta } from '../../utils/helpers'
 import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
-
-// [FIX-MINOR-1] Hapus duplikasi lokal: periodToApiParam & periodToLabel dipindahkan
-// ke src/utils/periodFilter.js (shared utility). Import dari sana.
 import { periodToLabel, periodToApiParam } from '../../utils/periodFilter'
-
+import PaginationControls from '../../components/PaginationControls'
+import { usePagination } from '../../hooks/usePagination'
 import { Gauge, Calendar, ChevronDown, ChevronRight, Clock, Trophy, X } from 'lucide-react'
+
+// IMPORT ANIMATED ICON
+import { AnimatedIcon } from '../../components/AnimatedIcon'
+
+const ITEMS_PER_PAGE = 10
 
 function getDelayColor(days) {
   if (days <= 1) return '#00C853'
@@ -35,6 +38,9 @@ export default function KpiApproverPage() {
   const dist    = summary.performance_distribution ?? {}
   const total   = summary.total_approvals ?? 0
 
+  const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
+    usePagination(items, ITEMS_PER_PAGE)
+
   const handlePickerSelect = (val) => {
     setPeriod(val === null ? 'All Time' : val)
     setShowPicker(false)
@@ -44,56 +50,85 @@ export default function KpiApproverPage() {
   if (isError)   return <ErrorBox message="Gagal memuat KPI Approver." onRetry={refetch} />
 
   return (
-    <div className="space-y-5">
-      {/* ── Header ── */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Rekap Approval</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Approval Performance — {periodToLabel(period)}</p>
+    <div className="space-y-5 relative">
+      
+      {/* ── STICKY HEADER: JUDUL, SUMMARY & FILTER ── */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
+        
+        {/* Title Section */}
+        <div className="page-header mb-4">
+          <div>
+            <h1 className="page-title">Rekap Approval</h1>
+            <p className="text-sm text-slate-500 mt-0.5">Approval Performance — {periodToLabel(period)}</p>
+          </div>
         </div>
 
-        {/* ── Period Button ── */}
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
-        >
-          <Calendar size={16} className="text-sapphire" />
-          <span className="text-slate-700 font-semibold text-xs max-w-[130px] truncate">
-            {periodToLabel(period)}
-          </span>
-          {period !== 'All Time' ? (
-            <X
-              size={14}
-              className="text-slate-400 hover:text-red-400 transition-colors"
-              onClick={(e) => { e.stopPropagation(); setPeriod('All Time') }}
+        {/* ── SATU BARIS MENYAMPING: STATS, TARGET IDEAL, FILTER ── */}
+        <div className="flex flex-col xl:flex-row gap-3 items-stretch w-full">
+          
+          {/* KIRI: Total, Fast Rate, Avg Delay (Datar) */}
+          <div className="flex items-center gap-6 shrink-0">
+            <CompactStat label="TOTAL" value={total.toString()} color="text-sapphire" />
+            <div className="w-px h-8 bg-slate-200" />
+            <CompactStat
+              label="FAST RATE"
+              value={`${summary.fast_approval_rate ?? 0}%`}
+              color={(summary.fast_approval_rate ?? 0) >= 80 ? 'text-green-600' : 'text-amber-500'}
             />
-          ) : (
-            <ChevronDown size={16} className="text-slate-400" />
-          )}
-        </button>
-      </div>
+            <div className="w-px h-8 bg-slate-200" />
+            <CompactStat
+              label="AVG DELAY"
+              value={`${Math.round(summary.avg_approval_delay_days ?? 0)}d`}
+              color={(summary.avg_approval_delay_days ?? 0) <= 3 ? 'text-green-600' : 'text-red-500'}
+            />
+          </div>
 
-      {/* ── Summary ── */}
-      <div className="card">
-        <div className="flex items-center justify-evenly">
-          <BigStat label="TOTAL"     value={total.toString()} color="text-sapphire" />
-          <div className="w-px h-10 bg-slate-100" />
-          <BigStat
-            label="FAST RATE"
-            value={`${summary.fast_approval_rate ?? 0}%`}
-            color={(summary.fast_approval_rate ?? 0) >= 80 ? 'text-green-600' : 'text-amber-500'}
-          />
-          <div className="w-px h-10 bg-slate-100" />
-          <BigStat
-            label="AVG DELAY"
-            value={`${Math.round(summary.avg_approval_delay_days ?? 0)}d`}
-            color={(summary.avg_approval_delay_days ?? 0) <= 3 ? 'text-green-600' : 'text-red-500'}
-          />
+          {/* TENGAH: Insight / Target Ideal */}
+          <div className="flex-1 flex items-center gap-3">
+            <AnimatedIcon variant="wiggle">
+              <Trophy size={20} className="text-sapphire shrink-0" />
+            </AnimatedIcon>
+            <div>
+              <p className="text-xs font-bold text-sapphire mb-0.5">Target Ideal</p>
+              <p className="text-[11px] text-slate-600 leading-snug">
+                Approval permintaan karyawan dalam <strong className="text-navy">≤3 hari kerja</strong> untuk memastikan proses rekrutmen berjalan lancar.
+              </p>
+            </div>
+          </div>
+
+          {/* KANAN: Filter Kalender (Dibungkus div items-center agar tidak strech) */}
+          <div className="flex items-center shrink-0 justify-end">
+            <button
+              onClick={() => setShowPicker(true)}
+              className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-all duration-300 whitespace-nowrap ${
+                period !== 'All Time'
+                  ? 'bg-sapphire/10 text-sapphire border-sapphire/30'
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-[#A6C5D7] hover:shadow-sm'
+              }`}
+            >
+              <AnimatedIcon variant="scale">
+                <Calendar size={13} className={period !== 'All Time' ? 'text-sapphire' : 'text-slate-400'} />
+              </AnimatedIcon>
+              <span className="max-w-[120px] truncate text-left">
+                {periodToLabel(period)}
+              </span>
+              {period !== 'All Time' ? (
+                <X
+                  size={12}
+                  className="hover:text-red-500 transition-colors ml-0.5"
+                  onClick={(e) => { e.stopPropagation(); setPeriod('All Time') }}
+                />
+              ) : (
+                <ChevronDown size={13} className="text-slate-400 ml-0.5" />
+              )}
+            </button>
+          </div>
+
         </div>
       </div>
 
       {/* ── Distribution ── */}
-      <div className="card">
+      <div className="card border border-slate-100 shadow-sm mt-2">
         <p className="font-display font-bold text-navy text-sm mb-4">SLA Velocity Distribution</p>
         <div className="space-y-4">
           {[
@@ -116,30 +151,30 @@ export default function KpiApproverPage() {
         </div>
       </div>
 
-      {/* ── Insight ── */}
-      <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-2xl p-4">
-        <Trophy size={18} className="text-sapphire shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-bold text-sapphire">Target Ideal</p>
-          <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            Approval permintaan karyawan dalam ≤3 hari kerja untuk memastikan proses rekrutmen berjalan lancar.
-          </p>
-        </div>
-      </div>
-
-      {/* ── Items ── */}
+      {/* ── Items dengan Pagination ── */}
       {items.length === 0 ? (
         <EmptyState message="Belum ada data approval pada periode ini." />
       ) : (
-        <div className="space-y-4">
-          <p className="font-display font-bold text-navy text-sm">Approval Log ({items.length})</p>
-          {items.map(item => (
-            <ApprovalItemCard key={`${item.tpk_nomor}-${item.approver_nik}`} item={item} />
-          ))}
+        <div className="space-y-3 mt-4">
+          <p className="font-display font-bold text-navy text-sm">
+            Approval Log ({totalItems})
+          </p>
+          <div className="space-y-4">
+            {paginatedData.map(item => (
+              <ApprovalItemCard key={`${item.tpk_nomor}-${item.approver_nik}`} item={item} />
+            ))}
+          </div>
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
         </div>
       )}
 
-      {/* ── Period Picker Modal ── */}
       {showPicker && (
         <PeriodPickerModal
           current={period === 'All Time' ? null : period}
@@ -153,11 +188,12 @@ export default function KpiApproverPage() {
 
 // ── Sub Components ─────────────────────────────────────────────────────────────
 
-function BigStat({ label, value, color }) {
+// Data Ringkas dengan text-2xl
+function CompactStat({ label, value, color }) {
   return (
-    <div className="text-center">
-      <p className={`text-4xl font-display font-black ${color}`}>{value}</p>
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide mt-0.5">{label}</p>
+    <div className="text-center py-1 px-2">
+      <p className={`text-2xl font-display font-black leading-none mb-1.5 ${color}`}>{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
     </div>
   )
 }
@@ -167,35 +203,38 @@ function ApprovalItemCard({ item }) {
   const delayColor = getDelayColor(item.sla_approval_delay_days)
 
   return (
-    <div className="card hover:shadow-card-hover transition-shadow">
+    <div className="card group hover:shadow-card-hover hover:border-[#A6C5D7] transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="font-display font-bold text-navy">{item.approver_name}</p>
+          <p className="font-display font-bold text-navy group-hover:text-sapphire transition-colors">{item.approver_name}</p>
           <p className="text-xs text-slate-400 mt-0.5">{item.jab_nama}</p>
         </div>
         <span
-          className="text-xs font-bold px-2.5 py-1 rounded-full"
+          className="text-[10px] uppercase tracking-wider font-bold px-2.5 py-1 rounded-full transition-colors"
           style={{ background: meta.bg, color: meta.text }}
         >
           {meta.label}
         </span>
       </div>
 
-      {/* Date flow */}
-      <div className="bg-slate-50 rounded-xl p-3 flex items-center justify-between mb-3">
+      <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 flex items-center justify-between mb-3">
         <DateBlock label="REQUESTED" date={item.request_date} />
-        <ChevronRight size={16} className="text-slate-300" />
+        <AnimatedIcon variant="slideRight">
+          <ChevronRight size={16} className="text-slate-300" />
+        </AnimatedIcon>
         <DateBlock label="APPROVED" date={item.approved_date} color="text-green-600" />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-1.5">
-          <Clock size={14} style={{ color: delayColor }} />
+          <AnimatedIcon variant="spin">
+            <Clock size={14} style={{ color: delayColor }} />
+          </AnimatedIcon>
           <span className="text-xs font-bold" style={{ color: delayColor }}>
             Duration: {item.sla_approval_delay_days} days
           </span>
         </div>
-        <span className="text-xs text-slate-400">{item.tpk_bagian}</span>
+        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{item.tpk_bagian}</span>
       </div>
     </div>
   )
@@ -204,8 +243,8 @@ function ApprovalItemCard({ item }) {
 function DateBlock({ label, date, color = 'text-slate-700' }) {
   return (
     <div className="text-center">
-      <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{label}</p>
-      <p className={`text-xs font-semibold mt-0.5 ${color}`}>{formatDate(date)}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className={`text-xs font-bold mt-1 ${color}`}>{formatDate(date)}</p>
     </div>
   )
 }

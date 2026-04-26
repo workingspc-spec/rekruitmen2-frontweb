@@ -5,13 +5,16 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../context/AuthContext'
 import { dashboardApi, recruitmentApi } from '../api/services'
 import { formatDate } from '../utils/helpers'
-import { StatCard, AlertBanner, PageLoader, ErrorBox } from '../components/ui'
+import { StatCard, PageLoader, ErrorBox } from '../components/ui'
 import { PeriodPickerModal } from '../components/PeriodPickerModal'
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
-  Building2, ShieldCheck // <--- TAMBAHAN INI
+  Building2, ShieldCheck, Edit2, AlertTriangle
 } from 'lucide-react'
+
+// IMPORT ANIMATED ICON
+import { AnimatedIcon } from '../components/AnimatedIcon'
 
 const PERIOD_OPTIONS = [
   { value: 'All Time',   label: 'Semua Waktu' },
@@ -58,13 +61,10 @@ export default function DashboardPage() {
   const [period, setPeriod]         = useState('All Time')
   const [showPicker, setShowPicker] = useState(false)
 
-  // 👇 --- TAMBAHKAN KODE INI DI SINI --- 👇
   useEffect(() => {
       // Sync saat dashboard dibuka dan saat period berubah
-      // shadow table mungkin stale dari legacy app
       recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
-  }, [period]) // ← Masukkan 'period' agar trigger saat dropdown waktu diubah
-  // 👆 --------------------------------- 👆
+  }, [period])
 
   const apiParam = periodToApiParam(period)
   const label    = periodToLabel(period)
@@ -81,9 +81,6 @@ export default function DashboardPage() {
   const stats   = statsQ.data
   const summary = summaryQ.data
 
-  /**
-   * Navigate ke halaman dengan meneruskan period filter via query param.
-   */
   const navigateWithPeriod = (path) => {
     if (!period || period === 'All Time') {
       navigate(path)
@@ -92,10 +89,6 @@ export default function DashboardPage() {
     }
   }
 
-  /**
-   * Navigate ke SLA Monitoring dengan filter status + period opsional.
-   * Digunakan untuk kartu yang spesifik menampilkan subset data monitoring.
-   */
   const navigateToMonitoring = (statusFilter = null, periodFilter = null) => {
     const params = new URLSearchParams()
     if (statusFilter) params.set('status', statusFilter)
@@ -110,6 +103,7 @@ export default function DashboardPage() {
   }
 
   const pickerCurrent = period === 'All Time' ? null : period
+
   const menuItem = (to, label, sub, Icon) => (
     <button
       key={to}
@@ -129,47 +123,55 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between">
+      
+      {/* ── HEADER & KONTROL (COMPACT ALERTS) ── */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <p className="text-slate-500 text-sm font-medium">Selamat datang,</p>
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1">{user?.nama ?? '–'}</h1>
           <p className="text-xs text-sapphire font-bold mt-1.5 uppercase tracking-wider">{user?.bagian ?? ''}</p>
         </div>
 
-        <button
-          onClick={() => setShowPicker(true)}
-          className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all"
-        >
-          <Calendar size={16} className="text-sapphire" />
-          <span className="text-slate-700 font-semibold text-xs max-w-[120px] truncate">{label}</span>
-          <ChevronDown size={16} className="text-slate-400" />
-        </button>
-      </div>
+        {/* Baris Kontrol di Kanan */}
+        <div className="flex flex-wrap items-center gap-2">
+          
+          {/* ALERT 1: Perlu Update */}
+          {summary?.needUserUpdate > 0 && (
+            <button
+              onClick={() => navigateToMonitoring('NEED_USER_UPDATE')}
+              className="flex items-center gap-1.5 bg-orange-50 text-orange-700 border border-orange-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-orange-100 hover:shadow-sm hover:-translate-y-0.5 transition-all"
+            >
+              <AnimatedIcon variant="wiggle">
+                <Edit2 size={14} />
+              </AnimatedIcon>
+              <span>{summary.needUserUpdate} Perlu Update</span>
+            </button>
+          )}
 
-      {/* ── Alert Banners ── */}
-      {summary?.needUserUpdate > 0 && (
-        <AlertBanner
-          type="warning"
-          message={
-            isHrd
-              ? `${summary.needUserUpdate} permintaan perlu update tanggal dari peminta.`
-              // ✅ PERUBAHAN: pesan lebih netral dan supervisory untuk non-HRD (bisa Peminta atau Atasan)
-              : `${summary.needUserUpdate} permintaan perlu update tanggal target. Pastikan peminta segera memperbarui.`
-          }
-          // ✅ PERUBAHAN: non-HRD sekarang juga ke monitoring agar Atasan bisa pantau bawahan
-          onAction={() => navigate('/monitoring')}
-          actionLabel={isHrd ? 'Lihat' : 'Pantau'}
-        />
-      )}
-      {summary?.overdueRequests > 0 && (
-        <AlertBanner
-          type="error"
-          message={`${summary.overdueRequests} permintaan melewati target SLA.`}
-          onAction={() => navigateToMonitoring('OVERDUE')}
-          actionLabel="Periksa"
-        />
-      )}
+          {/* ALERT 2: Overdue / Terlambat */}
+          {summary?.overdueRequests > 0 && (
+            <button
+              onClick={() => navigateToMonitoring('OVERDUE')}
+              className="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded-xl text-xs font-bold hover:bg-red-100 hover:shadow-sm hover:-translate-y-0.5 transition-all"
+            >
+              <AnimatedIcon variant="wiggle">
+                <AlertTriangle size={14} />
+              </AnimatedIcon>
+              <span>{summary.overdueRequests} Terlambat</span>
+            </button>
+          )}
+
+          {/* FILTER KALENDER */}
+          <button
+            onClick={() => setShowPicker(true)}
+            className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm hover:border-sapphire hover:shadow-sm hover:-translate-y-0.5 transition-all ml-auto md:ml-2"
+          >
+            <Calendar size={15} className="text-sapphire" />
+            <span className="text-slate-700 font-semibold text-xs max-w-[120px] truncate">{label}</span>
+            <ChevronDown size={14} className="text-slate-400" />
+          </button>
+        </div>
+      </div>
 
       {/* ── Stats Grid ── */}
       {statsQ.isLoading ? (
@@ -188,7 +190,6 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Kartu Permintaan */}
             <StatCard
               label="Permintaan"
               value={stats?.totalPermintaan ?? 0}
@@ -197,7 +198,6 @@ export default function DashboardPage() {
               onClick={() => navigateWithPeriod('/recruitment')}
             />
 
-            {/* Kartu Persetujuan */}
             <StatCard
               label="Pending Approval"
               value={stats?.pendingApproval ?? 0}
@@ -207,7 +207,6 @@ export default function DashboardPage() {
               onClick={() => navigateWithPeriod('/approval')}
             />
 
-            {/* Kartu SLA Aktif */}
             <StatCard
               label="SLA Aktif"
               value={summary?.activeRequests ?? 0}
@@ -216,7 +215,6 @@ export default function DashboardPage() {
               onClick={() => navigate('/monitoring')}
             />
 
-            {/* Kartu Selesai Bulan Ini */}
             <StatCard
               label="Selesai Bulan Ini"
               value={summary?.completedThisMonth ?? 0}
@@ -226,53 +224,12 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Note Legacy Count */}
           {stats?.legacyCount > 0 && (
             <p className="text-xs text-slate-400 mt-2 px-1">
-              * Termasuk{' '}
-              <span className="font-semibold">{stats.legacyCount}</span>{' '}
-              data dari sistem lama (read-only)
+              * Termasuk <span className="font-semibold">{stats.legacyCount}</span> data dari sistem lama (read-only)
             </p>
           )}
         </>
-      )}
-
-      {/* ── SLA Summary Cards ── */}
-      {summary && (
-        <div>
-          <p className="text-lg font-bold text-slate-800 mb-3">SLA Monitoring</p>
-          <div className="grid grid-cols-3 gap-5">
-            {[
-              {
-                label: 'Aktif',
-                val: summary.activeRequests,
-                color: '#0F52BA',
-                onClick: () => navigate('/monitoring'),
-              },
-              {
-                label: 'Terlambat',
-                val: summary.overdueRequests,
-                color: '#DC2626',
-                onClick: () => navigateToMonitoring('OVERDUE'),
-              },
-              {
-                label: 'Perlu Update',
-                val: summary.needUserUpdate,
-                color: '#F97316',
-                onClick: () => navigateToMonitoring('NEED_USER_UPDATE'),
-              },
-            ].map(({ label, val, color, onClick }) => (
-              <button
-                key={label}
-                onClick={onClick}
-                className="bg-white border border-slate-100 rounded-2xl p-6 text-center shadow-sm hover:shadow-lg hover:-translate-y-1 hover:border-blue-100 transition-all duration-300"
-              >
-                <p className="text-4xl font-black mb-1.5" style={{ color }}>{val}</p>
-                <p className="text-sm text-slate-500 font-semibold tracking-wide">{label}</p>
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* ── Quick Menu ── */}

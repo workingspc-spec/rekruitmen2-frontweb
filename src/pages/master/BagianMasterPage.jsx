@@ -6,7 +6,36 @@ import { masterApi } from '../../api/services'
 import { PageLoader, ErrorBox, EmptyState, Spinner } from '../../components/ui'
 import { formatDate } from '../../utils/helpers'
 import { Building2, Plus, Edit2, Check, X, ToggleLeft, ToggleRight, Save } from 'lucide-react'
+import PaginationControls from '../../components/PaginationControls'
+import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
+
+// 1. IMPORT ANIMATED ICON
+import { AnimatedIcon } from '../../components/AnimatedIcon'
+
+const ITEMS_PER_PAGE = 15
+
+// Utilitas Class Filter agar selaras dengan Approval / Monitoring
+const getFilterClasses = (color, isActive) => {
+  if (isActive) {
+    const map = {
+      sapphire: 'bg-white shadow text-sapphire',
+      green:    'bg-white shadow text-green-600',
+      slate:    'bg-white shadow text-slate-700',
+    }
+    return map[color] || 'bg-white shadow text-sapphire'
+  }
+  return 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+}
+
+const getBadgeClasses = (color) => {
+  const map = {
+    sapphire: 'bg-sapphire/10 text-sapphire',
+    green:    'bg-green-100 text-green-700',
+    slate:    'bg-slate-200 text-slate-700',
+  }
+  return map[color] || 'bg-sapphire/10 text-sapphire'
+}
 
 export default function BagianMasterPage() {
   const qc = useQueryClient()
@@ -33,7 +62,7 @@ export default function BagianMasterPage() {
 
   const updateNamaMut = useMutation({
     mutationFn: ({ id, nama }) => masterApi.updateBagian(id, { bag_nama: nama }),
-    onSuccess: (_, vars) => {
+    onSuccess: () => {
       toast.success('Nama bagian diperbarui')
       qc.invalidateQueries({ queryKey: ['bagian-master-list'] })
       qc.invalidateQueries({ queryKey: ['bagian'] })
@@ -56,53 +85,69 @@ export default function BagianMasterPage() {
     return list.sort((a, b) => b.bag_active - a.bag_active || a.bag_nama.localeCompare(b.bag_nama))
   }, [raw, filterActive])
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
+    usePagination(filteredList, ITEMS_PER_PAGE)
+
   const aktifCount    = raw.filter(b => b.bag_active === 1).length
   const nonAktifCount = raw.filter(b => b.bag_active === 0).length
+
+  // Filter Config
+  const FILTERS = [
+    { label: 'Semua',    value: null, color: 'sapphire', count: raw.length },
+    { label: 'Aktif',    value: 1,    color: 'green',    count: aktifCount },
+    { label: 'Nonaktif', value: 0,    color: 'slate',    count: nonAktifCount },
+  ]
 
   if (isLoading) return <PageLoader />
   if (isError)   return <ErrorBox message="Gagal memuat data bagian." onRetry={refetch} />
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Kelola Bagian / Departemen</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Manajemen master data bagian untuk dropdown form rekruitmen
-          </p>
+    <div className="space-y-5 relative">
+      
+      {/* 2. STICKY HEADER & GLASSMORPHISM */}
+      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
+        
+        <div className="page-header mb-4">
+          <div>
+            <h1 className="page-title">Kelola Bagian / Departemen</h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Manajemen master data bagian untuk dropdown form rekruitmen
+            </p>
+          </div>
         </div>
-        <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-          <Plus size={16} /> Tambah Bagian
-        </button>
-      </div>
 
-      {/* Summary Bar */}
-      <div className="flex items-center gap-6 bg-sapphire/5 border border-sapphire/10 rounded-2xl px-5 py-3">
-        <SummaryChip label="Total"    value={raw.length}      color="text-sapphire" />
-        <SummaryChip label="Aktif"    value={aktifCount}      color="text-green-600" />
-        <SummaryChip label="Nonaktif" value={nonAktifCount}   color="text-slate-400" />
-      </div>
+        {/* 3. LAYOUT FILTER DAN TOMBOL (SEBARIS) */}
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between w-full">
+          
+          {/* Filter Chips (Latar Putih, Clean Design) */}
+          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap">
+            {FILTERS.map(opt => {
+              const isActive = filterActive === opt.value
+              return (
+                <button
+                  key={String(opt.value)}
+                  onClick={() => { setFilterActive(opt.value); setCurrentPage(1); }}
+                  className={`relative px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-1.5 ${getFilterClasses(opt.color, isActive)}`}
+                >
+                  {opt.label}
+                  <span className={`inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold transition-colors ${getBadgeClasses(opt.color)}`}>
+                    {opt.count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-      {/* Filter Chips */}
-      <div className="flex gap-2">
-        {[
-          { label: 'Semua',    value: null },
-          { label: 'Aktif',    value: 1    },
-          { label: 'Nonaktif', value: 0    },
-        ].map(opt => (
-          <button
-            key={String(opt.value)}
-            onClick={() => setFilterActive(opt.value)}
-            className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-              filterActive === opt.value
-                ? 'bg-sapphire text-white border-sapphire'
-                : 'bg-white text-slate-600 border-slate-200 hover:border-sapphire'
-            }`}
-          >
-            {opt.label}
+          {/* Action Button */}
+          <button className="btn-primary flex items-center gap-2 shrink-0" onClick={() => setShowAddModal(true)}>
+            <AnimatedIcon variant="scale">
+              <Plus size={16} />
+            </AnimatedIcon>
+            Tambah Bagian
           </button>
-        ))}
+        </div>
+
       </div>
 
       {/* List */}
@@ -115,18 +160,28 @@ export default function BagianMasterPage() {
         />
       ) : (
         <div className="space-y-3">
-          {filteredList.map(item => (
-            <BagianCard
-              key={item.bag_id}
-              item={item}
-              editTarget={editTarget}
-              setEditTarget={setEditTarget}
-              onSaveEdit={(nama) => updateNamaMut.mutate({ id: item.bag_id, nama })}
-              onToggle={() => toggleMut.mutate({ id: item.bag_id, active: item.bag_active === 1 ? 0 : 1 })}
-              isSaving={updateNamaMut.isPending && editTarget?.bag_id === item.bag_id}
-              isToggling={toggleMut.isPending}
-            />
-          ))}
+          <div className="space-y-3">
+            {paginatedData.map(item => (
+              <BagianCard
+                key={item.bag_id}
+                item={item}
+                editTarget={editTarget}
+                setEditTarget={setEditTarget}
+                onSaveEdit={(nama) => updateNamaMut.mutate({ id: item.bag_id, nama })}
+                onToggle={() => toggleMut.mutate({ id: item.bag_id, active: item.bag_active === 1 ? 0 : 1 })}
+                isSaving={updateNamaMut.isPending && editTarget?.bag_id === item.bag_id}
+                isToggling={toggleMut.isPending}
+              />
+            ))}
+          </div>
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalItems}
+            onPageChange={setCurrentPage}
+            itemsPerPage={ITEMS_PER_PAGE}
+          />
         </div>
       )}
 
@@ -144,14 +199,7 @@ export default function BagianMasterPage() {
   )
 }
 
-function SummaryChip({ label, value, color }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`text-2xl font-black ${color}`}>{value}</span>
-      <span className="text-xs text-slate-400 font-semibold">{label}</span>
-    </div>
-  )
-}
+// 4. SUMMARY CHIP DIHAPUS (Karena sudah masuk ke Filter Tabs)
 
 function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isSaving, isToggling }) {
   const isActive  = item.bag_active === 1
@@ -168,10 +216,10 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
   }
 
   return (
-    <div className={`card flex items-center gap-4 transition-all ${!isActive ? 'opacity-60' : ''}`}>
+    <div className={`card group flex items-center gap-4 transition-all duration-300 hover:shadow-card-hover hover:border-[#A6C5D7] ${!isActive ? 'opacity-60 grayscale-[50%]' : ''}`}>
       {/* Icon */}
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
-        isActive ? 'bg-sapphire/10' : 'bg-slate-100'
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+        isActive ? 'bg-sapphire/10 group-hover:bg-sapphire/20' : 'bg-slate-100'
       }`}>
         <Building2 size={20} className={isActive ? 'text-sapphire' : 'text-slate-400'} />
       </div>
@@ -180,7 +228,7 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
       <div className="flex-1 min-w-0">
         {isEditing ? (
           <input
-            className="input text-sm py-1.5 px-3 h-9"
+            className="input text-sm py-1.5 px-3 h-9 border-sapphire focus:ring-sapphire/30"
             value={editVal}
             onChange={e => setEditVal(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSave()}
@@ -188,7 +236,7 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
             maxLength={100}
           />
         ) : (
-          <p className="font-semibold text-navy truncate">{item.bag_nama}</p>
+          <p className="font-semibold text-navy truncate group-hover:text-sapphire transition-colors">{item.bag_nama}</p>
         )}
         <div className="flex items-center gap-2 mt-0.5">
           {item.bag_created_by && (
@@ -224,7 +272,9 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
             className="w-8 h-8 flex items-center justify-center rounded-lg text-sapphire hover:bg-sapphire/10 transition-colors"
             title="Edit nama"
           >
-            <Edit2 size={14} />
+            <AnimatedIcon variant="scale">
+              <Edit2 size={14} />
+            </AnimatedIcon>
           </button>
         )}
         <button
@@ -235,7 +285,9 @@ function BagianCard({ item, editTarget, setEditTarget, onSaveEdit, onToggle, isS
           }`}
           title={isActive ? 'Nonaktifkan' : 'Aktifkan'}
         >
-          {isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          <AnimatedIcon variant="scale">
+            {isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </AnimatedIcon>
         </button>
       </div>
     </div>
@@ -254,10 +306,9 @@ function BagianFormModal({ title, initialValue, loading, onConfirm, onClose }) {
     onConfirm(trimmed)
   }
 
-  // Bungkus return dengan createPortal ke document.body
   return createPortal(
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 modal-overlay"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 modal-overlay backdrop-blur-sm"
       onClick={(e) => e.target === e.currentTarget && !loading && onClose()}
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 modal-content animate-in fade-in zoom-in-95 duration-200">
@@ -271,7 +322,7 @@ function BagianFormModal({ title, initialValue, loading, onConfirm, onClose }) {
         <div className="mb-4">
           <label className="label">Nama Bagian / Departemen <span className="text-red-500">*</span></label>
           <input
-            className={`input ${error ? 'border-red-400' : ''}`}
+            className={`input focus:border-sapphire focus:ring-sapphire/30 ${error ? 'border-red-400' : ''}`}
             placeholder="Contoh: Remote Software Developer, Sales Online"
             value={value}
             onChange={e => { setValue(e.target.value); setError('') }}
@@ -280,12 +331,14 @@ function BagianFormModal({ title, initialValue, loading, onConfirm, onClose }) {
             maxLength={100}
             autoFocus
           />
-          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+          {error && <p className="text-xs text-red-500 mt-1 font-medium">{error}</p>}
           <p className="text-xs text-slate-400 mt-1">{value.trim().length}/100 karakter</p>
         </div>
 
         <div className="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl p-3 mb-5">
-          <Building2 size={14} className="text-sapphire shrink-0 mt-0.5" />
+          <AnimatedIcon variant="wiggle">
+            <Building2 size={14} className="text-sapphire shrink-0 mt-0.5" />
+          </AnimatedIcon>
           <p className="text-xs text-sapphire leading-relaxed">
             Bagian yang ditambahkan akan langsung muncul di pilihan dropdown form permintaan rekruitmen.
           </p>
@@ -302,6 +355,6 @@ function BagianFormModal({ title, initialValue, loading, onConfirm, onClose }) {
         </div>
       </div>
     </div>,
-    document.body // Target portal
+    document.body
   )
 }
