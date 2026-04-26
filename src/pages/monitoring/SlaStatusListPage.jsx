@@ -9,20 +9,17 @@ import {
   matchesPeriodFilter,
   periodToLabel,
 } from '../../utils/periodFilter'
-import { PageLoader, ErrorBox, EmptyState, ProgressBar } from '../../components/ui'
+import { ErrorBox, EmptyState, ProgressBar, SlaCardSkeleton, SlaStatsSkeleton } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import {
   Activity, Calendar, Users, Edit2, Clock, X, ChevronDown,
 } from 'lucide-react'
-
-// IMPORT ANIMATED ICON
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 12
 
-// FILTER DENGAN KONTEKS WARNA
 const FILTERS = [
   { key: 'ALL',              label: 'Semua',             color: 'sapphire' },
   { key: 'NEED_USER_UPDATE', label: 'Perlu Update',      color: 'orange' },
@@ -34,7 +31,6 @@ const FILTERS = [
   { key: 'COMPLETED',        label: 'Selesai',           color: 'green' },
 ]
 
-// Utilitas Class: Latar putih elegan persis seperti ApprovalListPage
 const getFilterClasses = (color, isActive) => {
   if (isActive) {
     const map = {
@@ -65,7 +61,6 @@ function matchesSlaItemPeriod(item, period) {
   return matchesPeriodFilter(dateStr, period)
 }
 
-// ── MAIN PAGE ──────────────────────────────────────────────────────────────────
 export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFilter }) {
   const { isHrd }  = useAuth()
   const navigate   = useNavigate()
@@ -107,45 +102,56 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
     setActivePeriod(null)
   }
 
-  if (isLoading) return <PageLoader />
-  if (isError)   return <ErrorBox message="Gagal memuat data monitoring." onRetry={refetch} />
-
   const progressPercentage = ((summary.total_hired ?? 0) / (summary.total_target || 1)) * 100
 
   return (
     <div className="space-y-5 relative">
-      
-      {/* STICKY HEADER & GLASSMORPHISM */}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
+
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">SLA Monitoring</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{summary.total_active ?? 0} permintaan aktif</p>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {isLoading ? (
+                <span className="skeleton inline-block h-3.5 w-32 rounded" />
+              ) : (
+                `${summary.total_active ?? 0} permintaan aktif`
+              )}
+            </p>
           </div>
         </div>
 
         <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between w-full pl-6">
-          
-          {/* KIRI: Progress Hired & Target */}
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hired</span>
-              <span className="text-lg font-black text-green-600 leading-none">{summary.total_hired ?? 0}</span>
-            </div>
-            <div className="w-px h-6 bg-slate-200" />
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target</span>
-              <span className="text-lg font-black text-sapphire leading-none">{summary.total_target ?? 0}</span>
-            </div>
-            <div className="hidden sm:block w-24 ml-2">
-              <ProgressBar value={progressPercentage} color="#0F52BA" />
-            </div>
-          </div>
 
-          {/* KANAN: Filter Chips & Period Picker */}
+          {/* Progress stats */}
+          {isLoading ? (
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="skeleton h-6 w-16 rounded" />
+              <div className="w-px h-6 bg-slate-200" />
+              <div className="skeleton h-6 w-16 rounded" />
+              <div className="hidden sm:block skeleton h-2 w-24 rounded-full ml-2" />
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Hired</span>
+                <span className="text-lg font-black text-green-600 leading-none">{summary.total_hired ?? 0}</span>
+              </div>
+              <div className="w-px h-6 bg-slate-200" />
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target</span>
+                <span className="text-lg font-black text-sapphire leading-none">{summary.total_target ?? 0}</span>
+              </div>
+              <div className="hidden sm:block w-24 ml-2">
+                <ProgressBar value={progressPercentage} color="#0F52BA" />
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
           <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            
             <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap">
               {FILTERS.map(f => {
                 const count =
@@ -153,7 +159,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
                   : f.key === 'NEED_USER_UPDATE' ? (summary.need_update ?? 0)
                   : f.key === 'APPROVAL_DELAYED' ? approvalDelayedCount
                   : items.filter(i => i.ui_status_tag === f.key).length
-                
+
                 if (count === 0 && f.key !== 'ALL') return null
                 const isActive = filter === f.key
 
@@ -205,56 +211,68 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
         )}
       </div>
 
-      {!isHrd && summary.monitoring_bawahan != null && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
-          <Activity size={18} className="text-sapphire shrink-0" />
-          <p className="text-sm font-medium text-sapphire">
-            Monitoring {summary.monitoring_bawahan} permintaan bawahan
-          </p>
-        </div>
-      )}
-
-      {/* Summary Stats Tetap Sama */}
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard label="Total Aktif" value={summary.total_active ?? 0} color="text-sapphire" onClick={() => { setFilter('ALL'); setActivePeriod(null) }} active={filter === 'ALL' && !activePeriodFilter} />
-        <StatCard label="Kritis" value={summary.critical ?? 0} color="text-red-500" onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }} active={filter === 'CRITICAL'} />
-        <StatCard label="Warning" value={summary.warning ?? 0} color="text-amber-500" onClick={() => { setFilter('WARNING'); setActivePeriod(null) }} active={filter === 'WARNING'} />
-      </div>
-
-      {/* ── List ── */}
-      {filtered.length === 0 ? (
-        <EmptyState
-          message={
-            activePeriodFilter
-              ? `Tidak ada data "${FILTERS.find(f => f.key === filter)?.label ?? filter}" pada periode ${periodToLabel(activePeriodFilter)}.`
-              : 'Tidak ada data dengan filter ini.'
-          }
-          icon={Activity}
-        />
-      ) : (
-        <div className="space-y-3 mt-4">
-          
-          {/* MENGUBAH GRID MENJADI SPACE-Y-4 (FULL WIDTH LIST SEPERTI APPROVAL) */}
-          <div className="space-y-4">
-            {paginatedData.map(item => (
-              <SlaCard
-                key={item.tpk_nomor}
-                item={item}
-                isHrd={isHrd}
-                onClick={() => navigate(`/monitoring/${encodeURIComponent(item.tpk_nomor)}`)}
-                onEdit={() => navigate(`/recruitment/edit/${encodeURIComponent(item.tpk_nomor)}`)}
-              />
+      {/* ── CONTENT ── */}
+      {isError ? (
+        <ErrorBox message="Gagal memuat data monitoring." onRetry={refetch} />
+      ) : isLoading ? (
+        <>
+          <SlaStatsSkeleton />
+          <div className="space-y-4 mt-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SlaCardSkeleton key={i} />
             ))}
           </div>
+        </>
+      ) : (
+        <>
+          {!isHrd && summary.monitoring_bawahan != null && (
+            <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3">
+              <Activity size={18} className="text-sapphire shrink-0" />
+              <p className="text-sm font-medium text-sapphire">
+                Monitoring {summary.monitoring_bawahan} permintaan bawahan
+              </p>
+            </div>
+          )}
 
-          <PaginationControls
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={totalItems}
-            onPageChange={setCurrentPage}
-            itemsPerPage={ITEMS_PER_PAGE}
-          />
-        </div>
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="Total Aktif" value={summary.total_active ?? 0} color="text-sapphire" onClick={() => { setFilter('ALL'); setActivePeriod(null) }} active={filter === 'ALL' && !activePeriodFilter} />
+            <StatCard label="Kritis" value={summary.critical ?? 0} color="text-red-500" onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }} active={filter === 'CRITICAL'} />
+            <StatCard label="Warning" value={summary.warning ?? 0} color="text-amber-500" onClick={() => { setFilter('WARNING'); setActivePeriod(null) }} active={filter === 'WARNING'} />
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyState
+              message={
+                activePeriodFilter
+                  ? `Tidak ada data "${FILTERS.find(f => f.key === filter)?.label ?? filter}" pada periode ${periodToLabel(activePeriodFilter)}.`
+                  : 'Tidak ada data dengan filter ini.'
+              }
+              icon={Activity}
+            />
+          ) : (
+            <div className="space-y-3 mt-4">
+              <div className="space-y-4">
+                {paginatedData.map(item => (
+                  <SlaCard
+                    key={item.tpk_nomor}
+                    item={item}
+                    isHrd={isHrd}
+                    onClick={() => navigate(`/monitoring/${encodeURIComponent(item.tpk_nomor)}`)}
+                    onEdit={() => navigate(`/recruitment/edit/${encodeURIComponent(item.tpk_nomor)}`)}
+                  />
+                ))}
+              </div>
+
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={totalItems}
+                onPageChange={setCurrentPage}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {showPeriodPicker && (
@@ -287,12 +305,10 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
   const canEdit   = !isHrd && item.is_bawahan !== 1 && item.sla_is_editable === 1
 
   return (
-    // MENGHAPUS 'flex flex-col h-full' AGAR MENGALIR NATURAL SECARA FULL-WIDTH
     <div
       className="card group hover:shadow-card-hover hover:border-[#A6C5D7] transition-all duration-300 cursor-pointer"
       onClick={onClick}
     >
-      {/* Top row */}
       <div className="flex items-start justify-between mb-3">
         <span
           className="text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider transition-colors"
@@ -384,7 +400,6 @@ function SlaCard({ item, isHrd, onClick, onEdit }) {
         </div>
       )}
 
-      {/* Progress */}
       <div className="pt-3 border-t border-slate-50">
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">

@@ -4,7 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi } from '../../api/services'
-import { Badge, EmptyState, PageLoader, ErrorBox, ConfirmDialog, Spinner } from '../../components/ui'
+import {
+  Badge, EmptyState, ErrorBox, ConfirmDialog, Spinner,
+  RecruitmentTableSkeleton,
+} from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
@@ -12,9 +15,7 @@ import { matchesPeriodFilter, periodToLabel } from '../../utils/periodFilter'
 import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lucide-react'
 import { formatDate, getApprovalStatus, getSlaSourceMeta } from '../../utils/helpers'
 import toast from 'react-hot-toast'
-
-// 1. IMPORT KOMPONEN ANIMASI BARU
-import { AnimatedIcon } from '../../components/AnimatedIcon' 
+import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const STATUS_OPTS = [
   { value: 'all',      label: 'Semua' },
@@ -108,7 +109,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   useEffect(() => {
     setSelected(new Set())
   }, [currentPage])
-  
+
   const toggleSelect = (nomor, isDraft) => {
     if (!isDraft) return
     setSelected(prev => {
@@ -133,18 +134,16 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
 
   return (
     <div className="space-y-5">
-      
-      {/* 2. BUNGKUS HEADER & FILTER DENGAN STICKY + GLASSMORPHISM */}
+
+      {/* ── STICKY HEADER ── */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
-        {/* ── Header ── */}
+
         <div className="page-header flex justify-between items-start">
           <div>
             <h1 className="page-title">Permintaan Rekruitmen</h1>
             <p className="text-sm text-slate-500 mt-0.5">{raw?.length ?? 0} total permintaan</p>
           </div>
           <button className="btn-primary flex items-center gap-2" onClick={() => navigate('/recruitment/new')}>
-            {/* IMPLEMENTASI ANIMATED ICON */}
             <AnimatedIcon variant="scale">
               <Plus size={17} />
             </AnimatedIcon>
@@ -152,7 +151,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
           </button>
         </div>
 
-        {/* ── Filter Bar ── */}
         <div className="flex flex-wrap gap-3 items-center mt-4">
           <div className="relative flex-1 min-w-48">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -195,7 +193,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
 
           {selected.size > 0 && (
             <button className="btn-danger flex items-center gap-2" onClick={() => setShowDeleteConfirm(true)}>
-              {/* ANIMASI PADA TOMBOL HAPUS */}
               <AnimatedIcon variant="wiggle">
                 <Trash2 size={16} />
               </AnimatedIcon>
@@ -203,7 +200,7 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
             </button>
           )}
         </div>
-        
+
         {hasPendingItems && (
           <p className="w-full text-xs text-slate-400 flex items-center gap-1 mt-3">
             <span>☝️</span> Centang permintaan Pending Atasan untuk menghapus.{' '}
@@ -216,9 +213,9 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         <p className="text-xs text-sapphire">Difilter dari Dashboard · Tap tanggal untuk ubah</p>
       )}
 
-      {/* ── Table ── */}
+      {/* ── CONTENT ── */}
       {isLoading ? (
-        <PageLoader />
+        <RecruitmentTableSkeleton rows={8} />
       ) : isError ? (
         <ErrorBox message="Gagal memuat data." onRetry={refetch} />
       ) : filtered.length === 0 ? (
@@ -234,11 +231,10 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         />
       ) : (
         <div className="space-y-3">
-          <div className="table-wrapper relative"> {/* Tambahkan relative jika diperlukan */}
+          <div className="table-wrapper relative">
             <table className="w-full">
               <thead>
                 <tr>
-                  {/* 3. TAMBAHKAN STICKY PADA TH */}
                   <th className="w-8 sticky top-0 z-20 bg-slate-50 border-b shadow-sm">
                     <input
                       type="checkbox"
@@ -360,7 +356,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                             title="Detail"
                             onClick={() => navigate(`/recruitment/${encodeURIComponent(r.tpk_nomor)}`)}
                           >
-                            {/* IMPLEMENTASI ANIMATED ICON */}
                             <AnimatedIcon variant="scale">
                               <Eye size={15} />
                             </AnimatedIcon>
@@ -371,7 +366,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                               title="Edit"
                               onClick={() => navigate(`/recruitment/edit/${encodeURIComponent(r.tpk_nomor)}`)}
                             >
-                              {/* IMPLEMENTASI ANIMATED ICON */}
                               <AnimatedIcon variant="scale">
                                 <Edit2 size={15} />
                               </AnimatedIcon>
@@ -396,7 +390,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         </div>
       )}
 
-      {/* ── Period Picker Modal ── */}
       {showPeriodPicker && (
         <PeriodPickerModal
           current={activePeriodFilter}

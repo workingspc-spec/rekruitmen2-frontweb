@@ -4,7 +4,10 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
 import { recruitmentApi } from '../../api/services'
-import { PageLoader, ErrorBox, EmptyState, ConfirmDialog, SearchInput } from '../../components/ui'
+import {
+  ErrorBox, EmptyState, ConfirmDialog, SearchInput,
+  ApprovalCardSkeleton,
+} from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
@@ -17,8 +20,6 @@ import { ApprovalCard } from './ApprovalCard'
 import { HrdConfirmDialog } from './HrdConfirmDialog'
 import { HrdRejectDialog } from './HrdRejectDialog'
 import { formatDate } from '../../utils/helpers'
-
-// 1. IMPORT ANIMATED ICON (Sesuai direktori yang benar)
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 10
@@ -36,7 +37,6 @@ function SlaResultDialog({ slaInfo, onClose }) {
     >
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
         <div className="flex items-center gap-3">
-          {/* IMPLEMENTASI ANIMATED ICON PADA DIALOG */}
           <AnimatedIcon variant="wiggle">
             {isSystem
               ? <AlertTriangle size={24} className="text-amber-500 shrink-0" />
@@ -152,11 +152,10 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
 
   return (
     <div className="space-y-5 relative">
-      
-      {/* HEADER, TABS, DAN SEARCH DENGAN STICKY GLASSMORPHISM */}
+
+      {/* STICKY HEADER */}
       <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md pb-4 pt-2 border-b border-slate-100 mb-5">
-        
-        {/* Header */}
+
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">Approval</h1>
@@ -166,12 +165,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
           </div>
         </div>
 
-        {/* STRUKTUR LAYOUT BARU (MIRIP RECRUITMENT PAGE) 
-            Search diletakkan di flex-1 agar mengisi ruang kosong sebelah kiri 
-        */}
         <div className="flex flex-wrap gap-3 items-center">
-          
-          {/* Search Bar (Kiri) */}
+
           {(!loading && !error && (list.length > 0 || search !== '')) ? (
             <div className="flex-1 min-w-48 transition-all duration-300">
               <SearchInput
@@ -182,10 +177,9 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
               />
             </div>
           ) : (
-             <div className="flex-1"></div> /* Spacer jika data kosong */
+            <div className="flex-1" />
           )}
 
-          {/* Tabs Status (Kanan) */}
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
             {STATUS_TABS.map(t => {
               const isActive = tab === t.key
@@ -218,7 +212,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
             })}
           </div>
 
-          {/* Filter Tanggal / Kalender (Paling Kanan) */}
           <button
             onClick={() => setShowPeriodPicker(true)}
             className={`flex items-center gap-1.5 h-9 px-3 rounded-xl text-xs font-semibold border transition-all duration-300 ${
@@ -240,9 +233,13 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         )}
       </div>
 
-      {/* Content */}
+      {/* ── CONTENT ── */}
       {loading ? (
-        <PageLoader />
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <ApprovalCardSkeleton key={i} />
+          ))}
+        </div>
       ) : error ? (
         <ErrorBox message="Gagal memuat data approval." onRetry={refetch} />
       ) : filteredList.length === 0 ? (
@@ -285,7 +282,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         </div>
       )}
 
-      {/* Period Picker & Dialogs */}
       {showPeriodPicker && (
         <PeriodPickerModal
           current={activePeriodFilter}
