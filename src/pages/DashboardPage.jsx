@@ -247,7 +247,7 @@ export default function DashboardPage() {
               onClick={() => navigateWithPeriod('/recruitment')}
             />
             <StatCard
-              label="Pending Approval"
+              label="Pending (Bisa Diproses)"
               value={stats?.pendingApproval ?? 0}
               icon={CheckSquare}
               color="#F57C00"
@@ -270,10 +270,22 @@ export default function DashboardPage() {
             />
           </div>
 
-          {stats?.legacyCount > 0 && (
-            <p className="text-xs text-slate-400 mt-2 px-1">
-              * Termasuk <span className="font-semibold">{stats.legacyCount}</span> data dari sistem lama (read-only)
-            </p>
+          {/* 👇 PERUBAHAN: FOOTNOTE LEBIH JELAS & TRANSPARAN */}
+          {(stats?.legacyCount > 0 || stats?.pendingLegacy > 0) && (
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-3 space-y-1.5">
+              {stats?.legacyCount > 0 && (
+                <p className="text-xs text-slate-500 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300"></span>
+                  Total permintaan termasuk <span className="font-bold text-slate-700">{stats.legacyCount}</span> data riwayat dari sistem lama (read-only).
+                </p>
+              )}
+              {stats?.pendingLegacy > 0 && (
+                <p className="text-xs text-amber-600 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                  Terdapat <span className="font-bold">{stats.pendingLegacy}</span> antrean pending dari sistem lama yang tidak dapat diproses.
+                </p>
+              )}
+            </div>
           )}
         </>
       )}
