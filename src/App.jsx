@@ -102,17 +102,30 @@ function AppLoadingSkeleton() {
 }
 
 function ProtectedRoute({ children }) {
-  const { token, loading } = useAuth()
-  // Tampilkan layout skeleton (bukan spinner) selama verifikasi sesi
-  // → eliminasi "kedip dua fase": spinner lalu shimmer
-  if (loading) return <AppLoadingSkeleton />
-  if (!token)  return <Navigate to="/login" replace />
+  const { token, loading, user } = useAuth()
+
+  if (loading) {
+    // Returning user: sessionStorage already has user data → render layout
+    // immediately so only the page's own skeleton shows (no double shimmer).
+    // First-ever load: no cached user → show the full skeleton while /auth/me runs.
+    return user
+      ? <MainLayout>{children}</MainLayout>
+      : <AppLoadingSkeleton />
+  }
+
+  if (!token) return <Navigate to="/login" replace />
   return <MainLayout>{children}</MainLayout>
 }
 
 function HrdRoute({ children }) {
-  const { token, loading, isHrd } = useAuth()
-  if (loading) return <AppLoadingSkeleton />
+  const { token, loading, isHrd, user } = useAuth()
+
+  if (loading) {
+    return (user && isHrd)
+      ? <MainLayout>{children}</MainLayout>
+      : <AppLoadingSkeleton />
+  }
+
   if (!token)  return <Navigate to="/login" replace />
   if (!isHrd)  return <Navigate to="/" replace />
   return <MainLayout>{children}</MainLayout>
