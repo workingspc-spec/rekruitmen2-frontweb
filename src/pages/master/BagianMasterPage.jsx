@@ -1,4 +1,9 @@
 // src/pages/master/BagianMasterPage.jsx
+// [SECURITY] Changes:
+//   - Add import: sanitizeApiError from utils/security
+//   - createMut onError  → sanitizeApiError(e, 'Gagal menambahkan bagian')
+//   - updateNamaMut onError → sanitizeApiError(e, 'Gagal mengubah nama')
+//   - toggleMut onError  → sanitizeApiError(e, 'Gagal mengubah status')
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -9,8 +14,9 @@ import { Building2, Plus, Edit2, Check, X, ToggleLeft, ToggleRight, Save } from 
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
-
 import { AnimatedIcon } from '../../components/AnimatedIcon'
+// ✅ [SECURITY] Sanitize API errors before showing to user
+import { sanitizeApiError } from '../../utils/security'
 
 const ITEMS_PER_PAGE = 15
 
@@ -55,7 +61,8 @@ export default function BagianMasterPage() {
       qc.invalidateQueries({ queryKey: ['bagian'] })
       setShowAddModal(false)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menambahkan bagian'),
+    // ✅ [SECURITY] sanitizeApiError — cegah pesan SQL/internal bocor
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal menambahkan bagian')),
   })
 
   const updateNamaMut = useMutation({
@@ -66,7 +73,8 @@ export default function BagianMasterPage() {
       qc.invalidateQueries({ queryKey: ['bagian'] })
       setEditTarget(null)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mengubah nama'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal mengubah nama')),
   })
 
   const toggleMut = useMutation({
@@ -74,7 +82,8 @@ export default function BagianMasterPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bagian-master-list'] })
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mengubah status'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal mengubah status')),
   })
 
   const filteredList = useMemo(() => {
@@ -117,7 +126,6 @@ export default function BagianMasterPage() {
           {/* Filter Chips */}
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl flex-wrap">
             {isLoading ? (
-              // Skeleton for filter tabs while loading
               [1, 2, 3].map(i => (
                 <div key={i} className="skeleton h-8 w-20 rounded-lg" />
               ))

@@ -7,21 +7,19 @@ import { dashboardApi, recruitmentApi } from '../api/services'
 import { formatDate } from '../utils/helpers'
 import { StatCard, PageLoader, ErrorBox } from '../components/ui'
 import { PeriodPickerModal } from '../components/PeriodPickerModal'
+import logger from '../utils/logger'  // ✅ [SECURITY]
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
   Building2, ShieldCheck, Edit2, AlertTriangle
 } from 'lucide-react'
-import { useRef } from 'react' // Tambahkan ini
-// Import 4 Icon Animasi Baru
+import { useRef } from 'react'
 import { DashboardIcon } from '../components/icons/DashboardIcon'
 import { ClipboardListIcon } from '../components/icons/ClipboardListIcon'
 import { CheckSquareIcon } from '../components/icons/CheckSquareIcon'
 import { ActivityIcon } from '../components/icons/ActivityIcon'
-
-import { BarChart3Icon } from '../components/icons/BarChart3Icon' // (Pakai '../components/icons/...' di DashboardPage)
+import { BarChart3Icon } from '../components/icons/BarChart3Icon'
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon'
-
 import { AnimatedIcon } from '../components/AnimatedIcon'
 
 const PERIOD_OPTIONS = [
@@ -93,7 +91,7 @@ function MenuItemSkeleton() {
 
 function QuickMenuButton({ label, sub, Icon, onClick }) {
   const iconRef = useRef(null)
-  
+
   return (
     <button
       onClick={onClick}
@@ -102,7 +100,6 @@ function QuickMenuButton({ label, sub, Icon, onClick }) {
       className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
     >
       <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
-        {/* Render icon dengan ref, hapus efek paksa warna dari Lucide agar tidak menghilang */}
         <Icon ref={iconRef} size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
       </div>
       <div className="flex-1">
@@ -122,13 +119,14 @@ export default function DashboardPage() {
   const [showPicker, setShowPicker] = useState(false)
 
   useEffect(() => {
-    recruitmentApi.syncManual().catch(err => console.warn('Sync failed:', err))
+    // ✅ [SECURITY] console.warn → logger.warn (silent in production)
+    recruitmentApi.syncManual().catch(err => logger.warn('Sync failed:', err))
   }, [period])
 
   const apiParam = periodToApiParam(period)
   const label    = periodToLabel(period)
 
-  const statsQ   = useQuery({
+  const statsQ = useQuery({
     queryKey: ['dashboard-stats', apiParam],
     queryFn:  () => dashboardApi.stats(apiParam).then(r => r.data.data),
   })
@@ -246,6 +244,7 @@ export default function DashboardPage() {
               color="#0F52BA"
               onClick={() => navigateWithPeriod('/recruitment')}
             />
+            {/* ✅ [UX] Label lebih informatif: "Bisa Diproses" menjelaskan konteks pending */}
             <StatCard
               label="Pending (Bisa Diproses)"
               value={stats?.pendingApproval ?? 0}
@@ -270,7 +269,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* 👇 PERUBAHAN: FOOTNOTE LEBIH JELAS & TRANSPARAN */}
+          {/* ✅ [UX] Footnote legacy lebih transparan: pisahkan legacyCount & pendingLegacy */}
           {(stats?.legacyCount > 0 || stats?.pendingLegacy > 0) && (
             <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 mt-3 space-y-1.5">
               {stats?.legacyCount > 0 && (
@@ -298,9 +297,9 @@ export default function DashboardPage() {
             [1, 2, 3, 4].map(i => <MenuItemSkeleton key={i} />)
           ) : (
             [
-              { to: '/recruitment', label: 'Permintaan Rekruitmen', sub: 'Buat & kelola permintaan', Icon: ClipboardList },
-              { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan', Icon: CheckSquare },
-              { to: '/monitoring',  label: 'SLA Monitoring',        sub: 'Pantau progress rekruitmen', Icon: Activity },
+              { to: '/recruitment', label: 'Permintaan Rekruitmen', sub: 'Buat & kelola permintaan',    Icon: ClipboardList },
+              { to: '/approval',    label: 'Approval',              sub: 'Setujui permintaan bawahan',  Icon: CheckSquare },
+              { to: '/monitoring',  label: 'SLA Monitoring',        sub: 'Pantau progress rekruitmen',  Icon: Activity },
               isHrd
                 ? { to: '/kpi-hrd',      label: 'KPI HRD',      sub: 'Laporan performa rekruitmen', Icon: BarChart3 }
                 : { to: '/kpi-approver', label: 'KPI Approval', sub: 'Rekap kecepatan approval',    Icon: TrendingUp },
@@ -311,7 +310,6 @@ export default function DashboardPage() {
                 className="w-full text-left flex items-center gap-5 bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
               >
                 <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 group-hover:text-sapphire transition-colors">
-                  {/* 👇 BUNGKUS DENGAN ANIMATED ICON 👇 */}
                   <AnimatedIcon variant="scale">
                     <Icon size={22} className="text-slate-400 group-hover:text-sapphire transition-colors" />
                   </AnimatedIcon>

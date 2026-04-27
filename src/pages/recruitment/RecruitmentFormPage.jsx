@@ -1,4 +1,7 @@
 // src/pages/recruitment/RecruitmentFormPage.jsx
+// [SECURITY] Changes:
+//   - Add import: sanitizeApiError from utils/security
+//   - saveMut onError: e.response?.data?.message → sanitizeApiError(e, 'Gagal menyimpan.')
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -20,6 +23,8 @@ import {
 } from 'date-fns';
 import { id } from 'date-fns/locale'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+// ✅ [SECURITY] Sanitize API errors before showing to user
+import { sanitizeApiError } from '../../utils/security'
 
 
 // ── Modern Single Date Picker Modal ──────────────────────────────────────────
@@ -286,7 +291,6 @@ export default function RecruitmentFormPage() {
 
   const vlResult = validation()
 
-  // ── FIX: minDate harus TODAY saat re-schedule, bukan dihitung dari aturan jabatan ──
   const minDate = (() => {
     if (isReSchedule) {
       const t = new Date()
@@ -311,7 +315,8 @@ export default function RecruitmentFormPage() {
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       navigate('/recruitment')
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menyimpan.'),
+    // ✅ [SECURITY] sanitizeApiError — cegah pesan SQL/stack trace bocor ke toast
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal menyimpan.')),
   })
 
   const handleSave = () => {
@@ -341,7 +346,6 @@ export default function RecruitmentFormPage() {
     })
   }
 
-  // ── Replaced Loader2 spinner with FormPageSkeleton ────────────────────────
   if (isEdit && detailLoading) return <FormPageSkeleton />
 
   const ALASAN_OPTS = ['Penambahan Karyawan', 'Penggantian Karyawan Keluar', 'Resign', 'Ekspansi', 'Lainnya']
@@ -450,7 +454,6 @@ export default function RecruitmentFormPage() {
               {isLocked ? <Lock size={14} className="text-slate-300" /> : <ChevronDown size={16} className="text-slate-400" />}
             </button>
 
-            {/* Validasi feedback */}
             {jabatan && tglButuh && vlResult && (
               <div className={`mt-1.5 flex items-start gap-1.5 text-xs ${vlResult.valid ? 'text-green-600' : 'text-red-500'}`}>
                 {vlResult.valid
@@ -461,7 +464,6 @@ export default function RecruitmentFormPage() {
               </div>
             )}
 
-            {/* Hint minimal tanggal */}
             {jabatan && !tglButuh && minDate && (
               <p className="mt-1 text-xs text-slate-400">
                 Minimal: {isReSchedule ? 'hari ini' : formatDate(toApiDate(minDate.getTime()))}
@@ -476,7 +478,6 @@ export default function RecruitmentFormPage() {
           locked={isReSchedule || isLocked} onClick={() => !isReSchedule && !isLocked && setShowAlasan(true)} />
       </Section>
 
-      {/* Jobdesk */}
       <Section title="Jobdesk (Opsional)">
         <div className="space-y-2">
           {ketList.slice(0, visKet).map((v, i) => (
@@ -521,7 +522,6 @@ export default function RecruitmentFormPage() {
         </button>
       </div>
 
-      {/* Modals */}
       {showJabatan && (
         <DropdownModal title="Pilih Jabatan" items={jabatanList}
           itemKey={j => j.jab_kode} itemLabel={j => j.jab_nama}

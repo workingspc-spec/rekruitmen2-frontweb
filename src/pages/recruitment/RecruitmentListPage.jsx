@@ -1,4 +1,7 @@
 // src/pages/recruitment/RecruitmentListPage.jsx
+// [SECURITY] Changes:
+//   - console.warn('Background sync failed') → logger.warn(...)
+//   - batchDeleteMut onError: e.response?.data?.message → sanitizeApiError(e, ...)
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -16,6 +19,9 @@ import { Plus, Search, Trash2, Calendar, Edit2, Eye, Layers, X, Clock } from 'lu
 import { formatDate, getApprovalStatus, getSlaSourceMeta } from '../../utils/helpers'
 import toast from 'react-hot-toast'
 import { AnimatedIcon } from '../../components/AnimatedIcon'
+// ✅ [SECURITY] Import logger dan sanitizeApiError
+import logger from '../../utils/logger'
+import { sanitizeApiError } from '../../utils/security'
 
 const STATUS_OPTS = [
   { value: 'all',      label: 'Semua' },
@@ -50,7 +56,8 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
 
   useEffect(() => {
-    recruitmentApi.syncManual().catch(err => console.warn('Background sync failed:', err))
+    // ✅ [SECURITY] console.warn → logger.warn (silent in production)
+    recruitmentApi.syncManual().catch(err => logger.warn('Background sync failed:', err))
   }, [])
 
   const { data: raw, isLoading, isError, refetch } = useQuery({
@@ -69,7 +76,8 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus.'),
+    // ✅ [SECURITY] sanitizeApiError — cegah SQL/stack trace bocor ke toast
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal menghapus.')),
   })
 
   const filtered = useMemo(() => {

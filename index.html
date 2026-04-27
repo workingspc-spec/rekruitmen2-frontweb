@@ -2,14 +2,53 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8" />
-    
     <link rel="icon" type="image/png" href="/logo_app.png" />
-    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!--
+      ── SECURITY HEADERS (via meta tag) ─────────────────────────────────────
+      Meta tag ini sebagai defense-in-depth layer di browser.
+      PENTING: Tambahkan juga header HTTP di server/Nginx untuk perlindungan lebih kuat.
+
+      Rekomendasi Nginx:
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+        add_header X-Frame-Options "DENY" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+        add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+    -->
+
+    <!-- Content Security Policy: batasi sumber resource yang boleh dimuat -->
+    <meta http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' 'unsafe-eval';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: blob:;
+        connect-src 'self';
+        frame-ancestors 'none';
+        base-uri 'self';
+        form-action 'self';
+      "
+    />
+
+    <!-- Cegah MIME type sniffing (browser tidak boleh menebak tipe file) -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+    <!-- Cegah referrer header bocorkan URL internal ke domain eksternal -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <!-- Cegah halaman ini dimuat di dalam iframe (clickjacking protection) -->
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+
     <title>PKAR – Sistem Rekruitmen</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <div id="root"></div>

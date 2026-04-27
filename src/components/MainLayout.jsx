@@ -1,6 +1,7 @@
 // src/components/MainLayout.jsx
 import { useState, useEffect } from 'react'
 import Sidebar from './Sidebar'
+import { useSessionTimeout } from '../hooks/useSessionTimeout'
 
 export default function MainLayout({ children }) {
   // Default collapsed on screens < 1024px (tablet)
@@ -11,7 +12,6 @@ export default function MainLayout({ children }) {
 
   useEffect(() => {
     const handleResize = () => {
-      // Auto-collapse below lg breakpoint, auto-expand at lg+
       if (window.innerWidth < 1024) {
         setIsCollapsed(true)
       } else {
@@ -21,6 +21,10 @@ export default function MainLayout({ children }) {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
+
+  // Deteksi inaktivitas: warning di 25 menit, auto-logout di 30 menit.
+  // Sesuaikan dengan masa berlaku cookie session di backend.
+  useSessionTimeout({ warningMinutes: 25, logoutMinutes: 30 })
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">

@@ -2,15 +2,12 @@
  * ============================================================================
  * DOKUMEN KOMPONEN: LOGIN PAGE - SISTEM MANAJEMEN REKRUITMEN (PKAR)
  * ============================================================================
- * @version 3.0.0
- * Perubahan dari v2.1.0:
- *  - Layout 35/65 (kiri/kanan)
- *  - Panel kiri: flat, tidak melayang, tanpa diagonal, tanpa drop-shadow
- *  - Panel kanan: background abu-abu (#F2F3F5), float border pada form card
- *  - Logo besar di atas, judul & subtitle di bawah logo (left panel)
- *  - Form glass card mepet ke sisi kanan panel kanan (justify flex-end)
- *  - Canvas partikel hanya pada panel kanan (area abu-abu)
- *  - Checkbox dapat diklik via teks label maupun kotak
+ * @version 3.1.0
+ * Perubahan dari v3.0.0 (Security Hardening):
+ *  - [SECURITY] Hapus fungsi loadUsernameHistory & saveUsernameHistory lokal
+ *  - [SECURITY] Import dari utils/security: obfuskasi username di localStorage
+ *  - saveUsernameToHistory() menggantikan saveUsernameHistory()
+ *  - loadUsernameHistory() tetap nama sama, tapi kini dari security.js
  * ============================================================================
  */
 
@@ -24,19 +21,25 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { User } from 'lucide-react';
 
+// ✅ [SECURITY] Import dari security.js — username di-obfuskasi sebelum disimpan
+import {
+  saveUsernameToHistory,
+  loadUsernameHistory,
+  sanitizeApiError,
+} from '../utils/security';
+
 // ─────────────────────────────────────────────
 // KONFIGURASI SISTEM
 // ─────────────────────────────────────────────
 const SYSTEM_CONFIG = {
-  storageKeys: { history: 'usernameHistory' },
   limits: { maxHistoryItems: 10 },
   colors: {
     sapphire: '#0F52BA',
     sapphireHover: '#0D459D',
     sapphireLight: 'rgba(15, 82, 186, 0.15)',
     error: '#E11D48',
-    darkBg: '#ffffff',      // ← UBAH DI SINI: Background panel kiri jadi putih
-    grayBg: '#ffffff',    // ← background panel kanan
+    darkBg: '#ffffff',
+    grayBg: '#ffffff',
     textMain: '#18181b',
     textMuted: '#4B5563',
     borderLight: '#D1D5DB',
@@ -48,28 +51,6 @@ const SYSTEM_CONFIG = {
     mouseForce: 1.8,
   },
 };
-
-// ─────────────────────────────────────────────
-// LOCAL STORAGE HELPERS
-// ─────────────────────────────────────────────
-function loadUsernameHistory() {
-  try {
-    const raw = localStorage.getItem(SYSTEM_CONFIG.storageKeys.history);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch { return []; }
-}
-
-function saveUsernameHistory(username) {
-  if (!username?.trim()) return;
-  try {
-    const clean = username.trim();
-    const prev = loadUsernameHistory().filter(u => u !== clean);
-    const next = [clean, ...prev].slice(0, SYSTEM_CONFIG.limits.maxHistoryItems);
-    localStorage.setItem(SYSTEM_CONFIG.storageKeys.history, JSON.stringify(next));
-  } catch (e) { console.error('Gagal menyimpan riwayat username:', e); }
-}
 
 // ─────────────────────────────────────────────
 // PARTICLE ENGINE (muncul di area abu-abu saja)
@@ -126,10 +107,6 @@ class Particle {
   }
 }
 
-/**
- * Hook: pasang partikel pada <canvas> yang ada di dalam rightPanelRef.
- * Mouse tracking menggunakan koordinat relatif terhadap panel kanan.
- */
 function useRightPanelParticles(canvasRef, rightPanelRef) {
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -155,7 +132,6 @@ function useRightPanelParticles(canvasRef, rightPanelRef) {
     const cur = { x: -2000, y: -2000 };
     const tgt = { x: -2000, y: -2000 };
 
-    // Track mouse relatif terhadap panel kanan
     const onMouseMove = (e) => {
       tgt.x = e.clientX;
       tgt.y = e.clientY;
@@ -198,7 +174,6 @@ function AppLogo({ size = 120 }) {
       />
     );
   }
-  // Fallback logo jika gambar gagal dimuat (Diubah ke tema biru)
   return (
     <div style={{
       width: size, height: size,
@@ -214,7 +189,6 @@ function AppLogo({ size = 120 }) {
 
 // ─────────────────────────────────────────────
 // UI: LEFT PANEL CONTENT
-// Logo besar di atas → judul → subtitle
 // ─────────────────────────────────────────────
 function LeftPanelContent() {
   return (
@@ -228,11 +202,10 @@ function LeftPanelContent() {
       textAlign: 'left',
       padding: '6rem 5rem',
     }}>
-      {/* TITLE diperbesar & dipresisikan line-height nya */}
       <h1 style={{
-        fontSize: 'clamp(64px, 6.5vw, 96px)', // Ukuran diperbesar
+        fontSize: 'clamp(64px, 6.5vw, 96px)',
         fontWeight: 800,
-        lineHeight: 1.02, // Dibuat lebih rapat/presisi
+        lineHeight: 1.02,
         letterSpacing: '-0.04em',
         color: SYSTEM_CONFIG.colors.textMain,
         margin: 0,
@@ -244,15 +217,9 @@ function LeftPanelContent() {
 
       <div style={{ height: '2.5rem' }} />
 
-      {/* SUBTITLE diperbesar */}
       <p style={{
-        // 1. UBAH WARNA DI SINI (Pilih salah satu)
-        color: '#374151', // <-- Opsi 1: Abu-abu gelap pekat
-        // color: SYSTEM_CONFIG.colors.sapphire, // <-- Opsi 2: Biru tema aplikasi (hapus tanda // untuk memakai ini)
-        
-        // 2. TAMBAHKAN KETEBALAN INI
-        fontWeight: 500, 
-        
+        color: '#374151',
+        fontWeight: 500,
         fontSize: 'clamp(20px, 1.8vw, 26px)',
         lineHeight: 1.6,
         maxWidth: '580px',
@@ -265,13 +232,9 @@ function LeftPanelContent() {
   );
 }
 
-// ─────────────────────────────────────────────────────────
-// UI: ANIMATED EYE TOGGLE v4.1
-//
-// ✅ Warna solid hitam (#18181b)
-// ✅ 3 helai bulu mata atas & bawah, lebih panjang
-// ✅ Kelopak tertutup lebih cekung (curve turun dalam)
-// ─────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// UI: ANIMATED EYE TOGGLE
+// ─────────────────────────────────────────────
 function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
   const containerRef = useRef(null);
   const eyeballRef   = useRef(null);
@@ -302,7 +265,6 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
   }, [movePupil]);
 
   const color = '#18181b';
-
   const pupilR = isError ? 3.5  : 3.0;
   const catchR = isError ? 0.9  : 0.6;
 
@@ -327,79 +289,30 @@ function AnimatedEye({ isVisible, isError, isFocused, onToggle }) {
         width: 32, height: 32, borderRadius: 6, outline: 'none',
       }}
     >
-      <svg
-        width="22" height="22"
-        viewBox="0 0 24 24"
-        fill="none"
-        style={{ overflow: 'visible' }}
-      >
-        {/* 1. SCLERA */}
-        <path
-          d={eyePath}
-          fill="white"
-          stroke="none"
-          style={{ transition: D_T }}
-        />
-
-        {/* 2. BOLA MATA: iris ring luar · pupil · catchlight (tanpa fill & ring dalam) */}
-        <g
-          ref={eyeballRef}
-          style={{
-            opacity: isVisible ? 1 : 0,
-            transition: 'opacity 0.22s ease, transform 0.055s linear',
-            pointerEvents: 'none',
-          }}
-        >
-
-          {/* Pupil hitam solid */}
-          <circle cx="12" cy="12" r={pupilR}
-            fill={color}
-            style={{ transition: R_T }} />
-          {/* Catchlight utama */}
-          <circle cx="13.1" cy="10.7" r={catchR}
-            fill="white"
-            style={{ transition: R_T }} />
-          {/* Catchlight sekunder kecil */}
-          <circle cx="11.0" cy="13.2" r={catchR * 0.42}
-            fill="white" opacity="0.55"
-            style={{ transition: R_T }} />
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ overflow: 'visible' }}>
+        <path d={eyePath} fill="white" stroke="none" style={{ transition: D_T }} />
+        <g ref={eyeballRef} style={{
+          opacity: isVisible ? 1 : 0,
+          transition: 'opacity 0.22s ease, transform 0.055s linear',
+          pointerEvents: 'none',
+        }}>
+          <circle cx="12" cy="12" r={pupilR} fill={color} style={{ transition: R_T }} />
+          <circle cx="13.1" cy="10.7" r={catchR} fill="white" style={{ transition: R_T }} />
+          <circle cx="11.0" cy="13.2" r={catchR * 0.42} fill="white" opacity="0.55" style={{ transition: R_T }} />
         </g>
-
-        {/* 3. OUTLINE KELOPAK MATA */}
-        <path
-          d={eyePath}
-          stroke={color}
-          strokeWidth={isError ? '1.7' : '1.5'}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          fill="none"
-          style={{ transition: `${D_T}, stroke-width 0.2s` }}
-        />
-
-        {/* 4. BULU MATA — hanya muncul saat mata TERTUTUP (!isVisible) */}
+        <path d={eyePath} stroke={color} strokeWidth={isError ? '1.7' : '1.5'}
+          strokeLinecap="round" strokeLinejoin="round" fill="none"
+          style={{ transition: `${D_T}, stroke-width 0.2s` }} />
         <g style={{
           opacity: !isVisible ? 1 : 0,
           transform: !isVisible ? 'translateY(0px)' : 'translateY(-3px)',
           transition: 'opacity 0.30s ease, transform 0.40s cubic-bezier(0.34,1.56,0.64,1)',
           pointerEvents: 'none',
         }}>
-          {/* Kiri — miring ke kiri-bawah */}
-          <path
-            d="M7.5,15.6 Q6.7,18.6 6.0,20.8"
-            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
-          />
-          {/* Tengah — lurus ke bawah */}
-          <path
-            d="M12.0,16.5 Q12.0,19.5 12.1,22.0"
-            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
-          />
-          {/* Kanan — miring ke kanan-bawah */}
-          <path
-            d="M16.5,15.6 Q17.3,18.6 18.0,20.8"
-            stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none"
-          />
+          <path d="M7.5,15.6 Q6.7,18.6 6.0,20.8" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" />
+          <path d="M12.0,16.5 Q12.0,19.5 12.1,22.0" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" />
+          <path d="M16.5,15.6 Q17.3,18.6 18.0,20.8" stroke={color} strokeWidth="1.2" strokeLinecap="round" fill="none" />
         </g>
-
       </svg>
     </button>
   );
@@ -475,12 +388,11 @@ function FloatingInput({
 
 // ─────────────────────────────────────────────
 // UI: CHECKBOX
-// FIX: onClick pada <label> terluar agar klik teks pun berfungsi
 // ─────────────────────────────────────────────
 function Checkbox({ checked, onChange, label }) {
   return (
     <label
-      onClick={onChange}        /* ← klik teks ATAU kotak sama-sama trigger */
+      onClick={onChange}
       style={{
         display: 'flex', alignItems: 'center', gap: 7,
         cursor: 'pointer', userSelect: 'none',
@@ -492,7 +404,7 @@ function Checkbox({ checked, onChange, label }) {
         background: checked ? SYSTEM_CONFIG.colors.sapphire : 'transparent',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         transition: 'all 0.15s ease-in-out',
-        pointerEvents: 'none',   /* biarkan <label> yang handle klik */
+        pointerEvents: 'none',
       }}>
         {checked && (
           <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
@@ -500,11 +412,7 @@ function Checkbox({ checked, onChange, label }) {
           </svg>
         )}
       </div>
-      <span style={{ 
-        fontSize: 12, 
-        color: '#374151', /* Sebelumnya '#6B7280', sekarang dihitamkan sedikit */
-        fontWeight: 500   /* Tambahkan ini agar teks menonjol di atas kaca */
-      }}>
+      <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>
         {label}
       </span>
     </label>
@@ -527,15 +435,15 @@ export default function LoginPage() {
   const [savedUsernames, setSavedUsernames] = useState([]);
   const [isSuggestBoxOpen, setIsSuggestBoxOpen] = useState(false);
 
-  const usernameInputRef = useRef(null);
-  const passwordInputRef = useRef(null);
-  const suggestDropdownRef = useRef(null);
-  const mainContainerRef = useRef(null);
-  const particleCanvasRef = useRef(null); // ← canvas di dalam panel kanan
+  const usernameInputRef    = useRef(null);
+  const passwordInputRef    = useRef(null);
+  const suggestDropdownRef  = useRef(null);
+  const mainContainerRef    = useRef(null);
+  const particleCanvasRef   = useRef(null);
 
-  // Partikel hanya di panel kanan
   useRightPanelParticles(particleCanvasRef, mainContainerRef);
 
+  // ✅ [SECURITY] Gunakan loadUsernameHistory dari security.js (username di-decode dari obfuskasi)
   useEffect(() => {
     setSavedUsernames(loadUsernameHistory());
   }, []);
@@ -585,10 +493,12 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await login(formData.username, formData.password, formData.expiredDays);
-      saveUsernameHistory(formData.username);
+      // ✅ [SECURITY] Gunakan saveUsernameToHistory dari security.js (username di-obfuskasi)
+      saveUsernameToHistory(formData.username);
       navigate('/');
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Login gagal. Periksa kembali data Anda.';
+      // ✅ [SECURITY] sanitizeApiError — cegah SQL/stack trace bocor ke pesan error login
+      const msg = sanitizeApiError(err, 'Login gagal. Periksa kembali data Anda.');
       setErrorMessage(msg);
       triggerShake();
     } finally {
@@ -622,40 +532,29 @@ export default function LoginPage() {
       overflow: hidden;
     }
 
-    /* WRAPPER HALAMAN: Pasang background di sini agar full screen */
-/* 1. CONTAINER UTAMA HANYA BERWARNA PUTIH */
     .login-page-container {
       display: flex;
       min-height: 100vh;
       width: 100vw;
       position: relative;
-      background-color: #ffffff; 
-      
-      /* PENTING: Sembunyikan tumpahan gambar yang kita dorong ke kiri */
-      overflow: hidden; 
+      background-color: #ffffff;
+      overflow: hidden;
     }
 
-    /* 2. LAYER KHUSUS GAMBAR BACKGROUND */
     .login-page-container::before {
       content: "";
       position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      width: 100%; 
-      
-      /* PERUBAHAN: Opasitas ujung kanan diturunkan dari 0.85 ke 0.40 agar gambar tembus ke form */
-      background-image: 
+      top: 0; left: 0; bottom: 0;
+      width: 100%;
+      background-image:
         linear-gradient(to right, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.40) 100%),
-        url('/office-bg1.jpeg'); /* Pastikan nama file sesuai dengan yang Anda pakai sekarang */
-      
+        url('/office-bg1.jpeg');
       background-size: cover;
-      background-position: center; 
+      background-position: center;
       background-repeat: no-repeat;
-      z-index: 1; 
+      z-index: 1;
     }
 
-    /* 3. PANEL KIRI (Teks Judul) */
     .left-panel {
       display: none;
       width: 35%;
@@ -667,43 +566,30 @@ export default function LoginPage() {
     }
     @media (min-width: 900px) { .left-panel { display: flex; flex-direction: column; } }
 
-    /* ── PANEL KANAN ── */
     .right-panel {
       width: 100%;
       height: 100vh;
-      background: transparent; /* ← Jadikan transparan */
+      background: transparent;
       position: relative;
       display: flex;
       align-items: center;
       justify-content: flex-end;
       padding: 2.5rem 3rem 2.5rem 2rem;
-      z-index: 10;             /* ← Samakan z-index */
+      z-index: 10;
     }
     @media (min-width: 900px) { .right-panel { width: 65%; } }
 
-    /* ── FORM GLASS CARD ── */
     .form-glass-card {
       width: 100%;
       max-width: 420px;
       padding: 2.2rem 3rem;
       position: relative;
       z-index: 30;
-      
-      /* --- EFEK KACA MELAYANG (GLASSMORPHISM) --- */
-      /* 1. Transparansi diturunkan (0.45) agar background gedung terlihat membayang */
-      background: rgba(255, 255, 255, 0.45); 
-      
-      /* 2. Blur diturunkan sedikit agar tekstur gedung terlihat, tapi teks form tetap mudah dibaca */
-      backdrop-filter: blur(16px);         
+      background: rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      
-      /* 3. Border putih solid inilah yang menahan bentuk form agar tetap terlihat melayang (JANGAN DIHAPUS) */
-      border: 1.5px solid rgba(255, 255, 255, 0.85); 
-      
-      /* 4. Shadow sedikit ditebalkan agar form pop-out dari background */
+      border: 1.5px solid rgba(255, 255, 255, 0.85);
       box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-      /* ------------------------------------------ */
-      
       border-radius: 26px;
       animation: slideInFromRight 0.6s cubic-bezier(0.16,1,0.3,1);
     }
@@ -715,7 +601,6 @@ export default function LoginPage() {
 
     .error-shake-effect { animation: shakeAnimation 0.52s cubic-bezier(.36,.07,.19,.97) both; }
 
-    /* AUTOCOMPLETE DROPDOWN */
     .autocomplete-dropdown {
       animation: fadeSlideDown 0.16s ease-out;
       position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 200;
@@ -734,7 +619,6 @@ export default function LoginPage() {
     .suggestion-item-btn:hover, .suggestion-item-btn:focus { background: #f9fafb; outline: none; }
     .dropdown-divider-line { height: 1px; background: #f3f4f6; margin: 0 16px; }
 
-    /* TOMBOL SUBMIT */
     .submit-action-btn {
       width: 100%; height: 52px;
       background: ${SYSTEM_CONFIG.colors.sapphire};
@@ -762,14 +646,12 @@ export default function LoginPage() {
     }
   `;
 
-return (
+  return (
     <>
       <style>{css}</style>
 
-      {/* 1. Pasang mainContainerRef di container paling luar */}
       <div className="login-page-container" ref={mainContainerRef}>
 
-        {/* 2. Pindahkan Canvas ke sini agar menutupi seluruh layar (Full Screen) */}
         <canvas
           ref={particleCanvasRef}
           style={{
@@ -785,24 +667,19 @@ return (
         </div>
 
         {/* ── PANEL KANAN ── */}
-        {/* 3. Hapus ref={rightPanelRef} dari sini karena sudah tidak dipakai */}
         <div className="right-panel">
 
-          {/* Form Glass Card */}
           <div className="form-glass-card">
 
-            {/* Brand icon */}
-
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'center', 
-              marginTop: '0.5rem',    /* Menurunkan logo agar ada space aman dari border atas */
-              marginBottom: '0.5rem'  /* Margin bawah diperkecil drastis untuk mengimbangi logo yang membesar */
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              marginTop: '0.5rem',
+              marginBottom: '0.5rem'
             }}>
               <AppLogo size={135} />
             </div>
 
-            {/* Header */}
             <div style={{ textAlign: 'center', marginBottom: '2.25rem' }}>
               <h2 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: SYSTEM_CONFIG.colors.sapphire, letterSpacing: '-0.02em' }}>
                 Welcome back !
@@ -812,7 +689,6 @@ return (
               </p>
             </div>
 
-            {/* Form */}
             <form onSubmit={handleSubmit} autoComplete="off" noValidate>
 
               {/* Username + autocomplete */}

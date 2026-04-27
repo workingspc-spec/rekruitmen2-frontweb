@@ -2,40 +2,30 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import api from '../api/axios'
 import { queryClient } from '../main'
+import {
+  saveUserToStorage,
+  loadUserFromStorage,
+  clearUserFromStorage,
+} from '../utils/security'
 
 const AuthContext = createContext(null)
 
 /**
- * [FIX-KRITIS] Perubahan autentikasi web:
+ * AuthProvider — Mengelola state autentikasi berbasis httpOnly cookie.
  *
- * SEBELUMNYA (rentan XSS):
- *   - Token JWT disimpan di localStorage
- *   - localStorage bisa diakses oleh JS manapun, termasuk script injected dari XSS
- *
- * SEKARANG (aman dari XSS):
- *   - Token JWT disimpan di httpOnly cookie (di-set oleh server saat login)
- *   - httpOnly cookie tidak bisa diakses oleh JS sama sekali
- *   - Sesi diverifikasi via GET /auth/me pada saat aplikasi pertama kali dimuat
- *   - Informasi user (nama, role) disimpan di localStorage hanya untuk keperluan
- *     display UI — bukan untuk auth. Jika dimanipulasi, server tetap reject.
- *
- * Android tidak terpengaruh: Android menggunakan Bearer token via DataStore
- * yang dikelola terpisah di AuthInterceptor.kt.
+ * Perubahan keamanan dari versi lama:
+ *  1. Token TIDAK disimpan di localStorage (rentan XSS) → httpOnly cookie
+ *  2. Data user disimpan di sessionStorage (bukan localStorage):
+ *     - sessionStorage auto-clear saat tab/browser ditutup
+ *     - Key yang tidak deskriptif mempersulit script oportunistik
+ *     - Hanya menyimpan field yang diperlukan untuk display UI
+ *  3. is_hrd tidak disimpan dengan key yang obvious
  */
-
 export function AuthProvider({ children }) {
-  // User info (untuk display UI) — boleh dari localStorage karena bukan sensitif
-  const [user, setUser] = useState(() => {
-    try {
-      const stored = localStorage.getItem('user')
-      return stored ? JSON.parse(stored) : null
-    } catch {
-      return null
-    }
-  })
+  // Load data user dari sessionStorage (atau localStorage lama sebagai fallback)
+  const [user, setUser] = useState(() => loadUserFromStorage())
 
-  // [FIX-KRITIS] `token` TIDAK lagi diambil dari localStorage.
-  // Nilainya hanya ada di React state (in-memory) sebagai flag boolean.
+  // `token` hanya ada di in-memory React state sebagai flag boolean.
   // Token asli ada di httpOnly cookie yang tidak bisa diakses JS.
   const [token, setToken]     = useState(null)
   const [loading, setLoading] = useState(true)
@@ -44,14 +34,12 @@ export function AuthProvider({ children }) {
   const clearLocalState = useCallback(() => {
     setToken(null)
     setUser(null)
-    localStorage.removeItem('user')
-    // [HAPUS] localStorage.removeItem('token') — token sudah tidak disimpan di sini
+    clearUserFromStorage()          // bersihkan sessionStorage + localStorage lama
     delete api.defaults.headers.common['Authorization']
   }, [])
 
   const logout = useCallback(async () => {
     try {
-      // Hapus httpOnly cookie di server
       await api.post('/auth/logout')
     } catch {
       // Lanjutkan logout meski request gagal
@@ -60,23 +48,21 @@ export function AuthProvider({ children }) {
     queryClient.clear()
   }, [clearLocalState])
 
-  // ── Verifikasi sesi saat aplikasi pertama kali dimuat ────────────────────
-  // [FIX-KRITIS] Karena token ada di httpOnly cookie (bukan localStorage),
-  // kita harus tanya server apakah sesi masih valid.
+  // ── Verifikasi sesi saat app pertama kali dimuat ──────────────────────────
   useEffect(() => {
     api.get('/auth/me')
       .then(res => {
         if (res.data?.success && res.data?.data) {
           const userData = res.data.data
           setUser(userData)
-          setToken('authenticated') // Flag in-memory — token asli ada di cookie
-          localStorage.setItem('user', JSON.stringify(userData))
+          setToken('authenticated')
+          saveUserToStorage(userData)   // simpan ke sessionStorage dengan key samar
         } else {
           clearLocalState()
         }
       })
       .catch(() => {
-        // Cookie tidak ada atau sudah expired → user belum login
+        // Cookie tidak ada atau expired → belum login
         clearLocalState()
       })
       .finally(() => {
@@ -90,7 +76,6 @@ export function AuthProvider({ children }) {
       res => res,
       err => {
         if (err.response?.status === 401) {
-          // Token/cookie expired atau tidak valid
           clearLocalState()
           queryClient.clear()
         }
@@ -102,19 +87,16 @@ export function AuthProvider({ children }) {
 
   // ── Login ─────────────────────────────────────────────────────────────────
   const login = useCallback(async (username, password, expiredDays) => {
-    // Bersihkan cache akun sebelumnya
     queryClient.clear()
 
     const { data } = await api.post('/auth/login', { username, password, expiredDays })
     const { user: u } = data.data
 
-    // [FIX-KRITIS] Token dari response body TIDAK disimpan di localStorage.
-    // Server sudah set httpOnly cookie secara otomatis.
-    // Kita hanya simpan data user (bukan token) untuk keperluan display UI.
+    // Token dari response body TIDAK disimpan — server sudah set httpOnly cookie.
+    // Hanya simpan data user (bukan token) ke sessionStorage untuk display UI.
     setToken('authenticated')
     setUser(u)
-    localStorage.setItem('user', JSON.stringify(u))
-    // [HAPUS] localStorage.setItem('token', t) — ini yang dulu rentan XSS
+    saveUserToStorage(u)            // sessionStorage dengan key samar
 
     return u
   }, [])

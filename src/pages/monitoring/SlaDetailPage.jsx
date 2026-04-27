@@ -1,4 +1,9 @@
 // src/pages/monitoring/SlaDetailPage.jsx
+// [SECURITY] Changes:
+//   - Add import: sanitizeApiError from utils/security
+//   - cancelMut onError  → sanitizeApiError(e, 'Gagal.')
+//   - editableMut onError → sanitizeApiError(e, 'Gagal.')
+//   - completeMut onError → sanitizeApiError(e, 'Gagal.')
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -14,6 +19,8 @@ import {
   BellRing, ArrowLeft,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
+// ✅ [SECURITY] Sanitize API errors before showing to user
+import { sanitizeApiError } from '../../utils/security'
 
 export default function SlaDetailPage() {
   const { nomor }  = useParams()
@@ -46,7 +53,8 @@ export default function SlaDetailPage() {
       qc.invalidateQueries({ queryKey: ['hired-candidates', nomor] })
       setShowNoShow(false)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal.'),
+    // ✅ [SECURITY] sanitizeApiError — cegah pesan SQL/stack trace bocor ke toast
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal membatalkan kandidat.')),
   })
 
   const editableMut = useMutation({
@@ -57,7 +65,8 @@ export default function SlaDetailPage() {
       qc.invalidateQueries({ queryKey: ['sla-detail', nomor] })
       setShowEditable(false)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal.'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal mengubah izin edit.')),
   })
 
   const completeMut = useMutation({
@@ -67,7 +76,8 @@ export default function SlaDetailPage() {
       qc.invalidateQueries({ queryKey: ['sla-detail', nomor] })
       setShowComplete(false)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal.'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal menutup permintaan.')),
   })
 
   if (isLoading) return <SlaDetailSkeleton />

@@ -1,4 +1,10 @@
 // src/pages/master/BypassUserPage.jsx
+// [SECURITY] Changes:
+//   - Add import: sanitizeApiError from utils/security
+//   - addMut onError    → sanitizeApiError(e, 'Gagal mendaftarkan')
+//   - toggleMut onError → sanitizeApiError(e, 'Gagal mengubah status')
+//   - deleteMut onError → sanitizeApiError(e, 'Gagal menghapus')
+//   - AddBypassUserModal lookup catch → sanitizeApiError(e, 'NIK tidak ditemukan')
 import { useState, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -12,8 +18,9 @@ import {
 import PaginationControls from '../../components/PaginationControls'
 import { usePagination } from '../../hooks/usePagination'
 import toast from 'react-hot-toast'
-
 import { AnimatedIcon } from '../../components/AnimatedIcon'
+// ✅ [SECURITY]
+import { sanitizeApiError } from '../../utils/security'
 
 const ITEMS_PER_PAGE = 10
 
@@ -57,7 +64,8 @@ export default function BypassUserPage() {
       qc.invalidateQueries({ queryKey: ['bypass-users'] })
       setShowAddModal(false)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mendaftarkan'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal mendaftarkan')),
   })
 
   const toggleMut = useMutation({
@@ -65,7 +73,8 @@ export default function BypassUserPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['bypass-users'] })
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal mengubah status'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal mengubah status')),
   })
 
   const deleteMut = useMutation({
@@ -75,7 +84,8 @@ export default function BypassUserPage() {
       qc.invalidateQueries({ queryKey: ['bypass-users'] })
       setDeleteTarget(null)
     },
-    onError: (e) => toast.error(e.response?.data?.message ?? 'Gagal menghapus'),
+    // ✅ [SECURITY]
+    onError: (e) => toast.error(sanitizeApiError(e, 'Gagal menghapus')),
   })
 
   const filteredList = useMemo(() => {
@@ -313,7 +323,8 @@ function AddBypassUserModal({ loading, onConfirm, onClose }) {
         setLookupState({ ok: false, message: res.data?.message ?? 'NIK tidak ditemukan' })
       }
     } catch (e) {
-      setLookupState({ ok: false, message: e.response?.data?.message ?? 'NIK tidak ditemukan' })
+      // ✅ [SECURITY] sanitizeApiError — lookup error juga disanitasi
+      setLookupState({ ok: false, message: sanitizeApiError(e, 'NIK tidak ditemukan') })
     } finally {
       setIsLooking(false)
     }

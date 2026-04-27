@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import App from './App'
 import './index.css'
+import logger from './utils/logger'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -16,8 +17,7 @@ export const queryClient = new QueryClient({
   },
 })
 
-// [FIX M3] Error Boundary — mencegah seluruh app blank saat satu komponen crash.
-// Menggunakan class component karena getDerivedStateFromError hanya tersedia di class.
+// Error Boundary — mencegah seluruh app blank saat satu komponen crash.
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null }
 
@@ -26,7 +26,8 @@ class ErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary] App crashed:', error, info.componentStack)
+    // Gunakan logger — tidak bocor ke console di production
+    logger.captureException(error, { componentStack: info.componentStack })
   }
 
   render() {
@@ -70,7 +71,7 @@ class ErrorBoundary extends React.Component {
               Terjadi Kesalahan
             </p>
             <p style={{ color: '#64748B', fontSize: '13px', margin: '0 0 20px', lineHeight: '1.5' }}>
-              {this.state.error?.message || 'Komponen mengalami error yang tidak terduga.'}
+              Komponen mengalami error yang tidak terduga. Silakan muat ulang halaman.
             </p>
             <button
               onClick={() => window.location.reload()}
@@ -101,7 +102,6 @@ class ErrorBoundary extends React.Component {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    {/* [FIX M3] Wrap seluruh app dengan ErrorBoundary */}
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <App />
