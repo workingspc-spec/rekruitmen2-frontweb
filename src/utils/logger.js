@@ -1,4 +1,3 @@
-// src/utils/logger.js
 const isDev = import.meta.env.DEV
 
 const logger = {
@@ -12,29 +11,32 @@ const logger = {
       console.error('[Exception]', error, context)
       return
     }
-    
-    // ✅ PERBAIKAN: Kirim log ke backend VPS menggunakan Fetch API (Size: 0 KB)
+
     try {
       const payload = {
-        source: 'react-web',
-        message: error?.message || String(error),
-        stack: error?.stack || null,
-        context: context,
-        url: window.location.href,
-        userAgent: navigator.userAgent
-      };
+        source:    'react-web',
+        message:   error?.message || String(error),
+        // In production: send only the first stack line (no internal paths)
+        // Full stack is only sent in dev where it never leaves the machine
+        stack:     error?.stack
+                     ? error.stack.split('\n').slice(0, 2).join(' | ')
+                     : null,
+        context:   {
+          // Strip componentStack — it contains full component tree with file paths
+          action: context?.action ?? null,
+        },
+        url:       window.location.pathname, // pathname only, not full href with query params
+        userAgent: navigator.userAgent,
+      }
 
-      // keepalive: true memastikan request tetap terkirim walau user langsung menutup tab/browser
       fetch('/api/logs/client', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        keepalive: true 
-      }).catch(() => {
-        // Abaikan jika gagal (misal server mati/koneksi putus), agar tidak muncul error ganda
-      });
-    } catch (e) {
-      // Fail-safe
+        method:    'POST',
+        headers:   { 'Content-Type': 'application/json' },
+        body:      JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {})
+    } catch {
+      // fail-safe
     }
   },
 }
