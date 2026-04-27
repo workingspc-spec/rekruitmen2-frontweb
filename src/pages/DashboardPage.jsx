@@ -258,7 +258,7 @@ export default function DashboardPage() {
               value={summaryQ.isLoading ? '–' : (summary?.activeRequests ?? 0)}
               icon={Activity}
               color="#0F52BA"
-              onClick={() => navigate('/monitoring')}
+              onClick={() => navigateToMonitoring('ACTIVE')} // <-- UBAH DI SINI
             />
             <StatCard
               label="Selesai Bulan Ini"

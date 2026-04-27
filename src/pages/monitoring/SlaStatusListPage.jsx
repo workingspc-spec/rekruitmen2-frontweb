@@ -81,6 +81,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const filtered = useMemo(() => {
     let result
     if      (filter === 'ALL')               result = items
+    else if (filter === 'ACTIVE')            result = items.filter(i => i.sla_status === 'CALCULATED') // <-- TAMBAHAN BARU
     else if (filter === 'NEED_USER_UPDATE')  result = items.filter(i => i.sla_is_editable === 1)
     else if (filter === 'APPROVAL_DELAYED')  result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
     else                                     result = items.filter(i => i.ui_status_tag === filter)
@@ -235,7 +236,13 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
           )}
 
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label="Total Aktif" value={summary.total_active ?? 0} color="text-sapphire" onClick={() => { setFilter('ALL'); setActivePeriod(null) }} active={filter === 'ALL' && !activePeriodFilter} />
+            <StatCard 
+              label="Total Aktif" 
+              value={summary.total_active ?? 0} 
+              color="text-sapphire" 
+              onClick={() => { setFilter('ACTIVE'); setActivePeriod(null) }} // <-- UBAH KE ACTIVE
+              active={filter === 'ACTIVE' && !activePeriodFilter}            // <-- UBAH KE ACTIVE
+            />
             <StatCard label="Kritis" value={summary.critical ?? 0} color="text-red-500" onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }} active={filter === 'CRITICAL'} />
             <StatCard label="Warning" value={summary.warning ?? 0} color="text-amber-500" onClick={() => { setFilter('WARNING'); setActivePeriod(null) }} active={filter === 'WARNING'} />
           </div>
