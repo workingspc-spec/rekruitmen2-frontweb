@@ -644,11 +644,49 @@ export default function LoginPage() {
       border-top-color: ${SYSTEM_CONFIG.colors.white};
       border-radius: 50%; animation: spinLoader 0.7s linear infinite; display: inline-block;
     }
+
+    .full-screen-loader {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(4px); /* Tambahan efek blur opsional agar lebih elegan */
+      -webkit-backdrop-filter: blur(4px);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    
+    .loader-text {
+      margin-top: 16px;
+      font-size: 16px;
+      font-weight: 600;
+      color: ${SYSTEM_CONFIG.colors.sapphire};
+    }
   `;
 
   return (
     <>
       <style>{css}</style>
+      {isLoading && (
+        <div className="full-screen-loader">
+          <span 
+            className="loading-spinner-ring" 
+            style={{ 
+              width: 44, 
+              height: 44, 
+              borderWidth: 4, 
+              borderTopColor: SYSTEM_CONFIG.colors.sapphire, 
+              borderColor: 'rgba(15, 82, 186, 0.2)' 
+            }} 
+          />
+          <span className="loader-text">Menyiapkan sesi...</span>
+        </div>
+      )}
 
       <div className="login-page-container" ref={mainContainerRef}>
 
