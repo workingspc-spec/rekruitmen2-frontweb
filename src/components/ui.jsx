@@ -10,9 +10,10 @@ export function Spinner({ size = 20, className = '' }) {
 // ── PAGE LOADER ───────────────────────────────────────────────────────────────
 export function PageLoader({ message = 'Memuat...' }) {
   return (
-    <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
+    // Mengubah h-64 menjadi min-h-[70vh] agar tingginya proporsional mengisi layar
+    <div className="flex flex-col items-center justify-center min-h-[70vh] w-full gap-3 text-slate-400">
       <Spinner size={32} />
-      <span className="text-sm">{message}</span>
+      <span className="text-sm font-medium">{message}</span>
     </div>
   )
 }
@@ -20,6 +21,19 @@ export function PageLoader({ message = 'Memuat...' }) {
 // ── SKELETON ──────────────────────────────────────────────────────────────────
 export function Skeleton({ className = '', style }) {
   return <div className={`skeleton ${className}`} style={style} />
+}
+
+// ── FULL SCREEN LOADER ────────────────────────────────────────────────────────
+export function FullScreenLoader({ message = 'Memproses...' }) {
+  // Kita gunakan createPortal agar posisi overlay dijamin selalu di atas (menutupi seluruh layar)
+  // tanpa terpengaruh oleh z-index dari parent element-nya.
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white/85 backdrop-blur-sm">
+      <Spinner size={44} className="text-sapphire" />
+      <span className="mt-4 text-base font-semibold text-sapphire">{message}</span>
+    </div>,
+    document.body
+  )
 }
 
 export function CardSkeleton({ rows = 4 }) {
