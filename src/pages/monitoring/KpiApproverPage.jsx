@@ -100,7 +100,7 @@ export default function KpiApproverPage() {
   const total   = summary.total_approvals ?? 0
 
   const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
-    usePagination(items, ITEMS_PER_PAGE)
+    usePagination(items, ITEMS_PER_PAGE, apiParam)
 
   const handlePickerSelect = (val) => {
     setPeriod(val === null ? 'All Time' : val)

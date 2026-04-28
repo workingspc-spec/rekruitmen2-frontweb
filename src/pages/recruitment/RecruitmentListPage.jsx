@@ -4,7 +4,7 @@
 //   - batchDeleteMut onError: e.response?.data?.message → sanitizeApiError(e, ...)
 // [UX] Changes:
 //   - Tambah persistensi filter state saat back navigation (useNavigationType)
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
@@ -50,10 +50,9 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
   const navigate         = useNavigate()
   const qc               = useQueryClient()
   const navigationType   = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
+  const tableWrapperRef = useRef(null)
 
   // ── Filter State Persistence ───────────────────────────────────────────────
-  // Saat back navigation (POP), pulihkan filter dari sessionStorage.
-  // Saat navigasi fresh (PUSH/REPLACE) atau ada initialPeriodFilter dari URL, mulai bersih.
   const _saved = useMemo(() => {
     if (navigationType !== 'POP' || initialPeriodFilter !== null) return null
     try {
@@ -61,6 +60,8 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
     } catch { return null }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // hanya saat mount
+
+  const savedPage = _saved?.page ?? 1
 
   const [search, setSearch]     = useState(_saved?.search ?? '')
   const [status, setStatus]     = useState(_saved?.status ?? 'all')
@@ -71,15 +72,6 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
     initialPeriodFilter ?? _saved?.period ?? null
   )
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
-
-  // Simpan filter ke sessionStorage setiap kali berubah
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        search, status, period: activePeriodFilter,
-      }))
-    } catch { /* silent */ }
-  }, [search, status, activePeriodFilter])
   // ── End Filter State Persistence ──────────────────────────────────────────
 
   useEffect(() => {
@@ -133,13 +125,44 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
     return list
   }, [raw, status, search, activePeriodFilter])
 
+  const filterKey = `${search}|${status}|${activePeriodFilter}`
   const {
     currentPage,
     setCurrentPage,
     totalPages,
     paginatedData,
     totalItems
-  } = usePagination(filtered, ITEMS_PER_PAGE)
+  } = usePagination(filtered, ITEMS_PER_PAGE, filterKey, savedPage)
+
+  // Simpan semua filter termasuk page ke sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        search, status, period: activePeriodFilter, page: currentPage,
+      }))
+    } catch { /* silent */ }
+  }, [search, status, activePeriodFilter, currentPage])
+
+  // Simpan & pulihkan scroll internal table saat back navigation
+  useEffect(() => {
+    const el = tableWrapperRef.current
+    if (!el) return
+    const key = `tableScroll:${STORAGE_KEY}`
+    const saved = navigationType === 'POP' ? sessionStorage.getItem(key) : null
+    if (saved) {
+      // setTimeout agar row sudah ter-render sebelum scroll di-set
+      const t = setTimeout(() => { if (tableWrapperRef.current) tableWrapperRef.current.scrollTop = parseInt(saved, 10) }, 120)
+      return () => clearTimeout(t)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // hanya saat mount
+
+  // Simpan posisi scroll table saat user scroll
+  const handleTableScroll = useCallback(() => {
+    if (tableWrapperRef.current) {
+      sessionStorage.setItem(`tableScroll:${STORAGE_KEY}`, String(tableWrapperRef.current.scrollTop))
+    }
+  }, [])
 
   useEffect(() => {
     setSelected(new Set())
@@ -266,7 +289,11 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
         />
       ) : (
         <div className="space-y-3">
-          <div className="table-wrapper relative">
+          <div 
+            ref={tableWrapperRef} 
+            onScroll={handleTableScroll} 
+            className="table-wrapper relative"
+          >
             <table className="w-full">
               <thead>
                 <tr>

@@ -87,7 +87,7 @@ export default function KpiHrdPage() {
   const total   = summary.total_completed ?? 0
 
   const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
-    usePagination(items, ITEMS_PER_PAGE)
+    usePagination(items, ITEMS_PER_PAGE, apiParam)
 
   const handlePickerSelect = (val) => {
     setPeriod(val === null ? 'All Time' : val)

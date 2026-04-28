@@ -28,7 +28,6 @@ const FILTERS = [
   { key: 'NEED_USER_UPDATE', label: 'Perlu Update',      color: 'orange' },
   { key: 'OVERDUE',          label: 'Terlambat',         color: 'red' },
   { key: 'CRITICAL',         label: 'Kritis',            color: 'red' },
-  { key: 'WARNING',          label: 'Warning',           color: 'amber' },
   { key: 'ON_PROGRESS',      label: 'Normal',            color: 'sapphire' },
   { key: 'APPROVAL_DELAYED', label: 'Approval Tertunda', color: 'amber' },
   { key: 'COMPLETED',        label: 'Selesai',           color: 'green' },
@@ -69,31 +68,25 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const navigate       = useNavigate()
   const navigationType = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
 
-  // ── Filter State Persistence ───────────────────────────────────────────────
-  // Pulihkan filter hanya saat back navigation (POP) dan tidak ada initialFilter dari URL.
+// ── Filter State Persistence ───────────────────────────────────────────────
   const _saved = useMemo(() => {
-    const hasInitialFilter = initialStatusFilter != null || initialPeriodFilter != null
-    if (navigationType !== 'POP' || hasInitialFilter) return null
+    // HANYA pulihkan dari session jika user menekan tombol Back/Forward (POP)
+    if (navigationType !== 'POP') return null
     try {
       return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null')
     } catch { return null }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // hanya saat mount
 
-  const [filter, setFilter]                    = useState(initialStatusFilter || _saved?.filter || 'ALL')
-  const [activePeriodFilter, setActivePeriod]  = useState(initialPeriodFilter || _saved?.period || null)
+  const savedPage = _saved?.page ?? 1
+
+  // PRIORITASKAN data dari session (_saved) jika ada. 
+  // Jika tidak ada (misal: baru pertama buka dari Dashboard), baru gunakan initialFilter.
+  const [filter, setFilter]                   = useState(_saved ? _saved.filter : (initialStatusFilter || 'ALL'))
+  const [activePeriodFilter, setActivePeriod] = useState(_saved ? _saved.period : (initialPeriodFilter || null))
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
-
-  // Simpan filter ke sessionStorage setiap kali berubah
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        filter, period: activePeriodFilter,
-      }))
-    } catch { /* silent */ }
-  }, [filter, activePeriodFilter])
   // ── End Filter State Persistence ──────────────────────────────────────────
-
+  
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
     queryFn:  () => monitoringApi.slaStatus().then(r => r.data),
@@ -118,7 +111,18 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
     return result
   }, [items, filter, activePeriodFilter])
 
-  const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } = usePagination(filtered, ITEMS_PER_PAGE)
+  const filterKey = `${filter}|${activePeriodFilter}`
+  const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
+    usePagination(filtered, ITEMS_PER_PAGE, filterKey, savedPage)
+
+  // Simpan semua filter termasuk page ke sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        filter, period: activePeriodFilter, page: currentPage,
+      }))
+    } catch { /* silent */ }
+  }, [filter, activePeriodFilter, currentPage])
 
   const approvalDelayedCount = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED').length
   const isFromDashboard = (initialStatusFilter || initialPeriodFilter) && (filter === initialStatusFilter || activePeriodFilter === initialPeriodFilter)

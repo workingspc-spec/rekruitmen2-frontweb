@@ -1,23 +1,21 @@
-// src/hooks/usePagination.js
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 
 /**
  * usePagination — custom hook untuk client-side pagination.
- *
- * Secara otomatis kembali ke halaman 1 setiap kali `data` berubah
- * (misal: ketika filter search/status/period diperbarui).
- *
- * @param {Array}  data          - Array data yang sudah difilter
- * @param {number} [itemsPerPage=15] - Jumlah item per halaman
- * @returns {{ currentPage, setCurrentPage, totalPages, paginatedData, totalItems }}
  */
-export function usePagination(data, itemsPerPage = 15) {
-  const [currentPage, setCurrentPage] = useState(1)
+export function usePagination(data, itemsPerPage = 15, resetKey = null, initialPage = 1) {
+  const [currentPage, setCurrentPage] = useState(initialPage)
+  
+  // ✅ PERUBAHAN: Gunakan prevResetKey untuk melacak filter sebelumnya
+  const prevResetKey = useRef(resetKey) 
 
-  // Reset ke halaman 1 setiap kali data berubah (akibat filter)
+  // Reset ke halaman 1 HANYA jika resetKey (filter) benar-benar berubah
   useEffect(() => {
-    setCurrentPage(1)
-  }, [data])
+    if (prevResetKey.current !== resetKey) {
+      setCurrentPage(1)
+      prevResetKey.current = resetKey // update ref ke nilai terbaru
+    }
+  }, [resetKey])
 
   const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage))
 
@@ -26,12 +24,12 @@ export function usePagination(data, itemsPerPage = 15) {
     return data.slice(start, start + itemsPerPage)
   }, [data, currentPage, itemsPerPage])
 
-  // Pastikan currentPage tidak melebihi totalPages saat data berkurang
+  // Guard: jika halaman melebihi total (data berkurang saat loading), kembali ke halaman terakhir
   useEffect(() => {
-    if (currentPage > totalPages) {
+    if (data.length > 0 && currentPage > totalPages) {
       setCurrentPage(totalPages)
     }
-  }, [totalPages, currentPage])
+  }, [totalPages, currentPage, data.length])
 
   return {
     currentPage,

@@ -88,24 +88,16 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []) // hanya saat mount
 
+  const savedPage = _saved?.page ?? 1
+
   const [tab,    setTab]    = useState(_saved?.tab    ?? 'pending')
-  const [hrdApproveError, setHrdApproveError] = useState(null)  // ✅ tambah
+  const [hrdApproveError, setHrdApproveError] = useState(null)
   const [search, setSearch] = useState(_saved?.search ?? '')
   const [activePeriodFilter, setActivePeriodFilter] = useState(
     initialPeriodFilter ?? _saved?.period ?? null
   )
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
-
-  // Simpan filter ke sessionStorage setiap kali berubah
-  useEffect(() => {
-    try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        tab, search, period: activePeriodFilter,
-      }))
-    } catch { /* silent */ }
-  }, [tab, search, activePeriodFilter])
-
-// ── End Filter State Persistence ──────────────────────────────────────────
+  // ── End Filter State Persistence ──────────────────────────────────────────
 
   const {
     list, loading, error, refetch, isHrd,
@@ -175,8 +167,18 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     return items
   }, [list, tab, search, activePeriodFilter])
 
+  const filterKey = `${tab}|${search}|${activePeriodFilter}`
   const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
-    usePagination(filteredList, ITEMS_PER_PAGE)
+    usePagination(filteredList, ITEMS_PER_PAGE, filterKey, savedPage)
+
+  // Simpan semua filter termasuk page ke sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        tab, search, period: activePeriodFilter, page: currentPage, // ✅ Tambahkan page: currentPage
+      }))
+    } catch { /* silent */ }
+  }, [tab, search, activePeriodFilter, currentPage]) // ✅ Tambahkan currentPage ke dependency array
 
   const emptyMessage = (() => {
     const statusMsg =
