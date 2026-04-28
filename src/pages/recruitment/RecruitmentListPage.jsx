@@ -2,8 +2,10 @@
 // [SECURITY] Changes:
 //   - console.warn('Background sync failed') → logger.warn(...)
 //   - batchDeleteMut onError: e.response?.data?.message → sanitizeApiError(e, ...)
+// [UX] Changes:
+//   - Tambah persistensi filter state saat back navigation (useNavigationType)
 import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { recruitmentApi } from '../../api/services'
@@ -31,6 +33,7 @@ const STATUS_OPTS = [
 ]
 
 const ITEMS_PER_PAGE = 15
+const STORAGE_KEY    = 'filters:/recruitment'
 
 function ApprovalChip({ label, date }) {
   return (
@@ -43,17 +46,41 @@ function ApprovalChip({ label, date }) {
 }
 
 export default function RecruitmentListPage({ initialPeriodFilter = null }) {
-  const { user } = useAuth()
-  const navigate  = useNavigate()
-  const qc        = useQueryClient()
+  const { user }         = useAuth()
+  const navigate         = useNavigate()
+  const qc               = useQueryClient()
+  const navigationType   = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
 
-  const [search, setSearch]       = useState('')
-  const [status, setStatus]       = useState('all')
-  const [selected, setSelected]   = useState(new Set())
+  // ── Filter State Persistence ───────────────────────────────────────────────
+  // Saat back navigation (POP), pulihkan filter dari sessionStorage.
+  // Saat navigasi fresh (PUSH/REPLACE) atau ada initialPeriodFilter dari URL, mulai bersih.
+  const _saved = useMemo(() => {
+    if (navigationType !== 'POP' || initialPeriodFilter !== null) return null
+    try {
+      return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null')
+    } catch { return null }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // hanya saat mount
+
+  const [search, setSearch]     = useState(_saved?.search ?? '')
+  const [status, setStatus]     = useState(_saved?.status ?? 'all')
+  const [selected, setSelected] = useState(new Set())
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
-  const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
-  const [showPeriodPicker, setShowPeriodPicker]     = useState(false)
+  const [activePeriodFilter, setActivePeriodFilter] = useState(
+    initialPeriodFilter ?? _saved?.period ?? null
+  )
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false)
+
+  // Simpan filter ke sessionStorage setiap kali berubah
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        search, status, period: activePeriodFilter,
+      }))
+    } catch { /* silent */ }
+  }, [search, status, activePeriodFilter])
+  // ── End Filter State Persistence ──────────────────────────────────────────
 
   useEffect(() => {
     // ✅ [SECURITY] console.warn → logger.warn (silent in production)

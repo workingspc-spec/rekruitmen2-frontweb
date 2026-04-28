@@ -32,6 +32,20 @@ export default {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
         'gradient-mesh':   'linear-gradient(135deg, #0F52BA 0%, #000926 100%)',
       },
+      // ── Tambahan: custom easing untuk efek "pintu/jendela" ────────────────
+      // ease-door: cubic-bezier(0.4, 0, 0.2, 1)
+      //   = Material Design "standard curve"
+      //   = Akselerasi cepat di awal → melambat smooth di akhir
+      //   = Terasa seperti pintu yang didorong dan berhenti perlahan
+      // ease-door-in: dipakai untuk animasi menutup (ease-in feel)
+      transitionTimingFunction: {
+        'door':    'cubic-bezier(0.4, 0, 0.2, 1)',
+        'door-in': 'cubic-bezier(0.4, 0, 1, 1)',
+      },
+      // ── Tambahan: duration-250 (antara 200 dan 300) ───────────────────────
+      transitionDuration: {
+        '250': '250ms',
+      },
       animation: {
         'slide-up':     'slideUp 0.3s ease both',
         'fade-in':      'fadeIn 0.25s ease both',

@@ -1,7 +1,9 @@
 // src/pages/approval/ApprovalListPage.jsx
+// [UX] Changes:
+//   - Tambah persistensi filter state saat back navigation (useNavigationType)
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
 import { recruitmentApi } from '../../api/services'
 import {
@@ -23,6 +25,7 @@ import { formatDate } from '../../utils/helpers'
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 10
+const STORAGE_KEY    = 'filters:/approval'
 
 function SlaResultDialog({ slaInfo, onClose }) {
   const isSystem = slaInfo?.sla_source === 'SYSTEM'
@@ -70,12 +73,34 @@ const STATUS_TABS = [
 ]
 
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
-  const navigate = useNavigate()
+  const navigate       = useNavigate()
+  const navigationType = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
 
-  const [tab,    setTab]    = useState('pending')
-  const [search, setSearch] = useState('')
-  const [activePeriodFilter, setActivePeriodFilter] = useState(initialPeriodFilter ?? null)
-  const [showPeriodPicker,   setShowPeriodPicker]   = useState(false)
+  // ── Filter State Persistence ───────────────────────────────────────────────
+  const _saved = useMemo(() => {
+    if (navigationType !== 'POP' || initialPeriodFilter !== null) return null
+    try {
+      return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null')
+    } catch { return null }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // hanya saat mount
+
+  const [tab,    setTab]    = useState(_saved?.tab    ?? 'pending')
+  const [search, setSearch] = useState(_saved?.search ?? '')
+  const [activePeriodFilter, setActivePeriodFilter] = useState(
+    initialPeriodFilter ?? _saved?.period ?? null
+  )
+  const [showPeriodPicker, setShowPeriodPicker] = useState(false)
+
+  // Simpan filter ke sessionStorage setiap kali berubah
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        tab, search, period: activePeriodFilter,
+      }))
+    } catch { /* silent */ }
+  }, [tab, search, activePeriodFilter])
+  // ── End Filter State Persistence ──────────────────────────────────────────
 
   const {
     list, loading, error, refetch, isHrd,
@@ -86,26 +111,24 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     atasanMut,
     hrdApproveMut,
     hrdRejectMut,
-    isPending, // <--- BISA TETAP DIPAKAI DENGAN AMAN!
+    isPending,
   } = useApprovalList()
 
-  // 👇 PERBAIKAN: Hitung murni apa adanya menggunakan isPending dari hook
-  const pendingCount  = list.filter(item => isPending(item)).length;
-  const approvedCount = list.filter(item => !isPending(item)).length;
-  const allCount      = list.length;
-  
+  const pendingCount  = list.filter(item => isPending(item)).length
+  const approvedCount = list.filter(item => !isPending(item)).length
+  const allCount      = list.length
+
   // Titik merah notifikasi (Hanya muncul jika ada tiket BARU)
-  const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length;
+  const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
 
   const filteredList = useMemo(() => {
     let items = list
 
-    // 👇 FILTER TAB JUGA MURNI APA ADANYA
     if (tab === 'pending') {
-      items = items.filter(item => isPending(item)) 
+      items = items.filter(item => isPending(item))
     }
     if (tab === 'approved') {
-      items = items.filter(item => !isPending(item)) 
+      items = items.filter(item => !isPending(item))
     }
 
     if (search) {

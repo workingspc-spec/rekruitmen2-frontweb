@@ -1,6 +1,8 @@
 // src/pages/monitoring/SlaStatusListPage.jsx
-import { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+// [UX] Changes:
+//   - Tambah persistensi filter state saat back navigation (useNavigationType)
+import { useState, useMemo, useEffect } from 'react'
+import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../context/AuthContext'
 import { monitoringApi } from '../../api/services'
@@ -19,6 +21,7 @@ import {
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 const ITEMS_PER_PAGE = 12
+const STORAGE_KEY    = 'filters:/monitoring'
 
 const FILTERS = [
   { key: 'ALL',              label: 'Semua',             color: 'sapphire' },
@@ -62,12 +65,34 @@ function matchesSlaItemPeriod(item, period) {
 }
 
 export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFilter }) {
-  const { isHrd }  = useAuth()
-  const navigate   = useNavigate()
+  const { isHrd }      = useAuth()
+  const navigate       = useNavigate()
+  const navigationType = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
 
-  const [filter, setFilter]                    = useState(initialStatusFilter || 'ALL')
-  const [activePeriodFilter, setActivePeriod]  = useState(initialPeriodFilter || null)
+  // ── Filter State Persistence ───────────────────────────────────────────────
+  // Pulihkan filter hanya saat back navigation (POP) dan tidak ada initialFilter dari URL.
+  const _saved = useMemo(() => {
+    const hasInitialFilter = initialStatusFilter != null || initialPeriodFilter != null
+    if (navigationType !== 'POP' || hasInitialFilter) return null
+    try {
+      return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null')
+    } catch { return null }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // hanya saat mount
+
+  const [filter, setFilter]                    = useState(initialStatusFilter || _saved?.filter || 'ALL')
+  const [activePeriodFilter, setActivePeriod]  = useState(initialPeriodFilter || _saved?.period || null)
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
+
+  // Simpan filter ke sessionStorage setiap kali berubah
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+        filter, period: activePeriodFilter,
+      }))
+    } catch { /* silent */ }
+  }, [filter, activePeriodFilter])
+  // ── End Filter State Persistence ──────────────────────────────────────────
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['sla-status'],
@@ -81,7 +106,7 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
   const filtered = useMemo(() => {
     let result
     if      (filter === 'ALL')               result = items
-    else if (filter === 'ACTIVE')            result = items.filter(i => i.sla_status === 'CALCULATED') // <-- TAMBAHAN BARU
+    else if (filter === 'ACTIVE')            result = items.filter(i => i.sla_status === 'CALCULATED')
     else if (filter === 'NEED_USER_UPDATE')  result = items.filter(i => i.sla_is_editable === 1)
     else if (filter === 'APPROVAL_DELAYED')  result = items.filter(i => i.approval_flag === 'APPROVAL_DELAYED')
     else                                     result = items.filter(i => i.ui_status_tag === filter)
@@ -236,15 +261,15 @@ export default function SlaStatusListPage({ initialStatusFilter, initialPeriodFi
           )}
 
           <div className="grid grid-cols-3 gap-3">
-            <StatCard 
-              label="Total Aktif" 
-              value={summary.total_active ?? 0} 
-              color="text-sapphire" 
-              onClick={() => { setFilter('ACTIVE'); setActivePeriod(null) }} // <-- UBAH KE ACTIVE
-              active={filter === 'ACTIVE' && !activePeriodFilter}            // <-- UBAH KE ACTIVE
+            <StatCard
+              label="Total Aktif"
+              value={summary.total_active ?? 0}
+              color="text-sapphire"
+              onClick={() => { setFilter('ACTIVE'); setActivePeriod(null) }}
+              active={filter === 'ACTIVE' && !activePeriodFilter}
             />
-            <StatCard label="Kritis" value={summary.critical ?? 0} color="text-red-500" onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }} active={filter === 'CRITICAL'} />
-            <StatCard label="Warning" value={summary.warning ?? 0} color="text-amber-500" onClick={() => { setFilter('WARNING'); setActivePeriod(null) }} active={filter === 'WARNING'} />
+            <StatCard label="Kritis"  value={summary.critical ?? 0} color="text-red-500"   onClick={() => { setFilter('CRITICAL'); setActivePeriod(null) }} active={filter === 'CRITICAL'} />
+            <StatCard label="Warning" value={summary.warning  ?? 0} color="text-amber-500" onClick={() => { setFilter('WARNING');  setActivePeriod(null) }} active={filter === 'WARNING'} />
           </div>
 
           {filtered.length === 0 ? (
