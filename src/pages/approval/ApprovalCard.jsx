@@ -2,8 +2,9 @@ import { formatDate } from '../../utils/helpers'
 import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare, Clock } from 'lucide-react'
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
-export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail }) {
+export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail, currentUserKode }) {
   const approvedByAtasan = item.tpk_approveatasan === 1 || item.tpk_approveatasan === 9
+  const isSelfRequest = isHrd && currentUserKode && item.tpk_peminta === currentUserKode
   const approvedByHrd    = item.tpk_approveHRD === 1
 
   return (
@@ -71,7 +72,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         )}
 
         {/* Tombol Setujui */}
-        {pending && (
+        {pending && !isSelfRequest && (
           <button
             className="text-xs px-3 py-1.5 rounded-xl font-semibold bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center gap-1.5"
             onClick={onApprove}
@@ -81,6 +82,13 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
             </AnimatedIcon>
             Setujui
           </button>
+        )}
+
+        {/* ✅ Tampilkan label jika HRD mencoba approve permintaannya sendiri */}
+        {pending && isSelfRequest && (
+          <span className="text-xs text-slate-400 italic px-2">
+            Tidak dapat approve milik sendiri
+          </span>
         )}
       </div>
     </div>

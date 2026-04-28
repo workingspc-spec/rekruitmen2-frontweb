@@ -5,6 +5,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
+import { useAuth } from '../../context/AuthContext'   // ✅ tambah
+import toast from 'react-hot-toast'                   // ✅ tambah (jika belum ada)
 import { recruitmentApi } from '../../api/services'
 import {
   ErrorBox, EmptyState, ConfirmDialog, SearchInput,
@@ -75,6 +77,7 @@ const STATUS_TABS = [
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate       = useNavigate()
   const navigationType = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
+  const { user }       = useAuth()  // ✅ tambah — untuk cek self-approval
 
   // ── Filter State Persistence ───────────────────────────────────────────────
   const _saved = useMemo(() => {
@@ -86,6 +89,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   }, []) // hanya saat mount
 
   const [tab,    setTab]    = useState(_saved?.tab    ?? 'pending')
+  const [hrdApproveError, setHrdApproveError] = useState(null)  // ✅ tambah
   const [search, setSearch] = useState(_saved?.search ?? '')
   const [activePeriodFilter, setActivePeriodFilter] = useState(
     initialPeriodFilter ?? _saved?.period ?? null
@@ -100,6 +104,23 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
       }))
     } catch { /* silent */ }
   }, [tab, search, activePeriodFilter])
+
+  useEffect(() => {
+    if (hrdApproveMut.isError) {
+      const status = hrdApproveMut.error?.response?.status
+      const msg    = hrdApproveMut.error?.response?.data?.message
+      if (status === 403 && msg?.includes('sendiri')) {
+        setHrdApproveError('Anda tidak dapat menyetujui permintaan Anda sendiri.')
+      } else if (status === 403) {
+        setHrdApproveError(msg || 'Akses ditolak.')
+      } else {
+        setHrdApproveError(null)
+        toast.error(msg || 'Gagal memproses persetujuan.')
+      }
+    } else {
+      setHrdApproveError(null)
+    }
+  }, [hrdApproveMut.isError, hrdApproveMut.error])
   // ── End Filter State Persistence ──────────────────────────────────────────
 
   const {
@@ -277,6 +298,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
                 item={item}
                 isHrd={isHrd}
                 pending={isPending(item) && !item.is_legacy}
+                currentUserKode={user?.kode}  // ✅ tambah
                 onApprove={() => {
                   if (isHrd) {
                     setIsHrdDialogItem(item)
@@ -334,8 +356,9 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         <HrdConfirmDialog
           item={isHrdDialogItem}
           loading={hrdApproveMut.isPending}
+          errorMessage={hrdApproveError}  // ✅ tambah
           onConfirm={() => hrdApproveMut.mutate({ tpk_nomor: isHrdDialogItem.tpk_nomor })}
-          onClose={() => setIsHrdDialogItem(null)}
+          onClose={() => { setIsHrdDialogItem(null); setHrdApproveError(null) }}  // ✅ reset error saat tutup
         />
       )}
 

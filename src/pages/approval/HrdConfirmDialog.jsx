@@ -6,7 +6,7 @@ import { Spinner } from '../../components/ui'
 import { CheckCircle2, AlertTriangle, Flag, Building2, Users, Calendar, CheckSquare } from 'lucide-react'
 import { DetailRow } from './ApprovalCard'
 
-export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
+export function HrdConfirmDialog({ item, loading, onConfirm, onClose, errorMessage }) {
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 modal-overlay"
@@ -31,6 +31,13 @@ export function HrdConfirmDialog({ item, loading, onConfirm, onClose }) {
           <DetailRow icon={<Calendar size={14} />}    label="Tgl Butuh" value={formatDate(item.tpk_tgl_butuh)} />
         </div>
 
+        {errorMessage && (
+          <div className="mb-4 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-xl p-3">
+            <AlertTriangle size={15} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-700 font-medium">{errorMessage}</p>
+          </div>
+        )}
+        
         <div className="flex gap-3">
           <button className="btn-ghost flex-1 justify-center" onClick={onClose} disabled={loading}>
             Batal
