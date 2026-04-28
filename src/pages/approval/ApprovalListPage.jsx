@@ -105,6 +105,21 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     } catch { /* silent */ }
   }, [tab, search, activePeriodFilter])
 
+// ── End Filter State Persistence ──────────────────────────────────────────
+
+  const {
+    list, loading, error, refetch, isHrd,
+    confirmItem, setConfirmItem,
+    isHrdDialogItem, setIsHrdDialogItem,
+    isHrdRejectItem, setIsHrdRejectItem,
+    slaResultInfo, setSlaResultInfo,
+    atasanMut,
+    hrdApproveMut, // ✅ Dideklarasikan dulu
+    hrdRejectMut,
+    isPending,
+  } = useApprovalList()
+
+  // ✅ BENAR: Gunakan di bawah deklarasi
   useEffect(() => {
     if (hrdApproveMut.isError) {
       const status = hrdApproveMut.error?.response?.status
@@ -120,20 +135,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     } else {
       setHrdApproveError(null)
     }
-  }, [hrdApproveMut.isError, hrdApproveMut.error])
-  // ── End Filter State Persistence ──────────────────────────────────────────
-
-  const {
-    list, loading, error, refetch, isHrd,
-    confirmItem, setConfirmItem,
-    isHrdDialogItem, setIsHrdDialogItem,
-    isHrdRejectItem, setIsHrdRejectItem,
-    slaResultInfo, setSlaResultInfo,
-    atasanMut,
-    hrdApproveMut,
-    hrdRejectMut,
-    isPending,
-  } = useApprovalList()
+  }, [hrdApproveMut?.isError, hrdApproveMut?.error]) // Tambahkan optional chaining (?) agar lebih aman
 
   const pendingCount  = list.filter(item => isPending(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length
