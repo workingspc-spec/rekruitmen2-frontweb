@@ -199,7 +199,7 @@ function AppRoutes() {
 
       {/* KPI */}
       <Route path="/kpi-hrd" element={
-        <ProtectedRoute><KpiHrdPage /></ProtectedRoute>
+        <HrdRoute><KpiHrdPage /></HrdRoute>
       } />
       <Route path="/kpi-approver" element={
         <ProtectedRoute><KpiApproverPage /></ProtectedRoute>
