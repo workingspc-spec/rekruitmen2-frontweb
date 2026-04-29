@@ -59,10 +59,13 @@ export default function ApprovalMappingPage() {
     setEditingId(null)
     setEditNik('')
   }
-
+    // SESUDAH:
   const handleSaveEdit = (id) => {
-    if (!editNik.trim()) return toast.error('NIK tidak boleh kosong')
-    editMut.mutate({ id, nik: editNik.trim() })
+    const trimmed = editNik.trim()
+    if (!trimmed) return toast.error('NIK tidak boleh kosong')
+    if (trimmed.length > 20) return toast.error('NIK maksimal 20 karakter')
+    if (!/^[a-zA-Z0-9]+$/.test(trimmed)) return toast.error('NIK hanya boleh berisi huruf dan angka')
+    editMut.mutate({ id, nik: trimmed })
   }
 
   if (isError) return <ErrorBox message="Gagal memuat data mapping approval." onRetry={refetch} />
@@ -148,11 +151,12 @@ export default function ApprovalMappingPage() {
                   <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
                     <label className="text-xs font-semibold text-sapphire">NIK Approver Baru</label>
                     <input
-                      className="input font-mono text-sm"
-                      value={editNik}
-                      onChange={e => setEditNik(e.target.value)}
-                      placeholder="Masukkan NIK"
-                      autoFocus
+                        className="input font-mono text-sm"
+                        value={editNik}
+                        onChange={e => setEditNik(e.target.value)}
+                        placeholder="Masukkan NIK"
+                        maxLength={20}
+                        autoFocus
                     />
                     <div className="flex gap-2 pt-1">
                       <button
