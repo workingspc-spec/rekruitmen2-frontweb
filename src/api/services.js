@@ -26,6 +26,12 @@ export const masterApi = {
     createBagian:     (body)       => api.post('/master/bagian', body),
     updateBagian:     (id, body)   => api.patch(`/master/bagian/${id}`, body),
 
+    // ── Approval Mapping (HRD Management) ────────────────────────────────────
+    getApprovalMapping:    ()           => api.get('/master/approval-mapping'),
+    addApprovalMapping:    (body)       => api.post('/master/approval-mapping', body),
+    updateApprovalMapping: (id, body)   => api.patch(`/master/approval-mapping/${id}`, body),
+    deleteApprovalMapping: (id)         => api.delete(`/master/approval-mapping/${id}`),
+
     // ── Bypass Users (HRD Management) ────────────────────────────────────────
     getBypassUsers:      ()          => api.get('/master/bypass-users'),
     addBypassUser:       (body)      => api.post('/master/bypass-users', body),

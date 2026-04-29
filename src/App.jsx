@@ -106,9 +106,6 @@ function ProtectedRoute({ children }) {
   const { token, loading, user } = useAuth()
 
   if (loading) {
-    // Returning user: sessionStorage already has user data → render layout
-    // immediately so only the page's own skeleton shows (no double shimmer).
-    // First-ever load: no cached user → show the full skeleton while /auth/me runs.
     return user
       ? <MainLayout>{children}</MainLayout>
       : <AppLoadingSkeleton />
@@ -134,7 +131,7 @@ function HrdRoute({ children }) {
 
 function PublicRoute({ children }) {
   const { token, loading } = useAuth()
-  if (loading) return <PageLoader />   // Login page tetap pakai spinner minimal
+  if (loading) return <PageLoader />
   if (token)   return <Navigate to="/" replace />
   return children
 }
@@ -212,6 +209,9 @@ function AppRoutes() {
       } />
       <Route path="/master/bypass-users" element={
         <HrdRoute><BypassUserPage /></HrdRoute>
+      } />
+      <Route path="/master/approval-map" element={
+        <HrdRoute><ApprovalMappingPage /></HrdRoute>
       } />
 
       {/* Fallback */}
