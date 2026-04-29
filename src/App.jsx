@@ -17,6 +17,7 @@ import KpiHrdPage             from './pages/monitoring/KpiHrdPage'
 import KpiApproverPage        from './pages/monitoring/KpiApproverPage'
 import BagianMasterPage       from './pages/master/BagianMasterPage'
 import BypassUserPage         from './pages/master/BypassUserPage'
+import ApprovalMappingPage    from './pages/master/ApprovalMappingPage'
 
 // ── Skeleton layout yang tampil saat sesi sedang diverifikasi ─────────────────
 // Menggantikan PageLoader spinner agar transisi lebih halus dan tidak ada "kedip dua fase"

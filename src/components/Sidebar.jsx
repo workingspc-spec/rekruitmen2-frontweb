@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useQuery } from '@tanstack/react-query'
 import { dashboardApi } from '../api/services'
-import { LogOut, ChevronLeft } from 'lucide-react'
+import { LogOut, ChevronLeft, GitMerge } from 'lucide-react'
 import { clsx } from 'clsx'
 import { DashboardIcon } from './icons/DashboardIcon'
 import { ClipboardListIcon } from './icons/ClipboardListIcon'
@@ -27,6 +27,7 @@ const getNavItems = (isHrd) => [
 
 const getMasterItems = () => [
   { to: '/master/bagian',        label: 'Kelola Bagian',       Icon: Building2Icon   },
+  { to: '/master/approval-map',  label: 'Mapping Approval',    Icon: GitMerge        },
   { to: '/master/bypass-users',  label: 'Kelola Bypass Users', Icon: ShieldCheckIcon },
 ]
 

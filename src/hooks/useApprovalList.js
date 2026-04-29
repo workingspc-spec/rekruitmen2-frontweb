@@ -7,7 +7,7 @@ import { sanitizeApiError } from '../utils/security'
 import logger from '../utils/logger'
 import toast from 'react-hot-toast'
 
-export function useApprovalList() {
+export function useApprovalList(viewMode = 'ATASAN') {
   const { isHrd } = useAuth()
   const qc = useQueryClient()
 
@@ -19,18 +19,18 @@ export function useApprovalList() {
   const atasanQ = useQuery({
     queryKey: ['approval-atasan'],
     queryFn: () => approvalApi.listAtasan(undefined).then(r => r.data.data ?? []),
-    enabled: !isHrd,
+    enabled: viewMode === 'ATASAN',
   })
 
   const hrdQ = useQuery({
     queryKey: ['approval-hrd'],
     queryFn: () => approvalApi.listHrd(undefined).then(r => r.data.data ?? []),
-    enabled: isHrd,
+    enabled: isHrd && viewMode === 'HRD',
   })
 
   const refetch = async () => {
     await recruitmentApi.syncManual()   // best-effort, tidak pernah gagal
-    if (isHrd) {
+    if (viewMode === 'HRD') {
       hrdQ.refetch()
     } else {
       atasanQ.refetch()
@@ -94,11 +94,11 @@ export function useApprovalList() {
     },
   })
 
-  const list    = isHrd ? (hrdQ.data ?? [])    : (atasanQ.data ?? [])
-  const loading = isHrd ? hrdQ.isLoading        : atasanQ.isLoading
-  const error   = isHrd ? hrdQ.error            : atasanQ.error
+  const list    = viewMode === 'HRD' ? (hrdQ.data ?? [])  : (atasanQ.data ?? [])
+  const loading = viewMode === 'HRD' ? hrdQ.isLoading      : atasanQ.isLoading
+  const error   = viewMode === 'HRD' ? hrdQ.error          : atasanQ.error
 
-  const isPending = (item) => isHrd
+  const isPending = (item) => viewMode === 'HRD'
     ? item.tpk_approveHRD === 0
     : item.tpk_approveatasan === 0
 

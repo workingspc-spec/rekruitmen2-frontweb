@@ -5,8 +5,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { useApprovalList } from '../../hooks/useApprovalList'
-import { useAuth } from '../../context/AuthContext'   // ✅ tambah
-import toast from 'react-hot-toast'                   // ✅ tambah (jika belum ada)
+import { useAuth } from '../../context/AuthContext'
+import toast from 'react-hot-toast'
 import { recruitmentApi } from '../../api/services'
 import {
   ErrorBox, EmptyState, ConfirmDialog, SearchInput,
@@ -76,8 +76,11 @@ const STATUS_TABS = [
 
 export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigate       = useNavigate()
-  const navigationType = useNavigationType() // 'POP' = back/forward, 'PUSH' = fresh nav
-  const { user }       = useAuth()  // ✅ tambah — untuk cek self-approval
+  const navigationType = useNavigationType()
+  const { user, isHrd } = useAuth()
+
+  // ── viewMode: HRD bisa beralih antara "Sebagai HRD" dan "Sebagai Atasan" ──
+  const [viewMode, setViewMode] = useState(isHrd ? 'HRD' : 'ATASAN')
 
   // ── Filter State Persistence ───────────────────────────────────────────────
   const _saved = useMemo(() => {
@@ -100,18 +103,17 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   // ── End Filter State Persistence ──────────────────────────────────────────
 
   const {
-    list, loading, error, refetch, isHrd,
+    list, loading, error, refetch, isHrd: isHrdFromHook,
     confirmItem, setConfirmItem,
     isHrdDialogItem, setIsHrdDialogItem,
     isHrdRejectItem, setIsHrdRejectItem,
     slaResultInfo, setSlaResultInfo,
     atasanMut,
-    hrdApproveMut, // ✅ Dideklarasikan dulu
+    hrdApproveMut,
     hrdRejectMut,
     isPending,
-  } = useApprovalList()
+  } = useApprovalList(viewMode)
 
-  // ✅ BENAR: Gunakan di bawah deklarasi
   useEffect(() => {
     if (hrdApproveMut.isError) {
       const status = hrdApproveMut.error?.response?.status
@@ -127,13 +129,12 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     } else {
       setHrdApproveError(null)
     }
-  }, [hrdApproveMut?.isError, hrdApproveMut?.error]) // Tambahkan optional chaining (?) agar lebih aman
+  }, [hrdApproveMut?.isError, hrdApproveMut?.error])
 
   const pendingCount  = list.filter(item => isPending(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length
   const allCount      = list.length
 
-  // Titik merah notifikasi (Hanya muncul jika ada tiket BARU)
   const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
 
   const filteredList = useMemo(() => {
@@ -171,14 +172,13 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const { currentPage, setCurrentPage, totalPages, paginatedData, totalItems } =
     usePagination(filteredList, ITEMS_PER_PAGE, filterKey, savedPage)
 
-  // Simpan semua filter termasuk page ke sessionStorage
   useEffect(() => {
     try {
       sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
-        tab, search, period: activePeriodFilter, page: currentPage, // ✅ Tambahkan page: currentPage
+        tab, search, period: activePeriodFilter, page: currentPage,
       }))
     } catch { /* silent */ }
-  }, [tab, search, activePeriodFilter, currentPage]) // ✅ Tambahkan currentPage ke dependency array
+  }, [tab, search, activePeriodFilter, currentPage])
 
   const emptyMessage = (() => {
     const statusMsg =
@@ -208,9 +208,34 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         <div className="page-header mb-4">
           <div>
             <h1 className="page-title">Approval</h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              {isHrd ? 'Persetujuan HRD' : 'Persetujuan Atasan'}
-            </p>
+
+            {/* Toggle mode untuk HRD, label biasa untuk non-HRD */}
+            {isHrd ? (
+              <div className="flex gap-2 mt-2 bg-slate-100 p-1 rounded-xl w-fit">
+                <button
+                  onClick={() => { setViewMode('HRD'); setTab('pending') }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    viewMode === 'HRD'
+                      ? 'bg-white shadow text-sapphire'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Sebagai HRD
+                </button>
+                <button
+                  onClick={() => { setViewMode('ATASAN'); setTab('pending') }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                    viewMode === 'ATASAN'
+                      ? 'bg-white shadow text-sapphire'
+                      : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  Sebagai Atasan
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 mt-0.5">Persetujuan Atasan</p>
+            )}
           </div>
         </div>
 
@@ -300,18 +325,18 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
               <ApprovalCard
                 key={item.tpk_nomor}
                 item={item}
-                isHrd={isHrd}
+                isHrd={viewMode === 'HRD'}
                 pending={isPending(item) && !item.is_legacy}
-                currentUserKode={user?.kode}  // ✅ tambah
+                currentUserKode={user?.kode}
                 onApprove={() => {
-                  if (isHrd) {
+                  if (viewMode === 'HRD') {
                     setIsHrdDialogItem(item)
                   } else {
                     setConfirmItem({ item, action: 'APPROVE' })
                   }
                 }}
                 onReject={() => {
-                  if (isHrd) {
+                  if (viewMode === 'HRD') {
                     setIsHrdRejectItem(item)
                   } else {
                     setConfirmItem({ item, action: 'REJECT' })
@@ -360,9 +385,9 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
         <HrdConfirmDialog
           item={isHrdDialogItem}
           loading={hrdApproveMut.isPending}
-          errorMessage={hrdApproveError}  // ✅ tambah
+          errorMessage={hrdApproveError}
           onConfirm={() => hrdApproveMut.mutate({ tpk_nomor: isHrdDialogItem.tpk_nomor })}
-          onClose={() => { setIsHrdDialogItem(null); setHrdApproveError(null) }}  // ✅ reset error saat tutup
+          onClose={() => { setIsHrdDialogItem(null); setHrdApproveError(null) }}
         />
       )}
 
