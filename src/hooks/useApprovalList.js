@@ -16,25 +16,24 @@ export function useApprovalList(viewMode = 'ATASAN') {
   const [isHrdRejectItem, setIsHrdRejectItem] = useState(null)
   const [slaResultInfo, setSlaResultInfo]     = useState(null)
 
+  // ✅ PERUBAHAN 1: Hapus `enabled: viewMode === 'ATASAN'` agar data Atasan selalu diambil
   const atasanQ = useQuery({
     queryKey: ['approval-atasan'],
     queryFn: () => approvalApi.listAtasan(undefined).then(r => r.data.data ?? []),
-    enabled: viewMode === 'ATASAN',
   })
 
+  // ✅ PERUBAHAN 2: Ubah enabled hanya mengecek apakah user adalah HRD
   const hrdQ = useQuery({
     queryKey: ['approval-hrd'],
     queryFn: () => approvalApi.listHrd(undefined).then(r => r.data.data ?? []),
-    enabled: isHrd && viewMode === 'HRD',
+    enabled: !!isHrd, 
   })
 
   const refetch = async () => {
-    await recruitmentApi.syncManual()   // best-effort, tidak pernah gagal
-    if (viewMode === 'HRD') {
-      hrdQ.refetch()
-    } else {
-      atasanQ.refetch()
-    }
+    await recruitmentApi.syncManual()
+    // Refresh keduanya sekaligus agar notifikasi akurat
+    atasanQ.refetch()
+    if (isHrd) hrdQ.refetch()
   }
 
   const atasanMut = useMutation({
@@ -47,6 +46,8 @@ export function useApprovalList(viewMode = 'ATASAN') {
         toast.success('Permintaan berhasil ditolak.')
       }
       qc.invalidateQueries({ queryKey: ['approval-atasan'] })
+      // Jika disetujui atasan, antrian HRD mungkin bertambah, refresh query HRD
+      if (isHrd && variables.action === 'APPROVE') qc.invalidateQueries({ queryKey: ['approval-hrd'] })
       qc.invalidateQueries({ queryKey: ['dashboard-stats'] })
       qc.invalidateQueries({ queryKey: ['dashboard-summary'] })
       setConfirmItem(null)
@@ -102,6 +103,10 @@ export function useApprovalList(viewMode = 'ATASAN') {
     ? item.tpk_approveHRD === 0
     : item.tpk_approveatasan === 0
 
+  // ✅ PERUBAHAN 3: Hitung jumlah pending (belum approve) untuk masing-masing role
+  const pendingAtasanCount = (atasanQ.data ?? []).filter(item => item.tpk_approveatasan === 0 && item.is_legacy !== 1).length
+  const pendingHrdCount    = (hrdQ.data ?? []).filter(item => item.tpk_approveHRD === 0 && item.is_legacy !== 1).length
+
   return {
     list, loading, error,
     refetch,
@@ -114,5 +119,8 @@ export function useApprovalList(viewMode = 'ATASAN') {
     hrdApproveMut,
     hrdRejectMut,
     isPending,
+    // Ekspor perhitungan ke komponen UI
+    pendingAtasanCount,
+    pendingHrdCount
   }
 }

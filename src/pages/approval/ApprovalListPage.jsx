@@ -1,6 +1,4 @@
 // src/pages/approval/ApprovalListPage.jsx
-// [UX] Changes:
-//   - Tambah persistensi filter state saat back navigation (useNavigationType)
 import { useState, useMemo, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useNavigationType } from 'react-router-dom'
@@ -14,7 +12,6 @@ import {
 } from '../../components/ui'
 import { PeriodPickerModal } from '../../components/PeriodPickerModal'
 import PaginationControls from '../../components/PaginationControls'
-import { usePagination } from '../../hooks/usePagination'
 import {
   matchesPeriodFilter,
   periodToLabel,
@@ -25,6 +22,7 @@ import { HrdConfirmDialog } from './HrdConfirmDialog'
 import { HrdRejectDialog } from './HrdRejectDialog'
 import { formatDate } from '../../utils/helpers'
 import { AnimatedIcon } from '../../components/AnimatedIcon'
+import { usePagination } from '../../hooks/usePagination'
 
 const ITEMS_PER_PAGE = 10
 const STORAGE_KEY    = 'filters:/approval'
@@ -79,17 +77,15 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const navigationType = useNavigationType()
   const { user, isHrd } = useAuth()
 
-  // ── viewMode: HRD bisa beralih antara "Sebagai HRD" dan "Sebagai Atasan" ──
   const [viewMode, setViewMode] = useState(isHrd ? 'HRD' : 'ATASAN')
 
-  // ── Filter State Persistence ───────────────────────────────────────────────
   const _saved = useMemo(() => {
     if (navigationType !== 'POP' || initialPeriodFilter !== null) return null
     try {
       return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null')
     } catch { return null }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // hanya saat mount
+  }, []) 
 
   const savedPage = _saved?.page ?? 1
 
@@ -100,8 +96,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     initialPeriodFilter ?? _saved?.period ?? null
   )
   const [showPeriodPicker, setShowPeriodPicker] = useState(false)
-  // ── End Filter State Persistence ──────────────────────────────────────────
 
+  // ✅ PERUBAHAN: Ekstrak pendingAtasanCount dan pendingHrdCount dari custom hook
   const {
     list, loading, error, refetch, isHrd: isHrdFromHook,
     confirmItem, setConfirmItem,
@@ -112,6 +108,8 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     hrdApproveMut,
     hrdRejectMut,
     isPending,
+    pendingAtasanCount,
+    pendingHrdCount
   } = useApprovalList(viewMode)
 
   useEffect(() => {
@@ -134,7 +132,6 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const pendingCount  = list.filter(item => isPending(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length
   const allCount      = list.length
-
   const actionableCount = list.filter(item => isPending(item) && item.is_legacy !== 1).length
 
   const filteredList = useMemo(() => {
@@ -209,28 +206,37 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
           <div>
             <h1 className="page-title">Approval</h1>
 
-            {/* Toggle mode untuk HRD, label biasa untuk non-HRD */}
+            {/* ✅ PERUBAHAN: Menambahkan notif titik merah pada Role Toggle */}
             {isHrd ? (
               <div className="flex gap-2 mt-2 bg-slate-100 p-1 rounded-xl w-fit">
                 <button
                   onClick={() => { setViewMode('HRD'); setTab('pending') }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     viewMode === 'HRD'
                       ? 'bg-white shadow text-sapphire'
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   Sebagai HRD
+                  {/* Titik Merah HRD: Muncul jika ada pending HRD dan user sedang berada di tab ATASAN */}
+                  {pendingHrdCount > 0 && viewMode !== 'HRD' && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-slate-100" />
+                  )}
                 </button>
+
                 <button
                   onClick={() => { setViewMode('ATASAN'); setTab('pending') }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     viewMode === 'ATASAN'
                       ? 'bg-white shadow text-sapphire'
                       : 'text-slate-500 hover:text-slate-700'
                   }`}
                 >
                   Sebagai Atasan
+                  {/* Titik Merah Atasan: Muncul jika ada pending Atasan dan user sedang berada di tab HRD */}
+                  {pendingAtasanCount > 0 && viewMode !== 'ATASAN' && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-slate-100" />
+                  )}
                 </button>
               </div>
             ) : (
@@ -278,6 +284,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
                       {count}
                     </span>
                   )}
+                  {/* Titik merah untuk status "Belum Approve" yang sedang tidak aktif */}
                   {!isActive && t.key === 'pending' && actionableCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full ring-1 ring-white" />
                   )}

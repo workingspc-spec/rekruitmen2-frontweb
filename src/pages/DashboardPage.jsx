@@ -11,7 +11,7 @@ import logger from '../utils/logger'  // ✅ [SECURITY]
 import {
   ClipboardList, CheckSquare, Activity, BarChart3, TrendingUp,
   ChevronRight, CheckCircle2, Calendar, ChevronDown,
-  Building2, ShieldCheck, Edit2, AlertTriangle
+  Building2, ShieldCheck, Edit2, AlertTriangle, GitMerge
 } from 'lucide-react'
 import { useRef } from 'react'
 import { DashboardIcon } from '../components/icons/DashboardIcon'
@@ -21,6 +21,7 @@ import { ActivityIcon } from '../components/icons/ActivityIcon'
 import { BarChart3Icon } from '../components/icons/BarChart3Icon'
 import { TrendingUpIcon } from '../components/icons/TrendingUpIcon'
 import { AnimatedIcon } from '../components/AnimatedIcon'
+import { GitMergeIcon } from '../components/icons/GitMergeIcon'
 
 const PERIOD_OPTIONS = [
   { value: 'All Time',   label: 'Semua Waktu' },
@@ -330,8 +331,26 @@ export default function DashboardPage() {
         <div>
           <p className="text-lg font-bold text-slate-800 mb-3">Manajemen Master Data</p>
           <div className="space-y-3">
-            {menuItem('/master/bagian',       'Kelola Bagian / Departemen', 'Tambah, ubah, aktifkan bagian',      Building2)}
-            {menuItem('/master/bypass-users', 'Kelola Bypass Users',        'Daftarkan pengguna bypass approval', ShieldCheck)}
+             {/* Gunakan QuickMenuButton di sini, bukan menuItem */}
+             <QuickMenuButton
+                label="Kelola Bagian / Departemen"
+                sub="Tambah, ubah, aktifkan bagian"
+                Icon={Building2} // Anda bisa menggunakan animasi Building2Icon jika Anda mau mengimpornya
+                onClick={() => navigate('/master/bagian')}
+             />
+              {/* Tambahkan tombol Mapping Approval di sini jika Anda ingin menampilkannya di Dashboard */}
+              <QuickMenuButton
+                label="Mapping Approval"
+                sub="Atur alur persetujuan"
+                Icon={GitMerge} // Anda perlu mengimpor ini jika ingin menggunakannya
+                onClick={() => navigate('/master/approval-map')}
+             />
+             <QuickMenuButton
+                label="Kelola Bypass Users"
+                sub="Daftarkan pengguna bypass approval"
+                Icon={ShieldCheck} // Anda bisa menggunakan animasi ShieldCheckIcon jika Anda mau mengimpornya
+                onClick={() => navigate('/master/bypass-users')}
+             />
           </div>
         </div>
       )}

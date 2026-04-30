@@ -14,6 +14,7 @@ import { BarChart3Icon } from './icons/BarChart3Icon'
 import { TrendingUpIcon } from './icons/TrendingUpIcon'
 import { Building2Icon } from './icons/Building2Icon'
 import { ShieldCheckIcon } from './icons/ShieldCheckIcon'
+import { GitMergeIcon } from './icons/GitMergeIcon'
 
 const getNavItems = (isHrd) => [
   { to: '/',            label: 'Dashboard',      Icon: DashboardIcon,     badgeKey: null       },
@@ -27,7 +28,7 @@ const getNavItems = (isHrd) => [
 
 const getMasterItems = () => [
   { to: '/master/bagian',        label: 'Kelola Bagian',       Icon: Building2Icon   },
-  { to: '/master/approval-map',  label: 'Mapping Approval',    Icon: GitMerge        },
+  { to: '/master/approval-map',  label: 'Mapping Approval',    Icon: GitMergeIcon    },
   { to: '/master/bypass-users',  label: 'Kelola Bypass Users', Icon: ShieldCheckIcon },
 ]
 
