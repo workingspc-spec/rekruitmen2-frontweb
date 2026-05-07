@@ -4,7 +4,7 @@ import { AnimatedIcon } from '../../components/AnimatedIcon'
 
 export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail, currentUserKode }) {
   const approvedByAtasan = item.tpk_approveatasan === 1 || item.tpk_approveatasan === 9
-  const isSelfRequest = isHrd && currentUserKode && item.tpk_peminta === currentUserKode
+  const isSelfRequest = currentUserKode && item.tpk_peminta === currentUserKode
   const approvedByHrd    = item.tpk_approveHRD === 1
 
   return (
@@ -59,7 +59,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         <div className="flex-1" />
 
         {/* Tombol Tolak — hanya muncul jika benar-benar pending (bukan legacy) */}
-        {pending && (
+        {pending && !isSelfRequest && (
           <button
             className="btn-ghost text-xs px-3 py-1.5 text-red-500 hover:bg-red-50 flex items-center gap-1.5"
             onClick={onReject}
@@ -87,7 +87,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         {/* ✅ Tampilkan label jika HRD mencoba approve permintaannya sendiri */}
         {pending && isSelfRequest && (
           <span className="text-xs text-slate-400 italic px-2">
-            Tidak dapat approve milik sendiri
+            Tidak dapat memproses milik sendiri
           </span>
         )}
       </div>
