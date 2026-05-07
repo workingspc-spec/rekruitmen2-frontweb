@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { formatDate } from '../../utils/helpers'
 import { Spinner } from '../../components/ui'
 import { XCircle, Building2, Users, Calendar, Flag, CheckSquare } from 'lucide-react'
-import { DetailRow } from './ApprovalCard'
+import { DetailRow, getApprovalJabatanLabel } from './ApprovalCard'
 
 /**
  * Dialog penolakan HRD — wajib isi alasan sebelum bisa tolak.
@@ -31,7 +31,7 @@ export function HrdRejectDialog({ item, loading, onConfirm, onClose }) {
 
         <div className="bg-slate-50 rounded-xl p-4 space-y-2 mb-4">
           <DetailRow icon={<Flag size={14} />}        label="Nomor"     value={item.tpk_nomor} mono />
-          <DetailRow icon={<CheckSquare size={14} />} label="Jabatan"   value={item.jab_nama} />
+          <DetailRow icon={<CheckSquare size={14} />} label="Jabatan" value={getApprovalJabatanLabel(item)} />
           <DetailRow icon={<Building2 size={14} />}   label="Bagian"    value={item.tpk_bagian} />
           <DetailRow icon={<Users size={14} />}       label="Jumlah"    value={`${item.tpk_jumlah} orang`} />
           <DetailRow icon={<Calendar size={14} />}    label="Tgl Butuh" value={formatDate(item.tpk_tgl_butuh)} />

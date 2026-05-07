@@ -2,16 +2,33 @@ import { formatDate } from '../../utils/helpers'
 import { Eye, CheckCircle2, XCircle, Building2, Users, Calendar, Flag, CheckSquare, Clock } from 'lucide-react'
 import { AnimatedIcon } from '../../components/AnimatedIcon'
 
+
+export function getApprovalJabatanLabel(item) {
+  const raw =
+    item?.jab_nama ||
+    item?.tpk_jab_kode ||
+    item?.jab_kode
+
+  return typeof raw === 'string' && raw.trim()
+    ? raw.trim()
+    : 'Tanpa Jabatan'
+}
+
 export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDetail, currentUserKode }) {
   const approvedByAtasan = item.tpk_approveatasan === 1 || item.tpk_approveatasan === 9
-  const isSelfRequest = currentUserKode && item.tpk_peminta === currentUserKode
-  const approvedByHrd    = item.tpk_approveHRD === 1
+  const isSelfRequest =
+    currentUserKode &&
+    String(item.tpk_peminta || '').trim() === String(currentUserKode || '').trim()
+  const approvedByHrd = item.tpk_approveHRD === 1
+  const jabatanLabel = getApprovalJabatanLabel(item)
 
   return (
     <div className="card group hover:shadow-card-hover hover:border-[#A6C5D7] transition-all duration-300">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <p className="font-display font-bold text-navy group-hover:text-sapphire transition-colors duration-300">{item.jab_nama}</p>
+          <p className="font-display font-bold text-navy group-hover:text-sapphire transition-colors duration-300">
+          {jabatanLabel}
+        </p>
           <p className="font-mono text-xs text-slate-400 mt-0.5">{item.tpk_nomor}</p>
         </div>
         {/* 👇 PERUBAHAN: Lempar nilai isLegacy ke dalam StatusPill */}

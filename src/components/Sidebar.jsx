@@ -99,6 +99,11 @@ export default function Sidebar({ isCollapsed, onToggle }) {
   const navigate = useNavigate()
   const initial  = user?.nama?.charAt(0)?.toUpperCase() ?? '?'
 
+  const userBagianLabel =
+    typeof user?.bagian === 'string' && user.bagian.trim()
+      ? user.bagian.trim()
+      : (isHrd ? 'HR Department' : 'General')
+
   const { data: stats } = useQuery({
     queryKey: ['sidebar-stats'],
     queryFn:  () => dashboardApi.stats().then(r => r.data.data),
@@ -264,7 +269,7 @@ export default function Sidebar({ isCollapsed, onToggle }) {
             )}
           >
             <p className="text-sm font-semibold text-navy truncate">{user?.nama}</p>
-            <p className="text-xs text-slate-400">{isHrd ? 'HRD' : 'Manager'}</p>
+            <p className="text-xs text-slate-400 truncate">{userBagianLabel}</p>
           </div>
         </div>
 

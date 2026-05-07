@@ -17,7 +17,7 @@ import {
   periodToLabel,
 } from '../../utils/periodFilter'
 import { CheckSquare, Calendar, X, CheckCircle2, AlertTriangle } from 'lucide-react'
-import { ApprovalCard } from './ApprovalCard'
+import { ApprovalCard, getApprovalJabatanLabel } from './ApprovalCard'
 import { HrdConfirmDialog } from './HrdConfirmDialog'
 import { HrdRejectDialog } from './HrdRejectDialog'
 import { formatDate } from '../../utils/helpers'
@@ -147,7 +147,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     if (search) {
       const q = search.toLowerCase()
       items = items.filter(item =>
-        item.jab_nama?.toLowerCase().includes(q) ||
+        getApprovalJabatanLabel(item).toLowerCase().includes(q) ||
         item.tpk_nomor?.toLowerCase().includes(q) ||
         item.tpk_bagian?.toLowerCase().includes(q)
       )
@@ -381,7 +381,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
             action: confirmItem.action,
           })}
           title={confirmItem.action === 'APPROVE' ? 'Setujui Permintaan?' : 'Tolak Permintaan?'}
-          message={`${confirmItem.item.jab_nama} — ${confirmItem.item.tpk_bagian}\nJumlah: ${confirmItem.item.tpk_jumlah} orang`}
+          message={`${getApprovalJabatanLabel(confirmItem.item)} — ${confirmItem.item.tpk_bagian}\nJumlah: ${confirmItem.item.tpk_jumlah} orang`}
           confirmText={confirmItem.action === 'APPROVE' ? 'Setujui' : 'Tolak'}
           danger={confirmItem.action === 'REJECT'}
           loading={atasanMut.isPending}
