@@ -56,9 +56,11 @@ export default function RecruitmentDetailPage() {
     </div>
   )
 
-  const isDraft = data.tpk_approveatasan === 0 && data.tpk_approveHRD === 0
+  const isDraft = Number(data.tpk_approveatasan) === 0 && Number(data.tpk_approveHRD) === 0
   const isOwner = data.tpk_peminta?.trim() === user?.kode
-  const canEdit = !isHrd && isOwner && data.is_legacy !== 1 && (isDraft || data.sla_is_editable === 1)
+  const isLegacy = Number(data.is_legacy) === 1 || data.sla_status === 'LEGACY'
+  const isSlaMissing = Number(data.sla_missing) === 1 || data.sla_status === 'SLA_MISSING'
+  const canEdit = !isHrd && isOwner && !isLegacy && !isSlaMissing && (isDraft || Number(data.sla_is_editable) === 1)
 
   // ── Jobdesk fields ────────────────────────────────────────────────────────
   const jobdesks = [1,2,3,4,5,6,7,8,9,10]
