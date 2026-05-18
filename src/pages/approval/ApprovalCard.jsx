@@ -31,8 +31,7 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         </p>
           <p className="font-mono text-xs text-slate-400 mt-0.5">{item.tpk_nomor}</p>
         </div>
-        {/* 👇 PERUBAHAN: Lempar nilai isLegacy ke dalam StatusPill */}
-        <StatusPill atasan={item.tpk_approveatasan} hrd={item.tpk_approveHRD} isHrd={isHrd} isLegacy={item.is_legacy} slaMissing={item.sla_missing} />
+        <StatusPill atasan={item.tpk_approveatasan} hrd={item.tpk_approveHRD} isHrd={isHrd} isLegacy={item.is_legacy} />
       </div>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-3">
@@ -47,15 +46,10 @@ export function ApprovalCard({ item, isHrd, pending, onApprove, onReject, onDeta
         )}
       </div>
 
-      {/* 👇 PERUBAHAN: Menambahkan Banner Read-Only khusus Legacy */}
-      {(Number(item.is_legacy) === 1 || Number(item.sla_missing) === 1) && (
-        <div className={`mb-3 px-3 py-2 rounded-lg flex items-center gap-2 ${
-          Number(item.sla_missing) === 1
-            ? 'bg-amber-50 border border-amber-100'
-            : 'bg-slate-50 border border-slate-100'
-        }`}>
-          <span className={`text-xs font-semibold ${Number(item.sla_missing) === 1 ? 'text-amber-700' : 'text-slate-500'}`}>
-            {Number(item.sla_missing) === 1 ? '⚠️ PKAR baru · SLA belum sinkron' : '📁 Data sistem lama · read-only'}
+      {Number(item.is_legacy) === 1 && (
+        <div className="mb-3 px-3 py-2 rounded-lg flex items-center gap-2 bg-slate-50 border border-slate-100">
+          <span className="text-xs font-semibold text-slate-500">
+            📁 Data sistem lama · read-only
           </span>
         </div>
       )}
@@ -128,8 +122,7 @@ function ApprovalChip({ label, date }) {
   )
 }
 
-// 👇 PERUBAHAN: Tangkap `isLegacy` dan berikan prioritas paling atas
-function StatusPill({ atasan, hrd, isHrd, isLegacy, slaMissing }) {
+function StatusPill({ atasan, hrd, isHrd, isLegacy }) {
   let label = "Pending";
   let color = "bg-amber-100 text-amber-700";
 
@@ -145,11 +138,7 @@ function StatusPill({ atasan, hrd, isHrd, isLegacy, slaMissing }) {
     label = "Sudah Disetujui"; color = "bg-green-100 text-green-700"; 
   }
 
-  if (Number(slaMissing) === 1) {
-    return <Pill label={`${label} (SLA belum sinkron)`} color="bg-amber-50 text-amber-700 border border-amber-200" />
-  }
-
-  // 👇 JIKA LEGACY: Tambahkan teks (Lama) tapi pertahankan warna status aslinya
+  // Jika legacy: tambahkan teks sistem lama, tetapi status SLA-missing tidak ditampilkan ke user.
   if (Number(isLegacy) === 1) {
     return <Pill label={`${label} (Sistem Lama)`} color={`${color} border border-current opacity-80`} />
   }

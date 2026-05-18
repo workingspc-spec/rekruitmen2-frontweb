@@ -367,14 +367,13 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                           {statusMeta.label}
                         </span>
 
-                        {(Number(r.is_legacy) === 1 || Number(r.sla_missing) === 1) && (
+                        {Number(r.is_legacy) === 1 && (
                           <div className="mt-1">
-                            <span className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
-                              style={{
-                                background: Number(r.sla_missing) === 1 ? '#fff7ed' : '#f1f5f9',
-                                color: Number(r.sla_missing) === 1 ? '#c2410c' : '#64748b'
-                              }}>
-                              {Number(r.sla_missing) === 1 ? '⚠️ PKAR Baru · SLA belum sinkron' : '📁 Sistem Lama'}
+                            <span
+                              className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
+                              style={{ background: '#f1f5f9', color: '#64748b' }}
+                            >
+                              📁 Sistem Lama
                             </span>
                           </div>
                         )}
