@@ -108,6 +108,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     hrdApproveMut,
     hrdRejectMut,
     isPending,
+    canProcess,
     pendingAtasanCount,
     pendingHrdCount
   } = useApprovalList(viewMode)
@@ -132,7 +133,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
   const pendingCount  = list.filter(item => isPending(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length
   const allCount      = list.length
-  const actionableCount = list.filter(item => isPending(item) && Number(item.is_legacy) !== 1).length
+  const actionableCount = list.filter(item => isPending(item) && canProcess(item)).length
 
   const filteredList = useMemo(() => {
     let items = list
@@ -333,7 +334,7 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
                 key={item.tpk_nomor}
                 item={item}
                 isHrd={viewMode === 'HRD'}
-                pending={isPending(item) && Number(item.is_legacy) !== 1}
+                pending={isPending(item) && canProcess(item)}
                 currentUserKode={user?.kode}
                 onApprove={() => {
                   if (viewMode === 'HRD') {

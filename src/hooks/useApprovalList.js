@@ -100,12 +100,16 @@ export function useApprovalList(viewMode = 'ATASAN') {
   const error   = viewMode === 'HRD' ? hrdQ.error          : atasanQ.error
 
   const isPending = (item) => viewMode === 'HRD'
-    ? item.tpk_approveHRD === 0
-    : item.tpk_approveatasan === 0
+    ? Number(item.tpk_approveHRD) === 0
+    : Number(item.tpk_approveatasan) === 0
 
-  // ✅ PERUBAHAN 3: Hitung jumlah pending (belum approve) untuk masing-masing role
-  const pendingAtasanCount = (atasanQ.data ?? []).filter(item => Number(item.tpk_approveatasan) === 0 && Number(item.is_legacy) !== 1).length
-  const pendingHrdCount    = (hrdQ.data ?? []).filter(item => Number(item.tpk_approveHRD) === 0 && Number(item.is_legacy) !== 1).length
+  // Hanya item dari draft aktif yang boleh diproses.
+  // Data live/legacy/SLA hilang tetap boleh tampil sebagai riwayat, tetapi tombol action harus hilang.
+  const canProcess = (item) => Number(item.can_process) === 1
+
+  // Hitung badge yang benar-benar bisa diproses, supaya sama dengan dashboard.
+  const pendingAtasanCount = (atasanQ.data ?? []).filter(item => Number(item.tpk_approveatasan) === 0 && Number(item.can_process) === 1).length
+  const pendingHrdCount    = (hrdQ.data ?? []).filter(item => Number(item.tpk_approveHRD) === 0 && Number(item.can_process) === 1).length
 
   return {
     list, loading, error,
@@ -119,6 +123,7 @@ export function useApprovalList(viewMode = 'ATASAN') {
     hrdApproveMut,
     hrdRejectMut,
     isPending,
+    canProcess,
     // Ekspor perhitungan ke komponen UI
     pendingAtasanCount,
     pendingHrdCount
