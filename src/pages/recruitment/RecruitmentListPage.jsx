@@ -108,7 +108,12 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
       r.tpk_approveHRD !== 2 &&
       r.tpk_approveHRD !== 1
     )
-    if (status === 'approved') list = list.filter(r => r.tpk_approveatasan === 1 && r.tpk_approveHRD === 1)
+    if (status === 'approved') {
+      list = list.filter(r =>
+        [1, 9].includes(Number(r.tpk_approveatasan)) &&
+        Number(r.tpk_approveHRD) === 1
+      )
+    }
     if (status === 'rejected') list = list.filter(r => r.tpk_approveatasan === 2 || r.tpk_approveHRD === 2)
 
     if (search) {
@@ -177,13 +182,13 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
     })
   }
 
-  const isPending = r => r.tpk_approveatasan === 0 && r.tpk_approveHRD === 0
+  const isPending = r => Number(r.tpk_approveatasan) === 0 && Number(r.tpk_approveHRD) === 0
   const isOwner   = r => r.tpk_peminta?.trim() === user?.kode
 
   const hasPendingItems = raw?.some(r => isPending(r) && isOwner(r))
 
   const selectableOnPage = paginatedData.filter(
-    r => isPending(r) && isOwner(r) && !r.is_legacy
+    r => isPending(r) && isOwner(r) && Number(r.is_legacy) !== 1 && Number(r.sla_missing) !== 1
   )
 
   const allCurrentPageSelected =
@@ -325,11 +330,11 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
               <tbody>
                 {paginatedData.map(r => {
                   const statusMeta = getApprovalStatus(r.tpk_approveatasan, r.tpk_approveHRD)
-                  const canSelect = isPending(r) && isOwner(r) && !r.is_legacy
-                  const canEdit   = isOwner(r) && !r.is_legacy && (isPending(r) || r.sla_is_editable)
+                  const canSelect = isPending(r) && isOwner(r) && Number(r.is_legacy) !== 1 && Number(r.sla_missing) !== 1
+                  const canEdit   = isOwner(r) && Number(r.is_legacy) !== 1 && Number(r.sla_missing) !== 1 && (isPending(r) || r.sla_is_editable)
                   const isSelected = selected.has(r.tpk_nomor)
 
-                  const showAtasanChip = r.tpk_approveatasan === 1 && r.tgl_approve_atasan
+                  const showAtasanChip = [1, 9].includes(Number(r.tpk_approveatasan)) && r.tgl_approve_atasan
                   const showHrdChip    = r.tpk_approveHRD === 1    && r.tgl_approve_hrd
 
                   return (
@@ -362,11 +367,14 @@ export default function RecruitmentListPage({ initialPeriodFilter = null }) {
                           {statusMeta.label}
                         </span>
 
-                        {r.is_legacy === 1 && (
+                        {(Number(r.is_legacy) === 1 || Number(r.sla_missing) === 1) && (
                           <div className="mt-1">
                             <span className="badge text-xs px-2 py-0.5 rounded-full font-semibold"
-                              style={{ background: '#f1f5f9', color: '#64748b' }}>
-                              📁 Sistem Lama
+                              style={{
+                                background: Number(r.sla_missing) === 1 ? '#fff7ed' : '#f1f5f9',
+                                color: Number(r.sla_missing) === 1 ? '#c2410c' : '#64748b'
+                              }}>
+                              {Number(r.sla_missing) === 1 ? '⚠️ PKAR Baru · SLA belum sinkron' : '📁 Sistem Lama'}
                             </span>
                           </div>
                         )}

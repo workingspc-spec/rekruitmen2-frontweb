@@ -104,8 +104,8 @@ export function useApprovalList(viewMode = 'ATASAN') {
     : item.tpk_approveatasan === 0
 
   // ✅ PERUBAHAN 3: Hitung jumlah pending (belum approve) untuk masing-masing role
-  const pendingAtasanCount = (atasanQ.data ?? []).filter(item => item.tpk_approveatasan === 0 && item.is_legacy !== 1).length
-  const pendingHrdCount    = (hrdQ.data ?? []).filter(item => item.tpk_approveHRD === 0 && item.is_legacy !== 1).length
+  const pendingAtasanCount = (atasanQ.data ?? []).filter(item => Number(item.tpk_approveatasan) === 0 && Number(item.is_legacy) !== 1).length
+  const pendingHrdCount    = (hrdQ.data ?? []).filter(item => Number(item.tpk_approveHRD) === 0 && Number(item.is_legacy) !== 1).length
 
   return {
     list, loading, error,
