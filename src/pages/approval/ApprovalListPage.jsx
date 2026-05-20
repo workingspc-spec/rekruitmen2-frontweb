@@ -130,16 +130,18 @@ export default function ApprovalListPage({ initialPeriodFilter = null }) {
     }
   }, [hrdApproveMut?.isError, hrdApproveMut?.error])
 
-  const pendingCount  = list.filter(item => isPending(item)).length
+  // Hitungan tab pending disamakan dengan dashboard: hanya tiket yang benar-benar bisa diproses.
+  // Data sistem lama/read-only tetap terlihat di tab Semua sebagai riwayat, tetapi tidak ikut badge Belum Approve.
+  const pendingCount  = list.filter(item => isPending(item) && canProcess(item)).length
   const approvedCount = list.filter(item => !isPending(item)).length
   const allCount      = list.length
-  const actionableCount = list.filter(item => isPending(item) && canProcess(item)).length
+  const actionableCount = pendingCount
 
   const filteredList = useMemo(() => {
     let items = list
 
     if (tab === 'pending') {
-      items = items.filter(item => isPending(item))
+      items = items.filter(item => isPending(item) && canProcess(item))
     }
     if (tab === 'approved') {
       items = items.filter(item => !isPending(item))
